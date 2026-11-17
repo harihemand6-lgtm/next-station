@@ -26,6 +26,7 @@ window.AE = (function () {
     const pr = { he: ["he", "his", "him"], she: ["she", "her", "her"], they: ["they", "their", "them"] }[p.pronoun] || ["they", "their", "them"];
     return {
       name: p.name, city: s.city, state: s.name, m: s.cast.m, v: s.cast.v, f: s.cast.f, p: s.cast.p,
+      mentor: s.cast.m, rival: s.cast.v, friend: s.cast.f, parent: s.cast.p, league: "the state T20 league",
       food: s.food.item, stall: s.food.stall, craft: s.craft.item, film: s.film, festival: s.festival,
       sport: s.sport, buddy: s.buddy, greet: s.greet, lang: s.lang,
       start: Math.round(L.cash0 * (L.raw ? 1 : s.ci)).toLocaleString("en-IN"),
@@ -68,12 +69,14 @@ window.AE = (function () {
     if (ev.req && !has(g, ev.req)) return false;
     if (ev.not && has(g, ev.not)) return false;
     if (ev.cond && !ev.cond(g)) return false;
+    if (ev.lives && ev.lives.indexOf(g.lifeId) < 0) return false;
     return true;
   }
 
   function nextEvent(g) {
     if (g.current) return findEvent(g, g.current);
     const a = allEvents(g);
+    if (life(g).closed) { a.state = []; a.common = []; }
     const every = a.life.concat(a.state, a.common);
     let ev = every.find(e => e.at && ok(e, g));
     if (!ev) ev = every.find(e => e.req && e.w >= 9 && ok(e, g));
@@ -135,7 +138,7 @@ window.AE = (function () {
     const eff = res.e || ch.e || {};
     if (!role && eff.rel) role = Object.keys(eff.rel)[0];
     let reaction = null;
-    if (role) reaction = { role, name: st(g).cast[role], line: fill(pick(g, COMMON().pool[role][mood(g.rel[role])]), g) };
+    if (role) { const rd = d["rel_" + role] || 0; const tone = rd > 0 ? "warm" : rd < 0 ? "cold" : mood(g.rel[role]); const L2 = line(g, "react", role, tone); reaction = { role, name: st(g).cast[role], line: L2.t, sub: L2.e }; }
     const text = fill(res.r, g);
     g.log.push({ c: g.chapter, id: ev.id, t: fill(ev.t, g), l: fill(ch.l, g), r: text, d, alt: ev.c.filter((_, i) => i !== idx).map(o => fill(o.l, g)) });
     if (g.used.indexOf(ev.id) < 0) g.used.push(ev.id);
@@ -185,14 +188,33 @@ window.AE = (function () {
     return g.result;
   }
 
+  // Character speech in the player's chosen language (see data/dialogue.js)
+  function langOf(g) {
+    const D = window.AE_DIALOGUE, pref = (window.NS_PREFS && window.NS_PREFS.lang) || "auto";
+    const code = pref === "auto" ? D.stateLang[g.stateId] || "en" : pref;
+    return D.packs[code] ? code : "en";
+  }
+  function line(g, kind, role, md, extra) {
+    const D = window.AE_DIALOGUE, code = langOf(g), P = D.packs[code], E = D.packs.en;
+    let raw, en;
+    if (kind === "react") { const i = Math.floor(rnd(g) * 2); raw = P.react[role][md][i]; en = E.react[role][md][i]; }
+    else if (kind === "advice" || kind === "city") {
+      if (md === "cold") { raw = P[kind + "Cold"]; en = E[kind + "Cold"]; } else { raw = P[kind][role]; en = E[kind][role]; }
+    } else { raw = P[kind][role][md]; en = E[kind][role][md]; }
+    const t = Array.isArray(raw) ? raw[0] : raw;
+    const sub = Array.isArray(raw) ? raw[1] : null;
+    return { t: fill(t, g, extra), e: sub ? fill(sub, g, extra) : null, lang: code };
+  }
+
   function talk(g, role, qi) {
-    const C = COMMON(), q = C.talk[qi];
+    const C = COMMON();
     const m = mood(g.rel[role]);
     let gain = false;
     const key = role + ":" + g.chapter;
     if (g.talks > 0 && g.talked.indexOf(key) < 0) { g.talked.push(key); g.talks--; g.rel[role] = clamp(g.rel[role] + 3, -100, 100); gain = true; }
-    const text = fill(q.a[role][m], g, { tip: C.tips[g.lifeId], local: pick(g, C.local[g.stateId]) });
-    return { text, mood: m, gain };
+    const kind = ["howru", "advice", "city", "opinion"][qi] || "howru";
+    const L2 = line(g, kind, role, m, { tip: C.tips[g.lifeId], local: pick(g, C.local[g.stateId]) });
+    return { text: L2.t, sub: L2.e, mood: m, gain };
   }
 
   function metric(g, v) {
@@ -221,5 +243,5 @@ window.AE = (function () {
     trader: "SEBI found over 91% of individual traders lost money in equity derivatives in FY25. Investing through diversified index funds over years is the slower, safer path. This game is not investment advice."
   };
 
-  return { CHAPTERS, STEPS, clamp, has, inr, fill, life, st, ci, kit, newGame, nextEvent, currentEvent, canChoose, needOf, chance, choose, talk, metric, mood, dailyPick, finish, REALITY, rnd };
+  return { line, langOf, CHAPTERS, STEPS, clamp, has, inr, fill, life, st, ci, kit, newGame, nextEvent, currentEvent, canChoose, needOf, chance, choose, talk, metric, mood, dailyPick, finish, REALITY, rnd };
 })();

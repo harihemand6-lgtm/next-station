@@ -444,8 +444,8 @@
 
     // 8 ─────────────────────────────────────────────
     {
-      id: "cricket", title: "Cricketer", unit: "Week", tag: "From club nets to the state league",
-      blurb: "Fight for a place in {sport}. Form, fitness, coaches and one trial that decides everything.",
+      id: "cricket", title: "Cricketer", unit: "Week", tag: "From club nets to the state T20 league",
+      blurb: "Fight for a place in {league}. Form, fitness, coaches and one trial that decides everything.",
       cash0: 4000, s0: 25, x0: 25, sl: "Technique", xl: "Form",
       roles: { m: "your coach, strict and rarely impressed", v: "a teammate fighting for your spot", f: "your net-practice partner", p: "worries about injuries and your degree" },
       settle(g, k) {
@@ -480,7 +480,7 @@
             { l: "Trust the coach", e: { s: 9, x: -5, rel: { m: 10 } }, r: "Ugly for a while. Then the cover drive is unreal." },
             { l: "Stick to your natural game", e: { x: 4, rel: { m: -8 } }, r: "Scores stay up. The ceiling stays low." }
           ] },
-        { id: "ck_trial", at: 4, w: 9, t: "Trials for {sport}. 200 players, 15 spots.",
+        { id: "ck_trial", at: 4, w: 9, t: "Trials for {league}. 200 players, 15 spots.",
           c: [ { l: "Walk out to bat", ck: { k: "sx", d: 50, ok: { e: { r: 12, h: 15, set: "selected" }, r: "Selected! Your name is on the list." }, no: { e: { h: -10 }, r: "Not selected. The coach says 'next season'." } } } ] },
         { id: "ck_exams", w: 3, who: "p", t: "Your college exams clash with a tournament. {p} is firm.",
           c: [
@@ -490,7 +490,7 @@
       ],
       end: [
         { id: "banned", t: "Banned", d: "Match-fixing ended your career. No match is worth that.", c: g => has(g, "banned") || has(g, "fixed") },
-        { id: "league", t: "League Contract", d: "Selected for {sport}. Floodlights, crowds and a real contract.", c: g => has(g, "selected") },
+        { id: "league", t: "League Contract", d: "Selected for {league}. Floodlights, crowds and a real contract.", c: g => has(g, "selected") },
         { id: "clubhero", t: "Club Hero", d: "The best player at your club. Next season could be the one.", c: g => g.s >= 55 },
         { id: "nets", t: "Back to the Nets", d: "Not this season. Thousands try. The ones who keep trying sometimes make it." }
       ]
@@ -499,15 +499,16 @@
     // 9 ─────────────────────────────────────────────
     {
       id: "reality", title: "Reality Show", unit: "Week", tag: "Six weeks inside Spotlight House",
-      blurb: "Survive six weeks in Spotlight House, a fictional reality show. Tasks, alliances, nominations and the public vote.",
+      blurb: "Survive six weeks in Spotlight House, a fictional reality show. Tasks, alliances, nominations and the public vote.", closed: true,
       cash0: 2000, s0: 20, x0: 35, sl: "Charm", xl: "Public votes",
       roles: { m: "a fan-favourite housemate", v: "the house schemer", f: "your closest ally in the house", p: "watches every episode on the family TV" },
       settle(g, k) {
         const lines = [["Appearance fee", 5000]];
         const wk = g.chapter;
-        if (wk >= 2 && wk <= 5 && !has(g, "immune") && g.x < 18 + wk * 6) g.ending = "evicted";
+        g.x = Math.max(0, g.x - 3);
+        if (wk >= 2 && wk <= 5 && !has(g, "immune") && g.x < 22 + wk * 8) g.ending = "evicted";
         g.flags = g.flags.filter(f => f !== "immune");
-        if (wk === 6 && g.x >= 70) lines.push(["Winner's prize", 1000000]);
+        if (wk === 6 && g.x >= 85) lines.push(["Winner's prize", 1000000]);
         return lines;
       },
       ev: [
@@ -534,12 +535,75 @@
             { l: "Refuse to fake it", e: { r: 8 }, r: "You stay real. That's your brand now." },
             { l: "Stage a fake fight", e: { x: 6, r: -6 }, r: "Ratings spike. You feel cheap." }
           ] },
-        { id: "rl_immunity", w: 3, t: "Immunity task: a cooking challenge using {food}.",
+        { id: "rl_immunity", w: 3, t: "Immunity task: cook {food} for the whole house in 30 minutes.",
           c: [ { l: "Cook for your safety", ck: { k: "s", d: 35, ok: { e: { set: "immune", x: 4 }, r: "Immune this week!" }, no: { e: { x: -2 }, r: "Burnt. You're on your own." } } } ] },
         { id: "rl_letter", w: 3, who: "p", t: "Emotional task: a letter from {p}.",
           c: [
             { l: "Read it aloud and share your story", e: { x: 9, h: 6, rel: { p: 10 } }, r: "The whole house cries. So does half of {state}." },
             { l: "Read it quietly", e: { h: 4 }, r: "Some things are just for you." }
+          ] },
+        { id: "rl_cam", w: 3, t: "2 am. You forgot the cameras never sleep and sang {lang} songs to the fridge for twenty minutes.",
+          c: [
+            { l: "Own it at breakfast: 'The fridge loved it'", e: { x: 7, r: 3 }, r: "It's the clip of the week. Someone made a remix." },
+            { l: "Beg the producers to cut it", e: { x: -2 }, r: "They don't. They never do." }
+          ] },
+        { id: "rl_ration", w: 3, t: "The house failed the ration task. Three days of rice and pickle for everyone.",
+          c: [
+            { l: "Invent something edible from rice and pickle", e: { s: 4, x: 5, rel: { f: 5 } }, r: "'Pickle rice risotto.' Chefs are crying. Housemates are not." },
+            { l: "Share the biscuits hidden in your pillow", e: { x: 6, r: 5 }, r: "Hero of the hungry. Also, why were they in your pillow?" },
+            { l: "Eat the hidden biscuits alone at night", e: { x: -7, r: -6 }, r: "Night vision cameras exist. The nation saw everything." }
+          ] },
+        { id: "rl_fest", w: 3, t: "{festival} inside the house. Decorations arrive, families don't.",
+          c: [
+            { l: "Lead the celebration for everyone", e: { x: 8, h: 5 }, r: "You turn a TV set into home for one evening." },
+            { l: "Miss home quietly on camera", e: { x: 4, h: -3 }, r: "Half of {state} cries with you." }
+          ] },
+        { id: "rl_rumour", w: 3, who: "v", t: "{v} tells the house you're 'fake' and 'only playing for the camera'.",
+          c: [
+            { l: "Calmly ask for one example at dinner", e: { x: 6, r: 4, rel: { v: -6 } }, r: "He has none. The silence is delicious." },
+            { l: "Roast him with a comedy routine", e: { x: 8, rel: { v: -4 } }, r: "Even he laughs. Then sulks." },
+            { l: "Cry in the confession room", e: { x: 3, h: -4 }, r: "Real emotions, real votes. Some of them." }
+          ] },
+        { id: "rl_ship", w: 2, t: "Viewers have decided you and another housemate are a couple. The hashtag is trending.",
+          c: [
+            { l: "Politely clear it up on camera", e: { r: 5, x: 2 }, r: "Respect. The hashtag survives anyway." },
+            { l: "Play along for votes", e: { x: 7, r: -3 }, r: "Votes up. Your parent's WhatsApp messages also up." }
+          ] },
+        { id: "rl_dance", w: 3, t: "Task: perform a traditional dance from {state} with zero rehearsal.",
+          c: [
+            { l: "Commit with full energy", e: { x: 9, s: 3 }, r: "Not perfect. Totally iconic." },
+            { l: "Turn it into comedy", e: { x: 6, h: 4 }, r: "Two left feet, one standing ovation." }
+          ] },
+        { id: "rl_toilet", w: 2, t: "You've been assigned toilet duty for the whole week.",
+          c: [
+            { l: "Do it without complaining", e: { r: 6, x: 3 }, r: "The audience respects a clean-bathroom king or queen." },
+            { l: "Trade it to {v} for your snacks", e: { s: 3, rel: { v: 6 } }, r: "Diplomacy, powered by chips." },
+            { l: "Refuse", e: { x: -6, r: -5 }, r: "The whole house turns on you. Also, the smell." }
+          ] },
+        { id: "rl_host", w: 3, t: "On the weekend episode, the host calls out your 'lazy week' in front of everyone.",
+          c: [
+            { l: "Accept it and promise to step up", e: { r: 5, x: 3 }, r: "Mature. The host nods. Rare." },
+            { l: "Argue back on live TV", e: { x: 5, r: -6 }, r: "Great TV. Terrible idea." }
+          ] },
+        { id: "rl_wildcard", w: 2, who: "f", t: "A wildcard contestant walks in and immediately targets {f}.",
+          c: [
+            { l: "Defend {f}", e: { x: 4, rel: { f: 12 } }, r: "Loyalty is the best content." },
+            { l: "Stay neutral", e: { x: -1, rel: { f: -5 } }, r: "{f} noticed. Everyone noticed." }
+          ] },
+        { id: "rl_sponsor", w: 2, t: "Sponsored task: sell a fictional hair oil, 'Lustro Locks', on live TV.",
+          c: [
+            { l: "Do an honest, hilarious pitch", e: { x: 8, s: 3 }, r: "'It's oil. It goes on hair. That's it.' The sponsor loves it anyway." },
+            { l: "Promise it regrows hair overnight", e: { x: 3, r: -5 }, r: "Viewers fact-check you in real time. Ouch." }
+          ] },
+        { id: "rl_sleep", w: 2, t: "The lights never fully go off. You haven't slept properly in days.",
+          c: [
+            { l: "Nap in the garden", e: { h: 8, x: -3 }, r: "Refreshed. Also, a meme now." },
+            { l: "Push through", e: { h: -6, x: 2 }, r: "You call {f} by the wrong name twice." }
+          ] },
+        { id: "rl_fanmail", w: 2, t: "Fan mail: a kid from {city} drew your portrait. It looks like a potato with your hair.",
+          c: [
+            { l: "Pin it on the wall proudly", e: { x: 6, h: 8 }, r: "Best gift you've ever received. Potato and all." },
+            { l: "Read the letter on camera", e: { x: 5, h: 5 }, r: "'You make my Amma laugh.' Okay, now you're crying." }
           ] },
         { id: "rl_nominate", w: 3, t: "Nominations. You have to name one housemate for eviction.",
           c: [
@@ -549,8 +613,8 @@
       ],
       end: [
         { id: "evicted", t: "Evicted", d: "The public vote went against you. But you walk out with followers, stories and a few real friends." },
-        { id: "winner", t: "Spotlight Winner", d: "Six weeks, one trophy, and the whole country knows your name.", c: g => g.x >= 70 },
-        { id: "finalist", t: "Finalist", d: "So close. Finalists often get the best offers anyway.", c: g => g.x >= 50 },
+        { id: "winner", t: "Spotlight Winner", d: "Six weeks, one trophy, and the whole country knows your name.", c: g => g.x >= 85 },
+        { id: "finalist", t: "Finalist", d: "So close. Finalists often get the best offers anyway.", c: g => g.x >= 65 },
         { id: "fanfav", t: "Fan Favourite", d: "You survived to the end on your own terms." }
       ]
     },

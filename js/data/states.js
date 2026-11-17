@@ -55,7 +55,7 @@ window.AE_STATES = {
     cast: { m: "Sunil", v: "Bunty", f: "Priya", p: "Aai" },
     food: { item: "vada pav and cutting chai", stall: "vada pav stall", price: 20, margin: 9, base: 120 },
     craft: { item: "Paithani silk sarees", margin: 1200, base: 18 },
-    film: "the Hindi film industry", festival: "Ganeshotsav", sport: "the Kanga League monsoon cricket",
+    film: "the Hindi film industry", festival: "Ganeshotsav", sport: "the monsoon cricket tournament",
     blurb: "Local trains, big dreams, small rooms and the fastest city in the country.",
     ev: [
       { id: "mh_ganesh", w: 3, t: "{festival} is here. The local mandal asks you to volunteer for ten days, and asks for a contribution.",
@@ -153,10 +153,10 @@ window.AE_STATES = {
     cast: { m: "Bhanwar-ji", v: "Mohit", f: "Kavya", p: "Maa" },
     food: { item: "pyaaz kachori and masala chai", stall: "kachori stall", price: 30, margin: 13, base: 95 },
     craft: { item: "hand block-printed textiles from Sanganer", margin: 500, base: 32 },
-    film: "film shoots in the Pink City", festival: "Teej", sport: "the inter-district cricket trials",
+    film: "Rajasthani cinema", festival: "Teej", sport: "the inter-district cricket match",
     blurb: "Forts, desert light, block prints, tourists from everywhere and 47°C summers.",
     ev: [
-      { id: "rj_tourist", w: 3, t: "Tourist season is here. A tour guide offers to send foreign groups your way, for a 30% commission.",
+      { id: "rj_tourist", w: 3, lives: ["street", "craft", "creator", "startup"], t: "Tourist season is here. A tour guide offers to send foreign groups your way, for a 30% commission.",
         c: [
           { l: "Accept the deal", e: { c: 1500, x: 4, rel: { m: -3 } }, r: "More customers, thinner margins." },
           { l: "Build your own reviews instead", e: { s: 4, r: 6 }, r: "Slower, but the customers are yours." }
@@ -184,7 +184,7 @@ window.AE_STATES = {
     cast: { m: "Ramesh", v: "Kiran", f: "Divya", p: "Amma" },
     food: { item: "idli-vada and filter coffee", stall: "darshini", price: 45, margin: 18, base: 70 },
     craft: { item: "Channapatna wooden toys and Mysore silk", margin: 600, base: 26 },
-    film: "Kannada cinema", festival: "Mysuru Dasara", sport: "the state T20 league trials",
+    film: "Kannada cinema", festival: "Mysuru Dasara", sport: "the weekend cricket league",
     blurb: "Filter coffee, tech parks, traffic legends and the best weather in India.",
     ev: [
       { id: "ka_traffic", w: 3, t: "Silk Board junction. You have been in the same spot for 50 minutes.",

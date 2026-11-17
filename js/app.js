@@ -14,9 +14,13 @@
   let char = store.get("ns.char", null);
   let profile = store.get("ns.profile", blankProfile());
   let game = store.get("ns.game", null);
+  let prefs = store.get("ns.prefs", { lang: "auto", subs: true });
+  window.NS_PREFS = prefs;
+  const NET = window.AE_NET, WORLD = window.AE_WORLD, DLG = window.AE_DIALOGUE;
+  let netKey = null;
   let ui = { view: "home", stateId: null, lifeId: null, daily: null, outcome: null, talk: null, talkRole: null, talkAnswer: null, confirmReset: false, draft: null, copied: false, newBadges: [], xpGain: 0 };
 
-  const save = () => { store.set("ns.char", char); store.set("ns.profile", profile); store.set("ns.game", game); };
+  const save = () => { store.set("ns.char", char); store.set("ns.profile", profile); store.set("ns.game", game); store.set("ns.prefs", prefs); };
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const inr = AE.inr;
   const level = xp => Math.floor(Math.sqrt(xp / 60)) + 1;
@@ -30,7 +34,18 @@
     return t.replace(/\{(\w+)\}/g, (m, k) => (w[k] !== undefined ? w[k] : m));
   };
 
-  function go(view, extra) { Object.assign(ui, { view, outcome: null, talk: null, talkRole: null, talkAnswer: null, confirmReset: false, copied: false }, extra || {}); render(); window.scrollTo(0, 0); }
+  function go(view, extra) {
+    if (view !== "play") { NET.leave(); netKey = null; }
+    Object.assign(ui, { view, outcome: null, eventOpen: false, talk: null, talkRole: null, talkAnswer: null, muteTarget: null, confirmReset: false, copied: false }, extra || {});
+    render(); window.scrollTo(0, 0);
+  }
+  const speech = (t, sub) => `<p>“${esc(t)}”</p>${prefs.subs && sub ? `<p class="sub">${esc(sub)}</p>` : ""}`;
+  function langPicker() {
+    return `<div class="f"><span>Character language</span>
+      <select id="f-lang">${Object.keys(DLG.langs).map(k => `<option value="${k}" ${prefs.lang === k ? "selected" : ""}>${esc(DLG.langs[k])}</option>`).join("")}</select>
+      <label class="check"><input type="checkbox" id="f-subs" ${prefs.subs ? "checked" : ""}> Show English subtitles</label>
+      <span class="hint">Characters speak this language. Story text stays in English.</span></div>`;
+  }
 
   // ── shared bits ──
   const topbar = (back) => `
@@ -147,6 +162,7 @@
           <div class="f"><span>Outfit</span><div class="chips">${chips("top", AV.STYLES.top)}</div></div>
           <div class="f"><span>Outfit colour</span><div class="sws">${sw("outfit", AV.OUTFIT)}</div></div>
           <div class="f"><span>Extras</span><div class="chips">${chips("acc", AV.STYLES.acc)}</div></div>
+          ${langPicker()}
           <p class="note">Looks are just for fun. They never change your story, chances or results.</p>
           <button class="btn primary big" data-act="savechar">Save character</button>
         </div>
@@ -183,9 +199,16 @@
         ${o.passed === true ? `<span class="pill good">It worked</span>` : o.passed === false ? `<span class="pill bad">Didn't work out</span>` : ""}
         <p class="result">${esc(o.text)}</p>
         <div class="deltas">${deltaPills(o.d, g)}</div>
-        ${o.reaction ? `<div class="bubble"><span class="init" data-role="${o.reaction.role}">${esc(o.reaction.name[0])}</span><div><b>${esc(o.reaction.name)}</b><p>“${esc(o.reaction.line)}”</p></div></div>` : ""}
+        ${o.reaction ? `<div class="bubble"><span class="init" data-role="${o.reaction.role}">${esc(o.reaction.name[0])}</span><div><b>${esc(o.reaction.name)}</b>${speech(o.reaction.line, o.reaction.sub)}</div></div>` : ""}
         <button class="btn primary big" data-act="next">${o.summary ? (g.done ? "See how it ended" : `End of ${L.unit.toLowerCase()} ${o.summary.chapter}`) : "Continue"}</button>
       </section>`;
+    } else if (!ui.eventOpen) {
+      const ev = AE.nextEvent(g); save();
+      const who = ev.who;
+      ui._marker = who || "board";
+      body = `<section class="card next"><p class="ev-teaser">${who ? `<b>${esc(s.cast[who])}</b> wants a word. Find the <span class="bang">!</span> on the street and walk over,` : `Something's up at the <b>Notice Board</b>. Walk over to the <span class="bang">!</span>,`} or</p>
+        <button class="btn primary" data-act="openev">Open it now</button></section>
+        <button class="btn ghost" data-act="talk">Talk to someone <span class="pill">${g.talks} bonding chats left</span></button>`;
     } else {
       const ev = AE.nextEvent(g); save();
       const who = ev.who;
@@ -202,7 +225,9 @@
     }
     return `${topbar("home")}<main class="wrap play" style="--h:${s.hue}">
       <p class="kicker">${esc(L.title)} · ${esc(s.city)}</p>
-      ${hud(g)}${body}${ui.talk ? talkSheet() : ""}</main>`;
+      ${hud(g)}<div id="world-slot"></div>
+      ${NET.enabled() ? `<p class="hint net-note">Other players see you as <b>${esc(NET.nick())}</b>, never your real name. Tap a player to mute them.</p>` : ""}
+      ${body}${ui.talk ? talkSheet() : ""}${ui.muteTarget ? muteSheet() : ""}</main>`;
   }
 
   function talkSheet() {
@@ -216,11 +241,47 @@
       }).join("")}</ul>`;
     } else {
       inner = `<div class="speaker"><span class="init" data-role="${role}">${esc(s.cast[role][0])}</span><b>${esc(s.cast[role])}</b></div>
-        ${ui.talkAnswer ? `<div class="bubble big"><p>“${esc(ui.talkAnswer.text)}”</p>${ui.talkAnswer.gain ? `<span class="pill good">You grew closer</span>` : ""}</div>` : ""}
+        ${ui.talkAnswer ? `<div class="bubble big">${speech(ui.talkAnswer.text, ui.talkAnswer.sub)}${ui.talkAnswer.gain ? `<span class="pill good">You grew closer</span>` : ""}</div>` : ""}
         <div class="choices">${COMMON.talk.map((t, i) => `<button class="choice small" data-act="ask" data-arg="${i}">${esc(AE.fill(t.q, g))}</button>`).join("")}</div>
         <button class="btn ghost" data-act="talkback">Talk to someone else</button>`;
     }
     return `<div class="sheet-bg" data-act="closetalk"></div><section class="sheet" role="dialog" aria-label="Talk">${inner}<button class="btn" data-act="closetalk">Back to your day</button></section>`;
+  }
+
+  function muteSheet() {
+    return `<div class="sheet-bg" data-act="closemute"></div><section class="sheet" role="dialog" aria-label="Mute player">
+      <h2>Mute ${esc(ui.muteTarget.nick)}?</h2><p class="hint">You won't see this player or their messages for the rest of this visit.</p>
+      <div class="row"><button class="btn danger" data-act="mute">Mute</button><button class="btn" data-act="closemute">Cancel</button></div></section>`;
+  }
+
+  function mountWorld() {
+    const slot = document.getElementById("world-slot");
+    if (!game || game.done) { NET.leave(); netKey = null; return; }
+    if (!slot) return;
+    const g = game, s = AE.st(g), key = g.seed + ":" + g.lifeId + ":" + g.stateId;
+    WORLD.mount(slot, {
+      key, stateId: g.stateId, lifeId: g.lifeId, hue: s.hue, cast: s.cast, avatar: char || g.player, meLabel: (char || g.player).name,
+      words: { stall: s.food.stall, city: s.city, v: s.cast.v },
+      onReach: () => { if (!ui.outcome && !ui.eventOpen && ui.view === "play") { ui.eventOpen = true; render(); } },
+      onTalk: r => { ui.talk = true; ui.talkRole = r; ui.talkAnswer = null; render(); },
+      onMove: (x, y) => NET.move(x, y),
+      onSay: (k, i) => { const t = NET.say(k, i); if (t) WORLD.meSay(t); },
+      onRemoteTap: (id, nick) => { ui.muteTarget = { id, nick }; render(); }
+    });
+    WORLD.setMarker(ui.outcome || ui.eventOpen ? null : ui._marker);
+    const o = ui.outcome;
+    if (o && o.reaction && !o._shown) { o._shown = true; WORLD.npcSay(o.reaction.role, o.reaction.line, prefs.subs ? o.reaction.sub : null); }
+    if (NET.enabled() && netKey !== key) {
+      netKey = key;
+      WORLD.clearRemotes();
+      NET.join(g.stateId, char || g.player, WORLD.position(), {
+        onJoin: (id, d) => WORLD.upsertRemote(id, d),
+        onMove: (id, x, y) => WORLD.moveRemote(id, x, y),
+        onSay: (id, t) => WORLD.sayRemote(id, t),
+        onLeave: id => WORLD.removeRemote(id),
+        onCount: n => WORLD.setOnline(n, NET.PHRASES, NET.EMOTES)
+      }).catch(() => { netKey = null; });
+    }
   }
 
   // ── CHAPTER SUMMARY ──
@@ -311,6 +372,7 @@
         <button class="btn" data-act="editchar">Edit character</button>
       </section>
       <section class="card"><h2>Badges</h2><div class="badges">${COMMON.badges.map(b => `<span class="badge ${profile.badges.indexOf(b.id) >= 0 ? "on" : ""}"><b>${esc(b.t)}</b>${esc(b.d)}</span>`).join("")}</div></section>
+      <section class="card"><h2>Language</h2>${langPicker()}</section>
       <section class="card"><h2>Your data</h2><p class="hint">Everything is stored only in this browser. Nothing is sent anywhere.</p>
         ${ui.confirmReset ? `<p>Delete your character and all progress? This can't be undone.</p><div class="row"><button class="btn danger" data-act="reset">Yes, delete everything</button><button class="btn" data-act="profile">Cancel</button></div>`
         : `<button class="btn ghost" data-act="askreset">Reset all data</button>`}</section>
@@ -322,6 +384,10 @@
     const V = { home: vHome, state: vState, life: vLife, intro: vIntro, creator: vCreator, play: vPlay, summary: vSummary, profile: vProfile }[ui.view] || vHome;
     $app.innerHTML = V();
     if (ui.view === "creator") bindCreator();
+    if (ui.view === "play") mountWorld();
+    const fl = document.getElementById("f-lang"), fs = document.getElementById("f-subs");
+    if (fl) fl.addEventListener("change", e => { prefs.lang = e.target.value; save(); });
+    if (fs) fs.addEventListener("change", e => { prefs.subs = e.target.checked; save(); });
   }
   function bindCreator() {
     const d = ui.draft, upd = () => { document.getElementById("avatar").innerHTML = AV.svg(d, 150); document.getElementById("hv").textContent = d.height + " cm"; document.getElementById("wv").textContent = d.weight + " kg"; document.querySelector(".pv-name").textContent = d.name || "Your name"; };
@@ -356,8 +422,11 @@
         else if (ui.after === "profile") go("profile"); else go("state");
         break;
       }
-      case "choose": { const o = AE.choose(game, +arg); if (o) { ui.outcome = o; save(); render(); } break; }
-      case "next": { const o = ui.outcome; ui.outcome = null; if (o && o.summary) { game._showSummary = true; save(); go("summary"); } else { render(); window.scrollTo(0, 0); } break; }
+      case "choose": { const o = AE.choose(game, +arg); if (o) { ui.outcome = o; ui.eventOpen = false; save(); render(); } break; }
+      case "openev": ui.eventOpen = true; render(); break;
+      case "mute": NET.mute(ui.muteTarget.id); WORLD.removeRemote(ui.muteTarget.id); ui.muteTarget = null; render(); break;
+      case "closemute": ui.muteTarget = null; render(); break;
+      case "next": { const o = ui.outcome; ui.outcome = null; ui.eventOpen = false; if (o && o.summary) { game._showSummary = true; save(); go("summary"); } else { render(); window.scrollTo(0, 0); } break; }
       case "aftersummary": game._showSummary = false; save(); go("play"); break;
       case "talk": ui.talk = true; ui.talkRole = null; ui.talkAnswer = null; render(); break;
       case "talkto": ui.talkRole = arg; ui.talkAnswer = null; render(); break;
