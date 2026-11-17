@@ -11,7 +11,7 @@ window.AE_WORLD = (function () {
   const LANDMARK = { street: "{stall}", job: "Brightline Systems", govt: "Coaching Centre", creator: "Creator Café", startup: "Co-working Space", craft: "Weavers' Workshop", film: "Studio Gate", cricket: "Cricket Ground", reality: "Spotlight House", trader: "Wi-Fi Café" };
   const SKIN = AV.SKIN, HAIRC = AV.HAIR;
 
-  let THREE, el, renderer, scene, camera, ray, groundMesh, grid, blds, trees, labels, spots, doors, figs = {}, me, raf = 0, last = 0, opts = {}, yaw = 0, lastDrag = 0, keys = {}, joy = { x: 0, y: 0, on: false }, nearKey = null, sceneMarker = null, guide = null, beacon, bang, labelLayer, banner, actBtn, logEl, ok3d = false, lastMoveSent = 0, matCache = {}, extraSpots = {}, inside = {};
+  let THREE, el, renderer, scene, camera, ray, groundMesh, grid, blds, trees, labels, spots, doors, figs = {}, me, raf = 0, last = 0, opts = {}, yaw = 0, lastDrag = 0, keys = {}, joy = { x: 0, y: 0, on: false }, nearKey = null, sceneMarker = null, guide = null, beacon, bang, labelLayer, banner, actBtn, logEl, ok3d = false, lastMoveSent = 0, matCache = {}, extraSpots = {}, inside = {}, pitch = 0.5, dist = 3.6, follow = true, spin = 0, mini, miniCtx, mapEl, mapCv, mapBase, miniT = 0, pointers = {};
 
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   function hashNum(s) { let h = 7; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; }
@@ -211,13 +211,16 @@ window.AE_WORLD = (function () {
       el.dataset.key = o.key;
       el.innerHTML = `<div class="w-banner" hidden><span class="arrow" aria-hidden="true">➤</span><div class="w-banner-t"><b></b><span></span></div><div class="w-banner-a"></div></div>
         <div class="w3-view"><div class="w-labels"></div><div class="joy" aria-label="Joystick: drag to walk"><i></i></div>
+          <canvas class="minimap" width="132" height="100" aria-label="City map. Tap to open."></canvas>
+          <div class="cam-btns"><button class="w-btn small cam-spin" title="Look all around">360°</button><button class="w-btn small cam-follow" title="Camera mode">Camera: follow</button></div>
+          <div class="map-full" hidden><div class="map-top"><b>City map</b><span>Tap a place to walk there</span><button class="w-btn small map-close">Close</button></div><canvas></canvas><div class="map-legend"></div></div>
           <div class="w-ui"><button class="w-btn act" hidden></button><button class="w-btn say" hidden>Say…</button><button class="w-btn chat" hidden>Chat</button><span class="w-online" hidden></span></div>
           <div class="say-panel" hidden></div>
           <div class="chat-log" aria-live="polite"></div></div>
         <form class="chat-row" hidden><input maxlength="80" placeholder="Type a message (no numbers, links or handles)" aria-label="Chat message"><button class="w-btn">Send</button></form>
-        <p class="w-hint">Drag to look around. Joystick, WASD or tap the ground to walk. Chat vanishes and is never saved. <a href="#rules" data-act="rules">Rules &amp; contact</a></p>`;
+        <p class="w-hint">Drag to look 360° (up/down too), pinch or scroll to zoom. Joystick, WASD or tap the ground to walk. Tap the mini map for the full city map. Chat vanishes and is never saved. <a href="#rules" data-act="rules">Rules &amp; contact</a></p>`;
       labelLayer = el.querySelector(".w-labels"); banner = el.querySelector(".w-banner"); actBtn = el.querySelector(".act"); logEl = el.querySelector(".chat-log");
-      figs = {}; extraSpots = {}; inside = {}; guide = null; sceneMarker = null; nearKey = null; yaw = Math.PI / 2;
+      figs = {}; extraSpots = {}; inside = {}; guide = null; sceneMarker = null; nearKey = null; yaw = Math.PI / 2; pitch = 0.5; dist = 3.6; follow = true; spin = 0;
       ok3d = false;
       try { if (THREE) { renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "low-power" }); ok3d = !!renderer.getContext(); } } catch (e) { ok3d = false; }
       const view = el.querySelector(".w3-view");
@@ -255,11 +258,13 @@ window.AE_WORLD = (function () {
         beacon.visible = false; scene.add(beacon);
         bang = textSprite(" ! ", "#f4a52b", 0.7); bang.visible = false; scene.add(bang);
       } else {
-        view.insertAdjacentHTML("afterbegin", `<p class="no3d">3D isn't available on this device or browser. You can still play: use the "Go there" button on the mission bar to skip walking.</p>`);
+        view.insertAdjacentHTML("afterbegin", `<p class="no3d">3D isn't available on this device or browser. You can still play: use the buttons on the mission bar instead of walking.</p>`);
       }
       me = addFig("me", "me", o.avatar, o.outfit, o.meLabel || "You", 8.5, 18.5);
       ["m", "f", "v", "p"].forEach(r => { const s = spots[r]; if (s) { const f = addFig("npc_" + r, "npc", npcLook(o.stateId, r), null, o.cast[r], s.x + 0.5, s.y + 0.5); f.role = r; f.heading = Math.PI; place(f); } });
       bindInput();
+      mapBase = mapImage(o.hue); mini = el.querySelector(".minimap"); miniCtx = mini.getContext("2d");
+      mapEl = el.querySelector(".map-full"); mapCv = mapEl.querySelector("canvas");
       window.addEventListener("resize", resize); window.addEventListener("keydown", kd); window.addEventListener("keyup", ku);
       last = performance.now(); cancelAnimationFrame(raf); raf = requestAnimationFrame(tick);
     } else if (JSON.stringify(o.outfit || null) !== JSON.stringify(figs.me.outfit || null)) setLookFig("me", o.avatar, o.outfit);
@@ -280,13 +285,38 @@ window.AE_WORLD = (function () {
   // ── input ──
   function bindInput() {
     const view = el.querySelector(".w3-view");
-    let down = null;
-    view.addEventListener("pointerdown", e => { if (e.target.closest(".joy")) return; down = { x: e.clientX, lx: e.clientX, drag: false }; try { view.setPointerCapture(e.pointerId); } catch (er) { } });
-    view.addEventListener("pointermove", e => {
-      if (!down) return;
-      if (Math.abs(e.clientX - down.x) > 6 || down.drag) { down.drag = true; yaw -= (e.clientX - down.lx) * 0.008; down.lx = e.clientX; lastDrag = performance.now(); }
+    let down = null, pinch0 = 0;
+    view.addEventListener("pointerdown", e => {
+      if (e.target.closest(".joy,.minimap,.map-full,.cam-btns,.w-ui,.say-panel")) return;
+      pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+      if (Object.keys(pointers).length === 2) { const p = Object.values(pointers); pinch0 = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y); down = null; return; }
+      down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, drag: false }; try { view.setPointerCapture(e.pointerId); } catch (er) { }
     });
-    view.addEventListener("pointerup", e => { if (down && !down.drag) tap(e); down = null; });
+    view.addEventListener("pointermove", e => {
+      if (pointers[e.pointerId]) pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+      const ps = Object.values(pointers);
+      if (ps.length === 2 && pinch0) { const d = Math.hypot(ps[0].x - ps[1].x, ps[0].y - ps[1].y); dist = Math.max(2.2, Math.min(10, dist * pinch0 / d)); pinch0 = d; lastDrag = performance.now(); return; }
+      if (!down) return;
+      if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6 || down.drag) {
+        down.drag = true;
+        yaw -= (e.clientX - down.lx) * 0.008;
+        pitch = Math.max(0.08, Math.min(1.45, pitch + (e.clientY - down.ly) * 0.006));
+        down.lx = e.clientX; down.ly = e.clientY; lastDrag = performance.now();
+      }
+    });
+    const up = e => { delete pointers[e.pointerId]; if (Object.keys(pointers).length < 2) pinch0 = 0; if (down && !down.drag && e.type === "pointerup") tap(e); down = null; };
+    view.addEventListener("pointerup", up); view.addEventListener("pointercancel", up);
+    view.addEventListener("wheel", e => { e.preventDefault(); dist = Math.max(2.2, Math.min(10, dist * (e.deltaY > 0 ? 1.1 : 0.9))); lastDrag = performance.now(); }, { passive: false });
+    el.querySelector(".cam-spin").addEventListener("click", () => { spin = Math.PI * 2; lastDrag = performance.now(); });
+    const fb = el.querySelector(".cam-follow");
+    fb.addEventListener("click", () => { follow = !follow; fb.textContent = follow ? "Camera: follow" : "Camera: free"; });
+    el.querySelector(".minimap").addEventListener("click", openMap);
+    el.querySelector(".map-close").addEventListener("click", () => { mapEl.hidden = true; });
+    el.querySelector(".map-full canvas").addEventListener("click", e => {
+      const r = mapCv.getBoundingClientRect(), tx = Math.floor((e.clientX - r.left) / r.width * COLS), ty = Math.floor((e.clientY - r.top) / r.height * ROWS);
+      me.path = toPts(path(tileOf(me), { x: tx, y: ty })); mapEl.hidden = true;
+      sendMe(true, me.path.length ? me.path[me.path.length - 1] : null);
+    });
     const joyEl = el.querySelector(".joy"), knob = joyEl.querySelector("i");
     const jmove = e => { const r = joyEl.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2; let dx = (e.clientX - cx) / (r.width / 2), dy = (e.clientY - cy) / (r.height / 2); const n = Math.hypot(dx, dy); if (n > 1) { dx /= n; dy /= n; } joy.x = dx; joy.y = dy; knob.style.transform = `translate(${dx * 24}px, ${dy * 24}px)`; };
     joyEl.addEventListener("pointerdown", e => { e.stopPropagation(); joy.on = true; try { joyEl.setPointerCapture(e.pointerId); } catch (er) { } jmove(e); });
@@ -372,11 +402,13 @@ window.AE_WORLD = (function () {
       }
     });
     if (ok3d && el && el.isConnected) {
-      if (me.moving && !me.free && performance.now() - lastDrag > 1500) yaw += angDiff(yaw, me.heading) * Math.min(1, dt * 2.2);
+      if (spin > 0) { const st = Math.min(spin, dt * Math.PI * 0.55); yaw += st; spin -= st; }
+      else if (follow && me.moving && !me.free && performance.now() - lastDrag > 1500) yaw += angDiff(yaw, me.heading) * Math.min(1, dt * 2.2);
       Object.values(figs).forEach(f => animate(f, dt));
-      const fx = Math.sin(yaw), fz = Math.cos(yaw);
-      camera.position.set(me.x - fx * 3.4, 2.0, me.z - fz * 3.4);
-      camera.lookAt(me.x + fx * 1.2, 0.75, me.z + fz * 1.2);
+      const fx = Math.sin(yaw), fz = Math.cos(yaw), hz = Math.cos(pitch) * dist, vy = Math.sin(pitch) * dist;
+      camera.position.set(me.x - fx * hz, 0.8 + vy, me.z - fz * hz);
+      camera.lookAt(me.x + fx * 0.6 * Math.cos(pitch), 0.8, me.z + fz * 0.6 * Math.cos(pitch));
+      if (time - miniT > 120) { miniT = time; drawMini(time); if (!mapEl.hidden) drawFull(time); }
       const g = guide && spotPos(guide.key);
       beacon.visible = !!g; if (g) beacon.position.set(g.x, 3.5, g.z);
       const sm = sceneMarker && spotPos(sceneMarker);
@@ -423,15 +455,63 @@ window.AE_WORLD = (function () {
     } else { arrow.style.visibility = "hidden"; info.textContent = guide.sub || ""; }
   }
 
+  let cap3d = null;
+  function can3d() {
+    if (el && el.isConnected && renderer) return ok3d;
+    if (cap3d === null) { try { const c = document.createElement("canvas"); cap3d = !!(window.THREE && window.WebGLRenderingContext && (c.getContext("webgl") || c.getContext("experimental-webgl"))); } catch (e) { cap3d = false; } }
+    return cap3d;
+  }
+  // ── maps ──
+  function mapImage(hue) {
+    const P = 4, c = document.createElement("canvas"); c.width = COLS * P; c.height = ROWS * P;
+    const x = c.getContext("2d"), col = { [ROAD]: "#2c2846", [SIDE]: "#57507a", [PLAZA]: "#6a6190", [GRASS]: "#2f6b45", [BLD]: "#8a80b8", [WATER]: "#1c5578", [TREE]: "#3f8f55", [JETTY]: "#8a6a45" };
+    for (let y = 0; y < ROWS; y++) for (let xx = 0; xx < COLS; xx++) { x.fillStyle = col[at(xx, y)]; x.fillRect(xx * P, y * P, P, P); }
+    blds.forEach(b => { if (b.big) { x.fillStyle = { life: "#f4a52b", rival: "#ef6a5f", home: "#c9b6ff", station: "#22b5a6", hall: "#f3efe6", fxn: "#ff4f9a" }[b.big]; x.globalAlpha = 0.85; x.fillRect(b.x * P, b.y * P, b.w * P, b.d * P); x.globalAlpha = 1; } });
+    return c;
+  }
+  function drawDots(ctx, sx, sy, time, big) {
+    const dot = (x, z, c, r) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x * sx, z * sy, r, 0, 6.3); ctx.fill(); };
+    Object.values(figs).forEach(f => { if (f.kind === "remote") dot(f.x, f.z, "#22b5a6", big ? 4 : 2.2); if (f.kind === "npc") dot(f.x, f.z, "#f3efe6", big ? 4 : 2); if (f.kind === "courier") dot(f.x, f.z, "#ff4f9a", big ? 5 : 2.6); });
+    const g = guide && guide.key && spotPos(guide.key);
+    if (g) { const r = (big ? 8 : 4) + Math.sin(time / 200) * (big ? 3 : 1.5); ctx.strokeStyle = "#22b5a6"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(g.x * sx, g.z * sy, r, 0, 6.3); ctx.stroke(); }
+    const sm = sceneMarker && spotPos(sceneMarker); if (sm) dot(sm.x, sm.z, "#f4a52b", big ? 6 : 3);
+    ctx.save(); ctx.translate(me.x * sx, me.z * sy); ctx.rotate(-me.heading + Math.PI);
+    ctx.fillStyle = "#f4a52b"; ctx.strokeStyle = "#120f1f"; ctx.lineWidth = 1.5; const s = big ? 9 : 5;
+    ctx.beginPath(); ctx.moveTo(0, -s); ctx.lineTo(s * 0.7, s * 0.8); ctx.lineTo(-s * 0.7, s * 0.8); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+  }
+  function drawMini(time) {
+    if (!miniCtx) return;
+    const w = mini.width, h = mini.height;
+    miniCtx.clearRect(0, 0, w, h); miniCtx.globalAlpha = 0.92; miniCtx.drawImage(mapBase, 0, 0, w, h); miniCtx.globalAlpha = 1;
+    drawDots(miniCtx, w / COLS, h / ROWS, time, false);
+  }
+  function openMap() {
+    mapEl.hidden = false;
+    const aw = Math.min(760, window.innerWidth - 24), ah = window.innerHeight - 150;
+    mapCv.width = Math.round(Math.max(200, Math.min(aw, ah * COLS / ROWS))); mapCv.height = Math.round(mapCv.width * ROWS / COLS);
+    mapEl.querySelector(".map-legend").innerHTML = [["#f4a52b", "You / next scene"], ["#22b5a6", "Station, goal, players"], ["#ff4f9a", "FXN Rentals"], ["#f3efe6", "Town Hall, people"], ["#c9b6ff", "Home"], ["#ef6a5f", "Rival"]].map(l => `<span><i style="background:${l[0]}"></i>${l[1]}</span>`).join("");
+    drawFull(performance.now());
+  }
+  function drawFull(time) {
+    const c = mapCv.getContext("2d");
+    c.clearRect(0, 0, mapCv.width, mapCv.height); c.drawImage(mapBase, 0, 0, mapCv.width, mapCv.height);
+    const sx = mapCv.width / COLS, sy = mapCv.height / ROWS;
+    c.font = "700 " + (mapCv.width > 500 ? 13 : 11) + "px Mukta, sans-serif"; c.textAlign = "center";
+    labels.forEach(l => { c.fillStyle = "rgba(18,15,31,.8)"; const tw = c.measureText(l.t).width + 8; c.fillRect(l.x * sx - tw / 2, (l.y - 1.6) * sy - 9, tw, 14); c.fillStyle = l.c; c.fillText(l.t, l.x * sx, (l.y - 1.6) * sy + 2); });
+    drawDots(c, sx, sy, time, true);
+  }
+
   // ── public API ──
   function setGuide(gd) {
+    // A new destination counts as fresh: if you're already standing there, it triggers.
+    if (gd && gd.key && (!guide || guide.key !== gd.key || guide.text !== gd.text)) delete inside[gd.key];
     guide = gd ? Object.assign({}, gd) : null;
     if (!el) return;
     banner.querySelector(".w-banner-t b").textContent = gd ? gd.text : "";
     banner.querySelector(".w-banner-a").innerHTML = gd && gd.actions ? gd.actions.map(a => `<button class="w-btn small" data-gact="${esc(a[0])}">${esc(a[1])}</button>`).join("") : "";
     updateBanner();
   }
-  function setMarker(k) { sceneMarker = k || null; }
+  function setMarker(k) { if (k && k !== sceneMarker) delete inside[k]; sceneMarker = k || null; }
   function setExtraSpot(k, pos) { if (pos) extraSpots[k] = pos; else delete extraSpots[k]; }
   function randomDoor(r) { const d = doors[Math.floor(r * doors.length) % Math.max(1, doors.length)]; return d ? { x: d.x, y: d.y } : { x: 20, y: 18 }; }
   function bubble(f, t, s, typed) {
@@ -483,5 +563,5 @@ window.AE_WORLD = (function () {
     if (renderer) { try { renderer.dispose(); if (renderer.forceContextLoss) renderer.forceContextLoss(); } catch (e) { } }
     if (el) el.remove(); el = null; figs = {}; extraSpots = {}; guide = null; sceneMarker = null; renderer = null; matCache = {};
   }
-  return { mount, setGuide, setMarker, setExtraSpot, randomDoor, npcSay, meSay, note, upsertRemote, moveRemote, sayRemote, removeRemote, clearRemotes, setOnline, spawnCourier, courierSay, setLook: (av, outfit) => setLookFig("me", av, outfit), teleport, position, destroy, available: () => ok3d };
+  return { mount, setGuide, setMarker, setExtraSpot, randomDoor, npcSay, meSay, note, upsertRemote, moveRemote, sayRemote, removeRemote, clearRemotes, setOnline, spawnCourier, courierSay, setLook: (av, outfit) => setLookFig("me", av, outfit), teleport, position, destroy, available: can3d, spotAt: k => { const p = spotPos(k); return p ? { x: p.x, z: p.z } : null; }, guideKey: () => guide && guide.key, mapOpen: () => !!(mapEl && !mapEl.hidden) };
 })();

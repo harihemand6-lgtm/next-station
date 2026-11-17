@@ -230,14 +230,14 @@
       body = `<section class="card event"><span class="tag">${esc(AE.fill(ev.title, g))}</span><p class="ev-text">${esc(AE.fill(ev.t, g))}</p>
         <div class="choices">${ev.c.map((c, i) => `<button class="choice" data-act="evchoose" data-arg="${i}"><span>${esc(AE.fill(c.l, g))}</span>${c.ck ? `<span class="pill">${Math.round(AE.chance(g, c.ck) * 100)}% chance</span>` : ""}</button>`).join("")}</div></section>`;
     } else if (away(g)) {
-      body = `<section class="card next"><p class="ev-teaser">You're visiting <b>${esc(here.city)}</b>. Your next scene is waiting back home in <b>${esc(s.city)}</b>. Explore, meet players, or take the train home.</p>
-        <button class="btn primary" data-act="travelopen">Train tickets</button></section>`;
+      body = `<section class="card next"><p class="ev-teaser">You're visiting <b>${esc(here.city)}</b>. Your next scene is waiting back home in <b>${esc(s.city)}</b>. Explore and meet players, then <b>walk to the Railway Station</b> to buy a ticket home. Follow the arrow, or tap the mini map to see where it is.</p>
+        ${WORLD.available() ? "" : `<button class="btn primary" data-act="travelopen">Train tickets</button>`}</section>`;
     } else if (!ui.eventOpen) {
       const ev = AE.nextEvent(g); save();
       const who = ev.who;
       ui._marker = who || "board";
-      body = `<section class="card next"><p class="ev-teaser">${who ? `<b>${esc(s.cast[who])}</b> wants a word. Follow the <span class="bang">!</span> in the city,` : `Something's up at the <b>Notice Board</b>. Follow the <span class="bang">!</span>,`} or</p>
-        <button class="btn primary" data-act="openev">Open it now</button></section>`;
+      body = `<section class="card next"><p class="ev-teaser">${who ? `<b>${esc(s.cast[who])}</b> wants a word. Walk to the <span class="bang">!</span> in the city.` : `Something's up at the <b>Notice Board</b>. Walk to the <span class="bang">!</span>.`} Follow the arrow, or tap the mini map to see the way.</p>
+        ${WORLD.available() ? "" : `<button class="btn primary" data-act="openev">Open it now</button>`}</section>`;
     } else {
       const ev = AE.nextEvent(g); save();
       const who = ev.who;
@@ -251,7 +251,7 @@
         }).join("")}</div>
       </section>`;
     }
-    const tools = `<div class="row tools"><button class="btn ghost" data-act="talk">Talk to someone</button><button class="btn fxn-btn" data-act="fxnopen">FXN app</button>${L.closed ? "" : `<button class="btn ghost" data-act="travelopen">Train</button>`}</div>`;
+    const tools = `<div class="row tools"><button class="btn ghost" data-act="talk">Talk to someone</button><button class="btn fxn-btn" data-act="fxnopen">FXN app</button>${L.closed || WORLD.available() ? "" : `<button class="btn ghost" data-act="travelopen">Train</button>`}</div>`;
     return `${topbar("home")}<main class="wrap play" style="--h:${here.hue}">
       <p class="kicker">${esc(L.title)} · ${esc(here.city)}${away(g) ? ` (visiting, home: ${esc(s.city)})` : ""}${g.outfit ? ` · wearing ${esc(fxItem(g.outfit).name)}` : ""}</p>
       ${hud(g)}<div id="world-slot"></div>
@@ -295,7 +295,8 @@
 
   function currentGuide() {
     const g = game; if (!g || g.done) return null;
-    const go = k => [["goto:" + k, "Go there"]];
+    // No shortcuts: in 3D every place must be reached on foot. Buttons only appear if the device can't run 3D.
+    const walk = !WORLD.available(), go = k => walk ? [["goto:" + k, "Go there"]] : [];
     if (ui.courier) return { text: ui.courier + " from FXN is on the way", sub: "Stay where you are", key: null };
     if (g.gig && g.gig.chapter === g.chapter && g.gig.left > 0) return { text: "FXN delivery: drop the parcel at the glowing house", sub: g.gig.left + " left", key: "gig", actions: go("gig") };
     const mg = AE.missionGuide(g);
@@ -303,10 +304,10 @@
     if (!away(g)) {
       const ev = cityEvent(g), ok = ev && wearing(g, ev.dress);
       const evSub = ev ? "Also: " + AE.fill(ev.title, g) + " (dress code: " + dressName(ev.dress) + (ok ? " ✓" : "") + ")" : "";
-      const evActs = ev ? (ok ? [["goto:hall", "Go to event"]] : [["fxnopen", "Rent on FXN"]]) : [];
-      if (!ui.eventOpen && !ui.outcome && ui._marker) return { text: (ui._marker === "board" ? "Next scene: walk to the Notice Board" : "Next scene: walk to " + AE.st(g).cast[ui._marker]), sub: evSub, key: ui._marker, actions: [["openev", "Open it now"]].concat(evActs) };
+      const evActs = ev ? (ok ? go("hall") : [["fxnopen", "Rent on FXN"]]) : [];
+      if (!ui.eventOpen && !ui.outcome && ui._marker) return { text: (ui._marker === "board" ? "Next scene: walk to the Notice Board" : "Next scene: walk to " + AE.st(g).cast[ui._marker]), sub: evSub, key: ui._marker, actions: (walk ? [["openev", "Open it now"]] : []).concat(evActs) };
       if (ev) return { text: AE.fill(ev.title, g), sub: "Dress code: " + dressName(ev.dress) + (ok ? " ✓" : ""), key: "hall", actions: evActs.length ? evActs : go("hall") };
-    } else return { text: "Your next scene is back in " + AE.st(g).city, sub: "Take the train home when you're ready", key: "station", actions: go("station") };
+    } else return { text: "Your next scene is back in " + AE.st(g).city, sub: "Walk to the Railway Station to buy a ticket home", key: "station", actions: go("station") };
     return null;
   }
   function refreshGuide() { if (ui.view === "play" && game && !game.done) WORLD.setGuide(currentGuide()); }
@@ -432,7 +433,7 @@
       words: { stall: here.food.stall, city: here.city, v: here.cast.v },
       onArrive, spotLabel, onSpot,
       onGuideAction: a => {
-        if (a.indexOf("goto:") === 0) { const k = a.slice(5); WORLD.teleport(k); setTimeout(() => onArrive(k), 60); }
+        if (a.indexOf("goto:") === 0) { if (WORLD.available()) return; const k = a.slice(5); onArrive(k); }
         else if (a === "openev") { ui.eventOpen = true; render(); }
         else if (a === "fxnopen") { ui.fxn = true; render(); }
       },

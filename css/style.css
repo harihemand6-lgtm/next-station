@@ -265,7 +265,7 @@ select { background: var(--panel); color: var(--text); border: 1px solid var(--l
 /* ── 3D city ── */
 .w3d { display: flex; flex-direction: column; }
 .w3-view { position: relative; height: 400px; overflow: hidden; background: #120f1f; touch-action: none; }
-.w3-view canvas { display: block; width: 100% !important; height: 100% !important; }
+.w3-view > canvas:not(.minimap) { display: block; width: 100% !important; height: 100% !important; }
 .w-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .lab { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; pointer-events: none; will-change: transform; }
 .lab > span { font-size: 10px; font-weight: 700; background: rgba(12, 10, 24, .72); padding: 0 6px; border-radius: 6px; white-space: nowrap; }
@@ -303,3 +303,19 @@ select { background: var(--panel); color: var(--text); border: 1px solid var(--l
 .fxn-foot { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .lb td:last-child { text-align: right; }
 .lb .hint { display: block; font-weight: 400; }
+
+/* ── map + 360° camera ── */
+.minimap { position: absolute; top: 54px; right: 8px; width: 132px; height: 100px; border-radius: 10px; border: 2px solid rgba(243,239,230,.35); background: #1a1730; cursor: pointer; z-index: 6; box-shadow: 0 4px 14px rgba(0,0,0,.4); }
+.minimap:hover { border-color: var(--accent-2); }
+.cam-btns { position: absolute; right: 8px; top: 162px; display: flex; flex-direction: column; gap: 6px; z-index: 6; }
+.cam-btns .w-btn { min-width: 0; font-size: 12px; padding: 5px 8px; }
+.map-full { position: fixed; inset: 0; background: rgba(18,15,31,.97); z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 12px; overflow: auto; }
+.map-full[hidden] { display: none !important; }
+.map-top { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 760px; }
+.map-top b { font-size: 15px; }
+.map-top span { flex: 1; font-size: 12px; opacity: .75; }
+.map-full canvas { display: block; border-radius: 10px; cursor: crosshair; max-width: 100%; height: auto; touch-action: none; }
+.map-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; justify-content: center; font-size: 12px; max-width: 760px; }
+.map-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.map-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+@media (max-width: 520px) { .minimap { width: 96px; height: 73px; } .cam-btns { top: 134px; } }

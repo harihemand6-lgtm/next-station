@@ -177,7 +177,7 @@ window.AE = (function () {
   }
 
   function needOf(g, ch) { return ch.need ? (life(g).raw ? ch.need : r10(ch.need * ci(g))) : 0; }
-  function canChoose(g, ch) { return g.cash >= needOf(g, ch); }
+  function canChoose(g, ch) { const n = needOf(g, ch); return n <= 0 || g.cash >= n; }
 
   function chance(g, ck) {
     const v = ck.k === "sx" ? (g.s + g.x) / 2 : g[ck.k];

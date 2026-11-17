@@ -1,5 +1,9 @@
 # Turning on live players and chat (free)
 
+**Status: done (17 Nov 2026).** Project `next-station` (Mumbai, free plan) is live, both tables below exist with
+explicit grants, and `js/config.js` holds the Project URL and the publishable key. The steps below are kept
+for reference, e.g. if you ever rebuild the project.
+
 1. Create a free project at supabase.com (region: Mumbai).
 2. Project Settings → API: copy the **Project URL** and the **anon / publishable key** into `js/config.js`.
    Never put the `service_role` / secret key in this repo.
@@ -18,6 +22,8 @@ alter table public.reports enable row level security;
 -- players can file a report, but nobody can read reports through the public key
 create policy "players can file reports" on public.reports
   for insert to anon with check (char_length(coalesce(reason, '')) <= 200);
+revoke all on public.reports from anon, authenticated;
+grant insert on public.reports to anon;
 ```
 
 4. Check reports in Table Editor → `reports` at least once a day. As grievance officer you must
@@ -43,6 +49,8 @@ create table if not exists public.scores (
 alter table public.scores enable row level security;
 create policy "anyone can add a score" on public.scores for insert to anon with check (true);
 create policy "anyone can read scores" on public.scores for select to anon using (true);
+revoke all on public.scores from anon, authenticated;
+grant insert, select on public.scores to anon;
 create index if not exists scores_daily on public.scores (daily, score desc);
 create index if not exists scores_life on public.scores (life, score desc);
 ```

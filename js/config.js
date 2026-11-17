@@ -2,7 +2,7 @@
 // The publishable key is meant to be public. NEVER put the service_role / secret key in this file.
 // Leave both empty to run the game in solo mode.
 window.NS_CONFIG = {
-  SUPABASE_URL: "",
-  SUPABASE_KEY: "",
+  SUPABASE_URL: "https://gmxuuxigogbxrcuyqdta.supabase.co",
+  SUPABASE_KEY: "sb_publishable_k2zpy-3Ypi8_Vs1iLohvJg_0xwtfmQD",
   MAX_PLAYERS_SHOWN: 20
 };

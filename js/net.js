@@ -54,7 +54,7 @@ window.AE_NET = (function () {
     if (loading) return loading;
     loading = new Promise((res, rej) => {
       const s = document.createElement("script");
-      s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js";
+      s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js";
       s.onload = () => res(window.supabase); s.onerror = rej;
       document.head.appendChild(s);
     });
