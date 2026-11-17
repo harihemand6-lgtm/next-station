@@ -247,3 +247,17 @@ select { background: var(--panel); color: var(--text); border: 1px solid var(--l
 .check input { accent-color: var(--accent); width: 18px; height: 18px; }
 
 [hidden] { display: none !important; }
+
+/* ── open city ── */
+.world.city canvas { display: block; touch-action: none; cursor: pointer; }
+.chat-row { display: flex; gap: 6px; padding: 8px; border-top: 1px solid var(--line); background: var(--panel); }
+.chat-row input { flex: 1; min-width: 0; background: var(--panel); color: var(--text); border: 1px solid var(--accent-2); border-radius: 999px; padding: 8px 12px; font: inherit; font-size: .9rem; }
+.chat-log { position: absolute; left: 8px; bottom: 44px; max-width: 80%; background: rgba(12, 10, 24, .78); border-radius: 10px; padding: 4px 8px; font-size: .78rem; pointer-events: none; }
+.chat-log:empty { display: none; }
+.chat-log p { margin: 0; }
+.chat-log b { color: var(--accent-2); }
+.w-btn.chat { background: #c9b6ff; color: #1b1240; }
+.w-hint a { color: var(--accent-2); }
+.rules ul { padding-left: 20px; margin: 0 0 12px; display: grid; gap: 6px; }
+.rules h2 { margin-top: 14px; }
+.foot a { color: var(--accent-2); }

@@ -1,6 +1,7 @@
 // Next Station — UI layer. All game rules live in engine.js; this file only renders and routes.
 (function () {
   const GAME_NAME = "Next Station";
+  const GRIEVANCE = { name: "Hemand Hari", email: "hemandhari15@gmail.com" };
   const AE = window.AE, AV = window.AE_AVATAR, LIVES = window.AE_LIVES, STATES = window.AE_STATES, MAP = window.AE_MAP, COMMON = window.AE_COMMON;
   const $app = document.getElementById("app");
 
@@ -36,7 +37,7 @@
 
   function go(view, extra) {
     if (view !== "play") { NET.leave(); netKey = null; }
-    Object.assign(ui, { view, outcome: null, eventOpen: false, talk: null, talkRole: null, talkAnswer: null, muteTarget: null, confirmReset: false, copied: false }, extra || {});
+    Object.assign(ui, { view, outcome: null, eventOpen: false, talk: null, talkRole: null, talkAnswer: null, muteTarget: null, reported: false, ageGate: false, confirmReset: false, copied: false }, extra || {});
     render(); window.scrollTo(0, 0);
   }
   const speech = (t, sub) => `<p>“${esc(t)}”</p>${prefs.subs && sub ? `<p class="sub">${esc(sub)}</p>` : ""}`;
@@ -54,7 +55,7 @@
       ${back ? `<span class="brand small">${GAME_NAME}</span>` : ""}
       <button class="chip-btn" data-act="profile" aria-label="Your profile">${char ? `<span class="mini-av">${AV.svg(char, 22)}</span>` : ""}Lv ${level(profile.xp)}</button>
     </header>`;
-  const footer = () => `<footer class="foot">A fictional game. People, companies, shows and exams are made up. Not career, legal or investment advice. Your character and progress are saved only on this device.</footer>`;
+  const footer = () => `<footer class="foot"><a href="#rules" data-act="rules">Rules, privacy &amp; grievance contact</a><br>A fictional game. People, companies, shows and exams are made up. Not career, legal or investment advice. Your character and progress are saved only on this device.</footer>`;
 
   // ── HOME ──
   function vHome() {
@@ -226,8 +227,8 @@
     return `${topbar("home")}<main class="wrap play" style="--h:${s.hue}">
       <p class="kicker">${esc(L.title)} · ${esc(s.city)}</p>
       ${hud(g)}<div id="world-slot"></div>
-      ${NET.enabled() ? `<p class="hint net-note">Other players see you as <b>${esc(NET.nick())}</b>, never your real name. Tap a player to mute them.</p>` : ""}
-      ${body}${ui.talk ? talkSheet() : ""}${ui.muteTarget ? muteSheet() : ""}</main>`;
+      ${NET.enabled() ? `<p class="hint net-note">Other players see you as <b>${esc(NET.nick())}</b>, never your real name. Tap a player to mute or report them.</p>` : ""}
+      ${body}${ui.talk ? talkSheet() : ""}${ui.muteTarget ? muteSheet() : ""}${ui.ageGate ? ageSheet() : ""}</main>`;
   }
 
   function talkSheet() {
@@ -250,8 +251,35 @@
 
   function muteSheet() {
     return `<div class="sheet-bg" data-act="closemute"></div><section class="sheet" role="dialog" aria-label="Mute player">
-      <h2>Mute ${esc(ui.muteTarget.nick)}?</h2><p class="hint">You won't see this player or their messages for the rest of this visit.</p>
-      <div class="row"><button class="btn danger" data-act="mute">Mute</button><button class="btn" data-act="closemute">Cancel</button></div></section>`;
+      <h2>${esc(ui.muteTarget.nick)}</h2>
+      ${ui.reported ? `<p>Report sent. We've also muted this player for you. Reports are reviewed within 24 hours.</p><button class="btn" data-act="closemute">Close</button>`
+      : `<p class="hint">Mute hides this player and their messages for the rest of your visit. Report sends their last few messages to the game's grievance officer for review.</p>
+      <label class="f"><span>Reason (for reports)</span><select id="f-reason"><option>Abuse or bullying</option><option>Sexual or vulgar messages</option><option>Asking for personal details</option><option>Scam or spam</option><option>Hate speech</option><option>Other</option></select></label>
+      <div class="row"><button class="btn" data-act="mute">Mute</button><button class="btn danger" data-act="report">Report and mute</button><button class="btn ghost" data-act="closemute">Cancel</button></div>`}</section>`;
+  }
+  function ageSheet() {
+    return `<div class="sheet-bg" data-act="closeage"></div><section class="sheet" role="dialog" aria-label="Age check">
+      <h2>Typed chat is for players 18 and over</h2>
+      <p class="hint">Under 18? You can still talk to everyone with the Say… phrases and emotes. Never share your phone number, address, school or social handles with anyone in a game.</p>
+      <div class="row"><button class="btn primary" data-act="adult">I'm 18 or older</button><button class="btn" data-act="notadult">I'm under 18</button></div></section>`;
+  }
+  function vRules() {
+    return `${topbar("home")}<main class="wrap"><section class="card rules">
+      <h1 class="h1s">Rules, privacy &amp; contact</h1>
+      <h2>Chat rules</h2>
+      <ul><li>Typed chat is only for players 18 and over. Everyone can use the preset Say… phrases and emotes.</li>
+        <li>Be decent: no abuse, bullying, hate speech, sexual or vulgar messages, threats, scams or spam.</li>
+        <li>No personal details: phone numbers, links, emails, UPI IDs and social handles are blocked automatically. Never share your address or school.</li>
+        <li>Messages only reach players near you in the same city. They are not saved and vanish after a few seconds.</li>
+        <li>Tap any player to <b>Mute</b> or <b>Report</b> them. Breaking these rules can get you blocked from chat.</li></ul>
+      <h2>Privacy</h2>
+      <ul><li>No sign-up. Your character, name and progress stay in this browser only. Other players see a random nickname, never your name.</li>
+        <li>When you report someone, their last few chat messages, their nickname and your reason are saved for review, then deleted after the complaint is closed.</li></ul>
+      <h2>Grievance officer</h2>
+      <p><b>${esc(GRIEVANCE.name)}</b><br>Email: <b>${esc(GRIEVANCE.email)}</b><br><a href="mailto:${esc(GRIEVANCE.email)}?subject=Next%20Station%20grievance">Send an email</a></p>
+      <p class="hint">Complaints are acknowledged within 24 hours and resolved within 15 days. Reports of sexual content or impersonation are acted on within 24 hours. Include the player's nickname, the city and the time.</p>
+      <p class="hint">Next Station is a free, fictional game. People, companies, shows and exams in it are made up. It is not career, legal or investment advice.</p>
+      <button class="btn primary" data-act="home">Back to the game</button></section></main>${footer()}`;
   }
 
   function mountWorld() {
@@ -266,6 +294,8 @@
       onTalk: r => { ui.talk = true; ui.talkRole = r; ui.talkAnswer = null; render(); },
       onMove: (x, y) => NET.move(x, y),
       onSay: (k, i) => { const t = NET.say(k, i); if (t) WORLD.meSay(t); },
+      onChatOpen: () => { if (prefs.adult === true) return true; if (prefs.adult === false) { WORLD.note("Typed chat is for 18+. Use Say… phrases instead."); return false; } ui.ageGate = true; render(); return false; },
+      onType: v => { const r = NET.sendText(v); if (r.ok) { WORLD.meSay(r.text, true); return true; } WORLD.note(r.reason); return false; },
       onRemoteTap: (id, nick) => { ui.muteTarget = { id, nick }; render(); }
     });
     WORLD.setMarker(ui.outcome || ui.eventOpen ? null : ui._marker);
@@ -277,9 +307,9 @@
       NET.join(g.stateId, char || g.player, WORLD.position(), {
         onJoin: (id, d) => WORLD.upsertRemote(id, d),
         onMove: (id, x, y) => WORLD.moveRemote(id, x, y),
-        onSay: (id, t) => WORLD.sayRemote(id, t),
+        onSay: (id, t, typed) => WORLD.sayRemote(id, t, typed),
         onLeave: id => WORLD.removeRemote(id),
-        onCount: n => WORLD.setOnline(n, NET.PHRASES, NET.EMOTES)
+        onCount: n => WORLD.setOnline(n, NET.PHRASES, NET.EMOTES, true)
       }).catch(() => { netKey = null; });
     }
   }
@@ -381,7 +411,7 @@
 
   // ── render & events ──
   function render() {
-    const V = { home: vHome, state: vState, life: vLife, intro: vIntro, creator: vCreator, play: vPlay, summary: vSummary, profile: vProfile }[ui.view] || vHome;
+    const V = { rules: vRules, home: vHome, state: vState, life: vLife, intro: vIntro, creator: vCreator, play: vPlay, summary: vSummary, profile: vProfile }[ui.view] || vHome;
     $app.innerHTML = V();
     if (ui.view === "creator") bindCreator();
     if (ui.view === "play") mountWorld();
@@ -425,7 +455,12 @@
       case "choose": { const o = AE.choose(game, +arg); if (o) { ui.outcome = o; ui.eventOpen = false; save(); render(); } break; }
       case "openev": ui.eventOpen = true; render(); break;
       case "mute": NET.mute(ui.muteTarget.id); WORLD.removeRemote(ui.muteTarget.id); ui.muteTarget = null; render(); break;
-      case "closemute": ui.muteTarget = null; render(); break;
+      case "closemute": ui.muteTarget = null; ui.reported = false; render(); break;
+      case "report": { const t = ui.muteTarget, reason = (document.getElementById("f-reason") || {}).value; NET.report(t.id, t.nick, reason).then(() => { NET.mute(t.id); WORLD.removeRemote(t.id); ui.reported = true; render(); }); break; }
+      case "adult": prefs.adult = true; save(); ui.ageGate = false; render(); setTimeout(() => { const b = document.querySelector(".world .chat"); if (b) b.click(); }, 50); break;
+      case "notadult": prefs.adult = false; save(); ui.ageGate = false; render(); break;
+      case "closeage": ui.ageGate = false; render(); break;
+      case "rules": e.preventDefault(); go("rules"); break;
       case "next": { const o = ui.outcome; ui.outcome = null; ui.eventOpen = false; if (o && o.summary) { game._showSummary = true; save(); go("summary"); } else { render(); window.scrollTo(0, 0); } break; }
       case "aftersummary": game._showSummary = false; save(); go("play"); break;
       case "talk": ui.talk = true; ui.talkRole = null; ui.talkAnswer = null; render(); break;

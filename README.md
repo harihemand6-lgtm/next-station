@@ -1,7 +1,7 @@
 # Next Station
 
 An India-wide life simulator. Pick a state, pick a life, make choices and see where they lead.
-Static web game: no server, no accounts, no API keys, ₹0 running cost.
+Static web game: no accounts, ₹0 running cost. Optional live players and chat via a free Supabase project (see SUPABASE_SETUP.md).
 
 ## What's inside
 
@@ -20,7 +20,11 @@ js/data/lives.js    the 10 lives (events, economics, endings)
 js/data/common.js   shared events, dialogue, chat answers, badges
 js/engine.js        game rules (deterministic, seeded)
 js/avatar.js        character drawing
-js/app.js           screens and buttons (GAME_NAME is set at the top)
+js/data/dialogue.js character speech in 7 languages (native speakers: edit lines here)
+js/world.js         open city map: walking, characters, speech bubbles
+js/net.js           live players, preset phrases, 18+ typed chat, filters, reports
+js/config.js        Supabase URL + publishable key (empty = solo mode)
+js/app.js           screens and buttons (GAME_NAME and GRIEVANCE contact at the top)
 ```
 
 ## Host it free (pick one)
