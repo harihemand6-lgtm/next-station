@@ -26,3 +26,26 @@ create policy "players can file reports" on public.reports
 Free plan limits: 200 concurrent realtime connections, 2 million realtime messages a month, and the
 project pauses after 7 days without activity (the game falls back to solo mode; click Restore in the
 Supabase dashboard).
+
+## Leaderboard (run once, also in SQL Editor)
+
+```sql
+create table if not exists public.scores (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  nick text not null check (char_length(nick) <= 40),
+  life text not null check (life in ('street','job','govt','creator','startup','craft','film','cricket','reality','trader')),
+  state text not null check (state in ('KL','MH','PB','WB','RJ','KA')),
+  ending text check (char_length(ending) <= 30),
+  score integer not null check (score between 0 and 20000),
+  daily date
+);
+alter table public.scores enable row level security;
+create policy "anyone can add a score" on public.scores for insert to anon with check (true);
+create policy "anyone can read scores" on public.scores for select to anon using (true);
+create index if not exists scores_daily on public.scores (daily, score desc);
+create index if not exists scores_life on public.scores (life, score desc);
+```
+
+Scores are sent by players' browsers, so a determined cheater can fake one. Delete suspicious rows in
+Table Editor → `scores`.

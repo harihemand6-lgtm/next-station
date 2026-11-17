@@ -21,7 +21,9 @@ js/data/common.js   shared events, dialogue, chat answers, badges
 js/engine.js        game rules (deterministic, seeded)
 js/avatar.js        character drawing
 js/data/dialogue.js character speech in 7 languages (native speakers: edit lines here)
-js/world.js         open city map: walking, characters, speech bubbles
+js/world.js         3D city (Three.js): third-person camera, joystick/WASD/tap walking, characters, mission beacons, FXN courier
+js/data/missions.js away missions that send you to other states and back
+js/data/fxn.js      FXN rental catalogue, dress-code events, delivery gig (FXN is real; in-game prices are not)
 js/net.js           live players, preset phrases, 18+ typed chat, filters, reports
 js/config.js        Supabase URL + publishable key (empty = solo mode)
 js/app.js           screens and buttons (GAME_NAME and GRIEVANCE contact at the top)

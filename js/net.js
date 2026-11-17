@@ -82,12 +82,12 @@ window.AE_NET = (function () {
     };
   }
 
-  async function join(roomName, character, pos, h) {
+  async function join(roomName, character, pos, h, extra) {
     leave();
     if (!enabled()) return false;
     handlers = h || {}; room = roomName;
     myId = myId || Math.random().toString(36).slice(2, 10);
-    my = { nk: myNick(), av: packAv(character), x: pos.x, y: pos.y };
+    my = Object.assign({ nk: myNick(), av: packAv(character), x: pos.x, y: pos.y }, extra || {});
     try { muted = JSON.parse(sessionStorage.getItem("ns.muted") || "{}"); } catch (e) { muted = {}; }
     const name = "ns-city-" + roomName;
     if (isLocal()) ch = localChannel(name);
@@ -124,10 +124,11 @@ window.AE_NET = (function () {
     Object.keys(peers).forEach(k => { if (shown.indexOf(k) < 0) { delete peers[k]; handlers.onLeave && handlers.onLeave(k); } });
     shown.forEach(k => {
       const s = (st[k] && st[k][0]) || {};
-      const data = { nick: nickOf(s.nk), av: unpackAv(s.av), x: int(s.x, 0, COLS - 1), y: int(s.y, 0, ROWS - 1) };
-      const isNew = !peers[k];
+      const data = { nick: nickOf(s.nk), av: unpackAv(s.av), x: int(s.x, 0, COLS - 1), y: int(s.y, 0, ROWS - 1), o: /^[a-z_]{1,24}$/.test(s.o || "") ? s.o : "", hs: /^[A-Z]{2}$/.test(s.hs || "") ? s.hs : "" };
+      const prev = peers[k];
       peers[k] = data;
-      if (isNew) handlers.onJoin && handlers.onJoin(k, data);
+      if (!prev) handlers.onJoin && handlers.onJoin(k, data);
+      else if (prev.o !== data.o) handlers.onUpdate && handlers.onUpdate(k, data);
     });
     handlers.onCount && handlers.onCount(ids.length + 1);
   }
@@ -160,7 +161,19 @@ window.AE_NET = (function () {
     if (isLocal() || !client) { console.log("report (test mode)", row); return true; }
     try { const { error } = await client.from("reports").insert(row); return !error; } catch (e) { return false; }
   }
+  function setOutfit(id) { if (!my) return; my.o = id || ""; if (ch) { try { ch.track(my); } catch (e) { } } }
+  const configured = () => !!(CFG.SUPABASE_URL && CFG.SUPABASE_KEY);
+  async function db() { if (!configured()) return null; const sb = await loadSupabase(); client = client || sb.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY, { realtime: { params: { eventsPerSecond: 4 } } }); return client; }
+  async function submitScore(row) { try { const c = await db(); if (!c) return false; const { error } = await c.from("scores").insert(Object.assign({ nick: nickOf(myNick()) }, row)); return !error; } catch (e) { return false; } }
+  async function topScores(f) {
+    try {
+      const c = await db(); if (!c) return null;
+      let q = c.from("scores").select("nick,life,state,ending,score,daily,created_at").order("score", { ascending: false }).limit(20);
+      if (f.daily) q = q.eq("daily", f.daily); if (f.life) q = q.eq("life", f.life);
+      const { data, error } = await q; return error ? null : data;
+    } catch (e) { return null; }
+  }
   function leave() { if (ch) { try { ch.unsubscribe(); } catch (e) { } } ch = null; peers = {}; heard = {}; }
 
-  return { enabled, join, move, say, sendText, check, mute, report, leave, PHRASES, EMOTES, nick: () => nickOf(myNick()), heardFrom: id => heard[id] || [] };
+  return { configured, setOutfit, submitScore, topScores, enabled, join, move, say, sendText, check, mute, report, leave, PHRASES, EMOTES, nick: () => nickOf(myNick()), heardFrom: id => heard[id] || [] };
 })();

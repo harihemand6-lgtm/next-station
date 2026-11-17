@@ -51,8 +51,83 @@ window.AE = (function () {
       v: 1, lifeId, stateId, seed, rs: seed, daily: opts.daily || null, player: Object.assign({}, player),
       chapter: 1, step: 0, cash, startCash: cash, minCash: cash, r: 20, h: 60, s: L.s0, x: L.x0,
       rel: { m: 0, v: -10, f: 30, p: 30 }, flags: [], used: [], log: [], shady: 0,
-      talks: 2, talked: [], current: null, summary: null, ending: null, done: false, result: null
+      talks: 2, talked: [], current: null, summary: null, ending: null, done: false, result: null,
+      loc: stateId, missions: makeMissions(lifeId, stateId, seed), trips: 0
     };
+  }
+
+  // ── away missions & travel ──
+  function makeMissions(lifeId, stateId, seed) {
+    if (!window.AE_MISSIONS || !window.AE_MISSIONS[lifeId]) return [];
+    const others = Object.keys(STATES()).filter(k => k !== stateId);
+    const a = others[seed % others.length], b = others[(Math.floor(seed / 7) + 1) % others.length];
+    return [{ target: a, at: 2, step: 0, done: false }, { target: b === a ? others[(others.indexOf(a) + 1) % others.length] : b, at: 4, step: 0, done: false }];
+  }
+  function mwords(g, m) {
+    const t = STATES()[m.target];
+    return { tcity: t.city, tstate: t.name, tm: t.cast.m, tfood: t.food.item, tcraft: t.craft.item, tfilm: t.film, tspot: t.city + " Railway Station", tlandmark: t.city };
+  }
+  function activeMission(g) {
+    if (!g.missions) return null;
+    return g.missions.find(m => !m.done && g.chapter >= m.at) || null;
+  }
+  // What the player should do next for the active mission: { text, where: stateId, target: "station" | "m" | "f" ... , step }
+  function missionGuide(g) {
+    const m = activeMission(g); if (!m) return null;
+    const T = window.AE_MISSIONS[g.lifeId], w = mwords(g, m), home = g.stateId, f = s => fill(s, g, w);
+    if (m.step === 0) return { m, title: f(T.title), text: g.loc === home ? f("Walk to the {city} Railway Station and take a train to {tcity}") : f("Go to the station and travel to {tcity}"), where: g.loc, target: "station" };
+    if (m.step === 1) return g.loc === m.target ? (m.step = 2, missionGuide(g)) : { m, title: f(T.title), text: f("Walk to the station and travel to {tcity}"), where: g.loc, target: "station" };
+    if (m.step === 2) return g.loc === m.target ? { m, title: f(T.title), text: f(T.go) + ": walk to " + w.tm, where: m.target, target: "m" } : { m, title: f(T.title), text: f("Travel to {tcity} first"), where: g.loc, target: "station" };
+    if (m.step === 3) return g.loc === home ? (m.step = 4, missionGuide(g)) : { m, title: f(T.title), text: f("Head to the {tcity} Railway Station and travel home to {city}"), where: g.loc, target: "station" };
+    if (m.step === 4) return g.loc === home ? { m, title: f(T.title), text: f(T.back.go), where: home, target: T.back.who } : { m, title: f(T.title), text: f("Travel home to {city} to finish"), where: g.loc, target: "station" };
+    return null;
+  }
+  function missionScene(g) {
+    const m = activeMission(g); if (!m) return null;
+    const T = window.AE_MISSIONS[g.lifeId], w = mwords(g, m);
+    if (m.step === 2) return { kind: "scene", t: fill(T.scene.t, g, w), c: T.scene.c.map(c => Object.assign({}, c, { l: fill(c.l, g, w) })) };
+    if (m.step === 4) return { kind: "back", t: fill(T.back.r, g, w) };
+    return null;
+  }
+  function missionChoose(g, idx) {
+    const m = activeMission(g); if (!m) return null;
+    const T = window.AE_MISSIONS[g.lifeId], w = mwords(g, m);
+    let res, passed = null;
+    if (m.step === 2) {
+      const ch = T.scene.c[idx]; res = ch;
+      if (ch.ck) { passed = rnd(g) < chance(g, ch.ck); res = passed ? ch.ck.ok : ch.ck.no; }
+      const d = apply(g, res.e || ch.e);
+      m.step = 3;
+      g.log.push({ c: g.chapter, id: "mission", t: fill(T.scene.t, g, w), l: fill(ch.l, g, w), r: fill(res.r, g, w), d, alt: [] });
+      return { text: fill(res.r, g, w), d, passed };
+    }
+    if (m.step === 4) {
+      const d = apply(g, T.back.e);
+      m.step = 5; m.done = true;
+      g.log.push({ c: g.chapter, id: "mission", t: fill(T.title, g, w) + " (complete)", l: fill(T.back.go, g, w), r: fill(T.back.r, g, w), d, alt: [] });
+      return { text: fill(T.back.r, g, w), d, passed: null, complete: true };
+    }
+    return null;
+  }
+  function fare(g, dest) { return life(g).raw ? 600 : r10(600 * STATES()[g.stateId].ci); }
+  function travel(g, dest) {
+    if (dest === g.loc || !STATES()[dest]) return false;
+    const cost = fare(g, dest);
+    if (g.cash < cost) return false;
+    g.cash -= cost; g.loc = dest; g.trips++;
+    const m = activeMission(g);
+    if (m && m.step <= 1 && dest === m.target) m.step = 2;
+    if (m && m.step === 3 && dest === g.stateId) m.step = 4;
+    if (m && m.step === 0) m.step = 1;
+    return cost;
+  }
+  function score(g) {
+    const L = life(g), rank = L.end.findIndex(e => e.id === g.result.id);
+    const bonus = rank < 0 ? 0 : Math.max(0, (L.end.length - 1 - rank) * 120);
+    const cash = Math.round(Math.max(0, g.cash) / (L.raw ? 100 : 100 * ci(g)));
+    const done = (g.missions || []).filter(m => m.done).length;
+    const raw = cash + g.r * 10 + g.x * 5 + bonus + done * 150 - g.shady * 100;
+    return Math.max(0, Math.min(20000, Math.round(raw)));
   }
 
   function allEvents(g) {
@@ -191,7 +266,7 @@ window.AE = (function () {
   // Character speech in the player's chosen language (see data/dialogue.js)
   function langOf(g) {
     const D = window.AE_DIALOGUE, pref = (window.NS_PREFS && window.NS_PREFS.lang) || "auto";
-    const code = pref === "auto" ? D.stateLang[g.stateId] || "en" : pref;
+    const code = pref === "auto" ? D.stateLang[g.loc || g.stateId] || "en" : pref;
     return D.packs[code] ? code : "en";
   }
   function line(g, kind, role, md, extra) {
@@ -207,13 +282,14 @@ window.AE = (function () {
   }
 
   function talk(g, role, qi) {
-    const C = COMMON();
-    const m = mood(g.rel[role]);
+    const C = COMMON(), away = g.loc && g.loc !== g.stateId;
+    const m = away ? "neutral" : mood(g.rel[role]);
     let gain = false;
     const key = role + ":" + g.chapter;
-    if (g.talks > 0 && g.talked.indexOf(key) < 0) { g.talked.push(key); g.talks--; g.rel[role] = clamp(g.rel[role] + 3, -100, 100); gain = true; }
+    if (!away && g.talks > 0 && g.talked.indexOf(key) < 0) { g.talked.push(key); g.talks--; g.rel[role] = clamp(g.rel[role] + 3, -100, 100); gain = true; }
     const kind = ["howru", "advice", "city", "opinion"][qi] || "howru";
-    const L2 = line(g, kind, role, m, { tip: C.tips[g.lifeId], local: pick(g, C.local[g.stateId]) });
+    const S = STATES()[g.loc || g.stateId];
+    const L2 = line(g, kind, role, m, { tip: C.tips[g.lifeId], local: pick(g, C.local[g.loc || g.stateId]), city: S.city });
     return { text: L2.t, sub: L2.e, mood: m, gain };
   }
 
@@ -243,5 +319,5 @@ window.AE = (function () {
     trader: "SEBI found over 91% of individual traders lost money in equity derivatives in FY25. Investing through diversified index funds over years is the slower, safer path. This game is not investment advice."
   };
 
-  return { line, langOf, CHAPTERS, STEPS, clamp, has, inr, fill, life, st, ci, kit, newGame, nextEvent, currentEvent, canChoose, needOf, chance, choose, talk, metric, mood, dailyPick, finish, REALITY, rnd };
+  return { applyEffects: apply, missionGuide, missionScene, missionChoose, activeMission, travel, fare, score, line, langOf, CHAPTERS, STEPS, clamp, has, inr, fill, life, st, ci, kit, newGame, nextEvent, currentEvent, canChoose, needOf, chance, choose, talk, metric, mood, dailyPick, finish, REALITY, rnd };
 })();

@@ -13,14 +13,18 @@ window.AE_AVATAR = (function () {
 
   function svg(p, size) {
     p = Object.assign({ skin: 3, height: 168, weight: 62, hair: "short", hairColor: 0, top: "tee", outfit: 0, acc: "none" }, p || {});
-    const skin = SKIN[p.skin] || SKIN[3], hc = HAIR[p.hairColor] || HAIR[0], oc = OUTFIT[p.outfit] || OUTFIT[0];
+    const B = window.AE_FXN ? window.AE_FXN.basics : { top: "#8f8d9e", bottom: "#2a2742", style: "tee" };
+    const look = p.o || B;
+    const skin = SKIN[p.skin] || SKIN[3], hc = HAIR[p.hairColor] || HAIR[0], oc = look.top;
+    p.top = { kurta: "kurta", suit: "kurta", shirt: "shirt", sport: "tee" }[look.style] || "tee";
+    const drape = ["saree", "lehenga", "gown", "mundu"].indexOf(look.style) >= 0;
     const H = 112 + (Math.max(140, Math.min(200, p.height)) - 140) / 60 * 70;
     const bmi = p.weight / Math.pow(p.height / 100, 2);
     const wf = Math.max(0.74, Math.min(1.45, 0.78 + (bmi - 18) / 14 * 0.55));
     const cx = 60, ground = 214, top = ground - H, hr = 12.5;
     const hy = top + hr, sh = hy + hr + 3, hip = sh + H * 0.36;
     const tw = 30 * wf, aw = 7.5 * Math.sqrt(wf), lw = 10 * Math.sqrt(wf);
-    const pants = "#2a2742", shoe = "#151320";
+    const pants = look.bottom || "#2a2742", shoe = "#151320";
     const topLen = p.top === "kurta" ? (ground - hip) * 0.45 : 0;
     let s = `<svg viewBox="0 0 120 220" width="${size || 120}" height="${(size || 120) * 220 / 120}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Your character">`;
     s += `<ellipse cx="${cx}" cy="${ground + 2}" rx="${tw * 0.9}" ry="3.5" fill="#000" opacity=".25"/>`;
@@ -30,6 +34,7 @@ window.AE_AVATAR = (function () {
     s += `<rect x="${cx - lw - 1}" y="${hip - 2}" width="${lw}" height="${ground - hip - 2}" rx="4" fill="${pants}"/>`;
     s += `<rect x="${cx + 1}" y="${hip - 2}" width="${lw}" height="${ground - hip - 2}" rx="4" fill="${pants}"/>`;
     s += `<rect x="${cx - lw - 3}" y="${ground - 6}" width="${lw + 3}" height="6" rx="3" fill="${shoe}"/><rect x="${cx + 1}" y="${ground - 6}" width="${lw + 3}" height="6" rx="3" fill="${shoe}"/>`;
+    if (drape) s += `<path d="M${cx - tw / 2 + 2} ${hip - 4} L${cx + tw / 2 - 2} ${hip - 4} L${cx + tw / 2 + 8} ${ground - 8} L${cx - tw / 2 - 8} ${ground - 8} Z" fill="${look.bottom}"/><path d="M${cx - tw / 2 - 8} ${ground - 11} L${cx + tw / 2 + 8} ${ground - 11}" stroke="${look.trim || look.top}" stroke-width="3"/>`;
     // arms
     const armLen = (hip - sh) * 0.95;
     s += `<rect x="${cx - tw / 2 - aw + 1}" y="${sh + 2}" width="${aw}" height="${armLen}" rx="${aw / 2}" fill="${shade(oc, -18)}"/>`;
