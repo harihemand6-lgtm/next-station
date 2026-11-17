@@ -7,8 +7,10 @@ window.AE_WORLD = (function () {
   const WALKABLE = [true, true, true, true, false, false, false, true];
   const VROADS = [5, 17, 29, 41], HROADS = [5, 17, 29];
   const BX = [[0, 4], [7, 16], [19, 28], [31, 40], [43, 47]], BY = [[0, 4], [7, 16], [19, 28], [31, 35]];
-  const WATER_WEST = { KL: "Backwaters", MH: "Arabian Sea", WB: "Hooghly River" };
-  const LANDMARK = { street: "{stall}", job: "Brightline Systems", govt: "Coaching Centre", creator: "Creator Café", startup: "Co-working Space", craft: "Weavers' Workshop", film: "Studio Gate", cricket: "Cricket Ground", reality: "Spotlight House", trader: "Wi-Fi Café" };
+  const WATER_WEST = { KL: "Backwaters", MH: "Arabian Sea", TG: "Hussain Sagar" };
+  const LANDMARK = { street: "{stall}", job: "Brightline Systems", govt: "Coaching Centre", creator: "Creator Café", startup: "Co-working Space", craft: "Weavers' Workshop", film: "Studio Gate", cricket: "Cricket Ground", reality: "Spotlight House", trader: "Wi-Fi Café", nurse: "City Hospital", cab: "Auto Stand", teacher: "Tuition Centre", kitchen: "Your Kitchen", homestay: "Your Homestay", stylist: "Style Studio", band: "Rehearsal Room", planner: "Events Office", seafood: "Fishing Harbour", gulf: "Your Shop" };
+  const BIGCOL = { life: "#f4a52b", rival: "#ef6a5f", home: "#c9b6ff", station: "#22b5a6", hall: "#f3efe6", fxn: "#ff4f9a", office: "#9fd3ff", bank: "#7fe0a8", cafe: "#ffcf7a", mall: "#d6c8f0" };
+  const TOWNSFOLK = { KL: ["Chaya seller", "Auto chettan", "Tourist", "Fisherman", "College student", "Ammachi"], KA: ["Techie", "Darshini owner", "Student"], TG: ["Biryani delivery", "Student", "Shopkeeper"], MH: ["Dabbawala", "Office-goer", "Student"], DL: ["Paratha seller", "Metro commuter", "Student"] };
   const SKIN = AV.SKIN, HAIRC = AV.HAIR;
 
   let THREE, el, renderer, scene, camera, ray, groundMesh, grid, blds, trees, labels, spots, doors, figs = {}, me, raf = 0, last = 0, opts = {}, yaw = 0, lastDrag = 0, keys = {}, joy = { x: 0, y: 0, on: false }, nearKey = null, sceneMarker = null, guide = null, beacon, bang, labelLayer, banner, actBtn, logEl, ok3d = false, lastMoveSent = 0, matCache = {}, extraSpots = {}, inside = {}, pitch = 0.5, dist = 3.6, follow = true, spin = 0, mini, miniCtx, mapEl, mapCv, mapBase, miniT = 0, pointers = {};
@@ -46,24 +48,29 @@ window.AE_WORLD = (function () {
         if (by === 1) for (let x = 1; x <= 3; x++) setT(x, 11, JETTY);
         return;
       }
-      const big = { "1,1": "life", "3,1": "rival", "1,2": "home", "2,2": "station", "1,0": "hall", "2,0": "fxn" }[key];
+      const big = Object.assign({ "1,1": "life", "3,1": "rival", "1,2": "home", "2,2": "station", "1,0": "hall", "2,0": "fxn", "3,0": "office", "1,3": "bank", "2,3": "cafe" }, o.stateId === "KL" ? { "3,3": "mall" } : {})[key];
       let x = ix0;
       while (x <= ix1) {
         const bw = big ? ix1 - ix0 + 1 : Math.min(ix1 - x + 1, 3 + Math.floor(R() * 4)), bh = iy1 - iy0;
         for (let yy = iy0; yy < iy0 + bh; yy++) for (let xx = x; xx < x + bw; xx++) setT(xx, yy, BLD);
-        const height = big ? 3.2 + R() * 1.5 : 1.4 + R() * 3.2;
+        const height = big === "home" ? [2.2, 2.8, 3.8, 2.6, 3.4][(o.house && o.house.lvl) || 0] : big ? 3.2 + R() * 1.5 : 1.4 + R() * 3.2;
         blds.push({ x, y: iy0, w: bw, d: bh, h: height, tone: Math.floor(R() * 4), big });
         if (!big && bh > 0) doors.push({ x: x + Math.floor(bw / 2), y: y1 });
         x += bw + 1;
       }
-      const name = { life: (LANDMARK[o.lifeId] || "Market").replace("{stall}", w.stall), rival: w.v + "'s place", home: "Home", station: w.city + " Railway Station", hall: "Town Hall", fxn: "FXN Rentals" }[big];
-      if (big) labels.push({ x: cx + 0.5, y: iy1 + 0.05, t: name, c: { life: "#f4a52b", rival: "#ef6a5f", home: "#c9b6ff", station: "#22b5a6", hall: "#f3efe6", fxn: "#ff4f9a" }[big], h: blds[blds.length - 1].h });
+      const homeName = o.house ? ["Home (rented room)", "Home (1BHK)", "Home (2BHK)", "Your House", "Your Villa"][o.house.lvl || 0] : "Home";
+      const name = { life: (LANDMARK[o.lifeId] || "Market").replace("{stall}", w.stall), rival: w.v + "'s place", home: o.base ? homeName : "Guesthouse", station: w.city + " Railway Station", hall: "Town Hall", fxn: "FXN Rentals", office: "Government Office", bank: "Bank", cafe: "Café Monsoon", mall: "Riverside Mall" }[big];
+      if (big) labels.push({ x: cx + 0.5, y: iy1 + 0.05, t: name, c: BIGCOL[big], h: blds[blds.length - 1].h });
       if (big === "life") spots.m = { x: cx, y: y1, label: name };
       if (big === "rival") spots.v = { x: cx, y: y1, label: name };
       if (big === "home") spots.p = { x: cx, y: y1, label: "Home" };
       if (big === "station") spots.station = { x: cx, y: y1, label: name };
       if (big === "hall") spots.hall = { x: cx, y: y1, label: "Town Hall" };
       if (big === "fxn") spots.fxn = { x: cx, y: y1, label: "FXN Rentals" };
+      if (big === "office") spots.office = { x: cx, y: y1, label: name };
+      if (big === "bank") spots.bank = { x: cx, y: y1, label: name };
+      if (big === "cafe") spots.cafe = { x: cx, y: y1, label: name };
+      if (big === "home") spots.house = { x: ix1 - 1, y: y1, label: name };
     }));
     if (WATER_WEST[o.stateId]) for (let y = 0; y < ROWS; y++) for (let x = 0; x <= 3; x++) if (at(x, y) !== JETTY) setT(x, y, WATER);
   }
@@ -240,6 +247,7 @@ window.AE_WORLD = (function () {
         blds.forEach(b => {
           const base = new THREE.Color(["#4a4275", "#574a80", "#3f3a6b", "#5d4f86"][b.tone]).lerp(hue, b.big ? 0.35 : 0.12);
           if (b.big === "fxn") base.set("#3a1838");
+          if (b.big === "home" && o.house && o.base) base.set(o.wallColor || "#c9b6ff").lerp(new THREE.Color("#2a2440"), 0.25);
           const t = win.clone(); t.needsUpdate = true; t.repeat.set(Math.max(1, b.w), Math.max(1, Math.round(b.h / 1.1)));
           const side = new THREE.MeshLambertMaterial({ color: base, map: t }), roof = new THREE.MeshLambertMaterial({ color: base.clone().multiplyScalar(0.7) });
           const m = new THREE.Mesh(new THREE.BoxGeometry(b.w * 0.96, b.h, b.d * 0.96), [side, side, roof, roof, side, side]);
@@ -262,6 +270,8 @@ window.AE_WORLD = (function () {
       }
       me = addFig("me", "me", o.avatar, o.outfit, o.meLabel || "You", 8.5, 18.5);
       ["m", "f", "v", "p"].forEach(r => { const s = spots[r]; if (s) { const f = addFig("npc_" + r, "npc", npcLook(o.stateId, r), null, o.cast[r], s.x + 0.5, s.y + 0.5); f.role = r; f.heading = Math.PI; place(f); } });
+      if (o.spouse && spots.house) { const f = addFig("npc_s", "npc", npcLook(o.spouse, "s"), null, o.spouse, spots.house.x + 1.5, spots.house.y + 0.5); f.role = "s"; f.heading = Math.PI; place(f); }
+      (TOWNSFOLK[o.stateId] || []).forEach((nm, i) => { const t = randomDoor(rng(hashNum(o.stateId + nm))()); const f = addFig("town_" + i, "walker", npcLook(o.stateId + nm, "t"), { top: ["#e0638a", "#7b8cff", "#f4a52b", "#22b5a6", "#efe4cf", "#3f8f55"][i % 6], bottom: "#2a2742", style: i % 3 === 0 ? "kurta" : i % 3 === 1 ? "shirt" : "tee" }, nm, t.x + 0.5, t.y + 0.5); place(f); });
       bindInput();
       mapBase = mapImage(o.hue); mini = el.querySelector(".minimap"); miniCtx = mini.getContext("2d");
       mapEl = el.querySelector(".map-full"); mapCv = mapEl.querySelector("canvas");
@@ -395,6 +405,7 @@ window.AE_WORLD = (function () {
     if (!freeMove(dt)) stepPath(me, dt);
     Object.values(figs).forEach(f => {
       if (f.kind === "remote") stepPath(f, dt);
+      if (f.kind === "walker") { stepPath(f, dt, 1.6); if (!f.path.length && Math.random() < dt * 0.4) { const t = randomDoor(Math.random()); f.path = toPts(path(tileOf(f), t)); } }
       if (f.kind === "courier") {
         stepPath(f, dt, 5.5);
         if (performance.now() - (f.repath || 0) > 800) { f.repath = performance.now(); f.path = toPts(path(tileOf(f), tileOf(me))); }
@@ -429,7 +440,7 @@ window.AE_WORLD = (function () {
     raf = requestAnimationFrame(tick);
   }
   function spotPos(k) {
-    if (["m", "f", "v", "p"].indexOf(k) >= 0 && figs["npc_" + k]) return { x: figs["npc_" + k].x, z: figs["npc_" + k].z };
+    if (["m", "f", "v", "p", "s"].indexOf(k) >= 0 && figs["npc_" + k]) return { x: figs["npc_" + k].x, z: figs["npc_" + k].z };
     const s = spots[k] || extraSpots[k]; return s ? { x: s.x + 0.5, z: s.y + 0.5 } : null;
   }
   function projectLabels() {
@@ -466,12 +477,12 @@ window.AE_WORLD = (function () {
     const P = 4, c = document.createElement("canvas"); c.width = COLS * P; c.height = ROWS * P;
     const x = c.getContext("2d"), col = { [ROAD]: "#2c2846", [SIDE]: "#57507a", [PLAZA]: "#6a6190", [GRASS]: "#2f6b45", [BLD]: "#8a80b8", [WATER]: "#1c5578", [TREE]: "#3f8f55", [JETTY]: "#8a6a45" };
     for (let y = 0; y < ROWS; y++) for (let xx = 0; xx < COLS; xx++) { x.fillStyle = col[at(xx, y)]; x.fillRect(xx * P, y * P, P, P); }
-    blds.forEach(b => { if (b.big) { x.fillStyle = { life: "#f4a52b", rival: "#ef6a5f", home: "#c9b6ff", station: "#22b5a6", hall: "#f3efe6", fxn: "#ff4f9a" }[b.big]; x.globalAlpha = 0.85; x.fillRect(b.x * P, b.y * P, b.w * P, b.d * P); x.globalAlpha = 1; } });
+    blds.forEach(b => { if (b.big) { x.fillStyle = BIGCOL[b.big]; x.globalAlpha = 0.85; x.fillRect(b.x * P, b.y * P, b.w * P, b.d * P); x.globalAlpha = 1; } });
     return c;
   }
   function drawDots(ctx, sx, sy, time, big) {
     const dot = (x, z, c, r) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x * sx, z * sy, r, 0, 6.3); ctx.fill(); };
-    Object.values(figs).forEach(f => { if (f.kind === "remote") dot(f.x, f.z, "#22b5a6", big ? 4 : 2.2); if (f.kind === "npc") dot(f.x, f.z, "#f3efe6", big ? 4 : 2); if (f.kind === "courier") dot(f.x, f.z, "#ff4f9a", big ? 5 : 2.6); });
+    Object.values(figs).forEach(f => { if (f.kind === "remote") dot(f.x, f.z, "#22b5a6", big ? 4 : 2.2); if (f.kind === "npc") dot(f.x, f.z, "#f3efe6", big ? 4 : 2); if (f.kind === "walker") dot(f.x, f.z, "rgba(243,239,230,.45)", big ? 3 : 1.5); if (f.kind === "courier") dot(f.x, f.z, "#ff4f9a", big ? 5 : 2.6); });
     const g = guide && guide.key && spotPos(guide.key);
     if (g) { const r = (big ? 8 : 4) + Math.sin(time / 200) * (big ? 3 : 1.5); ctx.strokeStyle = "#22b5a6"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(g.x * sx, g.z * sy, r, 0, 6.3); ctx.stroke(); }
     const sm = sceneMarker && spotPos(sceneMarker); if (sm) dot(sm.x, sm.z, "#f4a52b", big ? 6 : 3);
@@ -489,7 +500,7 @@ window.AE_WORLD = (function () {
     mapEl.hidden = false;
     const aw = Math.min(760, window.innerWidth - 24), ah = window.innerHeight - 150;
     mapCv.width = Math.round(Math.max(200, Math.min(aw, ah * COLS / ROWS))); mapCv.height = Math.round(mapCv.width * ROWS / COLS);
-    mapEl.querySelector(".map-legend").innerHTML = [["#f4a52b", "You / next scene"], ["#22b5a6", "Station, goal, players"], ["#ff4f9a", "FXN Rentals"], ["#f3efe6", "Town Hall, people"], ["#c9b6ff", "Home"], ["#ef6a5f", "Rival"]].map(l => `<span><i style="background:${l[0]}"></i>${l[1]}</span>`).join("");
+    mapEl.querySelector(".map-legend").innerHTML = [["#f4a52b", "You / next scene"], ["#22b5a6", "Station, goal, players"], ["#ff4f9a", "FXN Rentals"], ["#9fd3ff", "Government Office"], ["#7fe0a8", "Bank"], ["#ffcf7a", "Café"], ["#f3efe6", "Town Hall, people"], ["#c9b6ff", "Home"], ["#ef6a5f", "Rival"]].map(l => `<span><i style="background:${l[0]}"></i>${l[1]}</span>`).join("");
     drawFull(performance.now());
   }
   function drawFull(time) {
@@ -531,9 +542,16 @@ window.AE_WORLD = (function () {
   function note(t) { log("Note", t); }
   function upsertRemote(id, d) {
     const k = "r_" + id;
-    if (figs[k]) { if (d.outfitKey !== figs[k].outfitKey) { figs[k].outfitKey = d.outfitKey; setLookFig(k, d.av, d.outfit); } return; }
+    if (figs[k]) {
+      const f = figs[k];
+      if (d.outfitKey !== f.outfitKey) { f.outfitKey = d.outfitKey; setLookFig(k, d.av, d.outfit); }
+      if (d.nick && d.nick !== f.name) { f.name = d.nick; f.lab.querySelector("span").textContent = d.nick; }
+      return;
+    }
     const t = nearestWalk({ x: d.x, y: d.y }) || { x: 8, y: 18 };
     const f = addFig(k, "remote", d.av, d.outfit, d.nick, t.x + 0.5, t.y + 0.5); f.rid = id; f.outfitKey = d.outfitKey;
+    const nameEl = f.lab.querySelector("span"); nameEl.setAttribute("role", "button"); nameEl.tabIndex = 0;
+    nameEl.addEventListener("click", e => { e.stopPropagation(); if (opts.onRemoteTap) opts.onRemoteTap(f.rid, f.name); });
   }
   function moveRemote(id, x, y) { const f = figs["r_" + id]; if (f) f.path = toPts(path(tileOf(f), { x, y })); }
   function sayRemote(id, t, typed) { const f = figs["r_" + id]; if (!f || Math.hypot(f.x - me.x, f.z - me.z) > 14) return false; bubble(f, t, null, typed); log(f.name, t); return true; }

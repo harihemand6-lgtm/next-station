@@ -319,3 +319,31 @@ select { background: var(--panel); color: var(--text); border: 1px solid var(--l
 .map-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .map-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
 @media (max-width: 520px) { .minimap { width: 96px; height: 73px; } .cam-btns { top: 134px; } }
+
+/* ── city systems ── */
+.list { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 12px; }
+.ri { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); }
+.ri > div:first-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ri .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0; max-width: 55%; }
+.apps { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; margin: 8px 0; }
+.app { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); color: inherit; font: inherit; cursor: pointer; }
+.app:hover { border-color: var(--accent); }
+.app span { font-size: 12px; opacity: .7; }
+.profiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-top: 10px; }
+.profile { padding: 12px; border-radius: 14px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); display: flex; flex-direction: column; gap: 6px; }
+.profile p { margin: 0; }
+.pf-top { display: flex; gap: 10px; align-items: center; }
+.pf-top > div { display: flex; flex-direction: column; }
+.house-svg { width: 100%; max-width: 420px; height: auto; aspect-ratio: 320 / 170; flex-shrink: 0; display: block; margin: 6px auto 12px; border-radius: 12px; }
+.route { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.route .stop { padding: 12px 14px; border-radius: 14px; border-left: 4px solid var(--h); background: rgba(255,255,255,.04); display: flex; flex-direction: column; gap: 4px; }
+.route .stop span { font-size: 13px; opacity: .75; }
+.route .stop.hub { background: color-mix(in srgb, var(--h) 18%, transparent); }
+.fxn-card { display: flex; gap: 14px; align-items: center; }
+.fxn-card p { margin: 0; }
+.fxn-tag { background: #ff4f9a !important; color: #fff !important; }
+.big-stars { font-size: 28px; color: #f4c542; margin: 4px 0; }
+.big-stars b { color: inherit; font-size: 22px; margin-left: 6px; }
+.sheet .sw.on { outline: 3px solid var(--accent); outline-offset: 2px; }
+.lab.remote span { pointer-events: auto; cursor: pointer; }
+.lab.remote span:hover { outline: 2px solid var(--accent-2); }

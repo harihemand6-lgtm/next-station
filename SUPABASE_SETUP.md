@@ -1,6 +1,6 @@
 # Turning on live players and chat (free)
 
-**Status: done (17 Nov 2026).** Project `next-station` (Mumbai, free plan) is live, both tables below exist with
+**Status: done (17 Nov 2026; leaderboard updated for 20 lives and 5 cities on 18 Nov 2026).** Project `next-station` (Mumbai, free plan) is live, both tables below exist with
 explicit grants, and `js/config.js` holds the Project URL and the publishable key. The steps below are kept
 for reference, e.g. if you ever rebuild the project.
 
@@ -40,8 +40,8 @@ create table if not exists public.scores (
   id bigint generated always as identity primary key,
   created_at timestamptz not null default now(),
   nick text not null check (char_length(nick) <= 40),
-  life text not null check (life in ('street','job','govt','creator','startup','craft','film','cricket','reality','trader')),
-  state text not null check (state in ('KL','MH','PB','WB','RJ','KA')),
+  life text not null check (life ~ '^[a-z]{2,10}$'),
+  state text not null check (state in ('KL','MH','KA','TG','DL')),
   ending text check (char_length(ending) <= 30),
   score integer not null check (score between 0 and 20000),
   daily date

@@ -1,4 +1,5 @@
-// States and union territories. Playable ones have a full pack in AE_STATES.
+// Cities. Everyone starts in Kochi (KL); Bengaluru, Hyderabad, Mumbai and Delhi are reached by train.
+// Packs are keyed by state code; the game talks about the city.
 // Map grid: [id, name, col, row]
 window.AE_MAP = [
   ["JK","Jammu & Kashmir",3,0],["LA","Ladakh",4,0],
@@ -22,7 +23,7 @@ window.AE_STATES = {
     food: { item: "chaya and pazhampori", stall: "chayakada", price: 25, margin: 12, base: 80 },
     craft: { item: "Kasavu handloom sarees and mundu", margin: 700, base: 26 },
     film: "Malayalam cinema", festival: "Onam", sport: "the district football league",
-    blurb: "Backwaters, monsoon, chayakadas on every corner and relatives in the Gulf.",
+    blurb: "The hub of the game. Backwaters, metro and ferries, chayakadas on every corner and relatives in the Gulf.",
     ev: [
       { id: "kl_monsoon", w: 3, t: "The edavapathi monsoon arrives a week early. Roads flood near {city} and half your plans wash out.",
         c: [
@@ -41,6 +42,33 @@ window.AE_STATES = {
           { l: "Ask for the company name and offer letter first", e: { s: 3, r: 2 }, r: "He goes vague. The 'agent' stops answering. You dodged a classic visa scam." },
           { l: "Pay the agent", e: { c: -4000, h: -10, set: "scammed" }, r: "You paid a ₹4,000 'processing fee' first. Then the agent vanished. Lesson learned the hard way." },
           { l: "Say no, you're building something here", e: { h: 3, rel: { p: -3 } }, r: "Amma sighs, but she's quietly proud." }
+        ] },
+      { id: "kl_biennale", w: 2, who: "f", t: "The art biennale is on in Fort Kochi. {friend} wants to spend Saturday walking through the warehouse galleries.",
+        c: [
+          { l: "Go, and take the ferry there", e: { h: 10, c: -150, s: 2, rel: { f: 8 } }, r: "Ferry, art, a plate of fish curry rice by the sea. You come back with three new ideas." },
+          { l: "Skip it, too busy", e: { x: 2, rel: { f: -4 } }, r: "You get work done. {friend}'s photos look unreal." }
+        ] },
+      { id: "kl_vyttila", w: 3, t: "A broken-down bus at Vyttila junction. The whole city is stuck and you're late for something important.",
+        c: [
+          { l: "Hop off and take the metro", e: { c: -60, s: 1 }, r: "Metro to the rescue. You make it with two minutes to spare." },
+          { l: "Call ahead and reschedule", e: { r: 2, h: 2 }, r: "People appreciate the heads-up. In Kochi, everyone understands Vyttila." },
+          { l: "Wait it out", e: { h: -5, r: -3 }, r: "Ninety minutes later you arrive. Nobody's impressed." }
+        ] },
+      { id: "kl_tourists", w: 2, t: "A group of foreign tourists near the Chinese fishing nets is lost and asking you for directions in very loud English.",
+        c: [
+          { l: "Walk them there yourself", e: { h: 6, r: 4 }, r: "They insist on a selfie and promise to tell everyone about 'the friendly local'." },
+          { l: "Point and wish them luck", e: { h: 1 }, r: "They head the wrong way. You hope they find it." }
+        ] },
+      { id: "kl_market", w: 2, who: "m", t: "{mentor} takes you to the wholesale market at dawn. 'If you want to understand money in this city, watch how people bargain here.'",
+        c: [
+          { l: "Watch, listen and take notes", e: { s: 6, h: -2, rel: { m: 10 } }, r: "Three hours, forty deals, zero receipts. You learned more than a business course." },
+          { l: "Try bargaining yourself", ck: { k: "s", d: 30, ok: { e: { c: 400, s: 4, rel: { m: 8 } }, r: "The trader laughs, then gives you the price. {mentor} looks proud." }, no: { e: { c: -200, h: -2 }, r: "You overpay so badly the trader gives you a free banana out of pity." } } }
+        ] },
+      { id: "kl_rain_rescue", w: 2, min: 3, t: "Heavy rain again. A neighbour's ground floor is flooding and the volunteers' group is asking for help moving things upstairs.",
+        c: [
+          { l: "Go help with the volunteers", e: { r: 8, h: 4, x: -1, rel: { f: 6 } }, r: "Two hours of lifting furniture in knee-deep water. The street won't forget it." },
+          { l: "Send money to the relief fund", e: { c: -500, r: 3 }, r: "Not as dramatic, but it helps." },
+          { l: "Stay dry inside", e: { h: -3 }, r: "You watch from the window and feel bad about it." }
         ] },
       { id: "kl_football", w: 2, who: "f", t: "{friend} has two tickets to {sport} final tonight. Everyone's going.",
         c: [
@@ -83,101 +111,6 @@ window.AE_STATES = {
         ] }
     ]
   },
-  PB: {
-    name: "Punjab", city: "Ludhiana", ci: 1.0, hue: "#e8c547",
-    greet: "Sat Sri Akal", buddy: "yaara", lang: "Punjabi",
-    cast: { m: "Gurdeep", v: "Lucky", f: "Simran", p: "Bebe" },
-    food: { item: "parathas, dal and lassi", stall: "highway dhaba", price: 90, margin: 35, base: 35 },
-    craft: { item: "hand-embroidered Phulkari dupattas", margin: 650, base: 28 },
-    film: "Punjabi cinema", festival: "Baisakhi", sport: "the district kabaddi and cricket circuit",
-    blurb: "Fields to the horizon, big-hearted food, and everyone's cousin is in Canada.",
-    ev: [
-      { id: "pb_canada", w: 3, who: "p", t: "An agent promises a Canada study visa 'guaranteed' for ₹12 lakh. Half the village has gone. {parent} is tempted.",
-        c: [
-          { l: "Check the college on the official government site", e: { s: 4, r: 2 }, r: "The 'college' isn't on the official list. You just saved the family a fortune." },
-          { l: "Pay the agent's ₹20,000 'file fee'", e: { c: -2000, h: -8, set: "scammed" }, r: "The office is shut the next week. The fee is gone." },
-          { l: "Tell {parent} you want to build something here", e: { rel: { p: 5 }, h: 4 }, r: "Bebe pats your head. 'Theek hai puttar, show me.'" }
-        ] },
-      { id: "pb_baisakhi", w: 3, t: "{festival}. The harvest is in, the dhol is out, and the whole town is celebrating.",
-        c: [
-          { l: "Dance at the mela all day", e: { h: 12, rel: { f: 8 }, c: -300 }, r: "Your legs hurt. Your heart doesn't." },
-          { l: "Set up a stall at the mela", e: { c: 1800, h: 2, x: 3 }, r: "Festival crowds, festival money." }
-        ] },
-      { id: "pb_wedding", w: 2, who: "f", t: "{friend}'s cousin's wedding: 800 guests. They need extra hands and offer to pay.",
-        c: [
-          { l: "Help out for pay", e: { c: 2000, h: -2, r: 4 }, r: "Four days of work, a lot of food and a few new contacts." },
-          { l: "Attend as a guest and network", e: { r: 6, c: -500, h: 6 }, r: "You leave with a full stomach and three phone numbers." }
-        ] },
-      { id: "pb_lohri", w: 2, who: "p", t: "At the Lohri bonfire, relatives ask the eternal question: 'Shaadi kab karni hai?'",
-        c: [
-          { l: "Laugh it off and change the topic", e: { h: 3 }, r: "Classic deflection. Works every time." },
-          { l: "Talk about your goals instead", e: { r: 3, rel: { p: 5 } }, r: "One uncle is impressed. One is not. Progress." }
-        ] }
-    ]
-  },
-  WB: {
-    name: "West Bengal", city: "Kolkata", ci: 0.95, hue: "#e2574c",
-    greet: "Nomoshkar", buddy: "bondhu", lang: "Bengali",
-    cast: { m: "Bapi-da", v: "Tutul", f: "Mou", p: "Maa" },
-    food: { item: "phuchka and telebhaja", stall: "phuchka cart", price: 30, margin: 14, base: 90 },
-    craft: { item: "Kantha-stitch stoles and tant sarees", margin: 550, base: 30 },
-    film: "Bengali cinema", festival: "Durga Puja", sport: "the big Kolkata football derby",
-    blurb: "Adda over cha, Durga Puja lights, trams, books and endless argument.",
-    ev: [
-      { id: "wb_puja", w: 3, t: "{festival}. Five days, millions of people, pandals everywhere.",
-        c: [
-          { l: "Go pandal-hopping all night", e: { h: 12, c: -500, rel: { f: 8 } }, r: "Twenty pandals, three kathi rolls, zero sleep." },
-          { l: "Work the Puja crowds", e: { c: 2000, x: 4, h: -4 }, r: "The best five days of the year for anyone selling anything." },
-          { l: "Volunteer at the para pandal", e: { r: 10, h: 5 }, r: "The para committee now considers you family." }
-        ] },
-      { id: "wb_adda", w: 2, who: "f", t: "{friend} drags you to an evening adda at the College Street coffee house.",
-        c: [
-          { l: "Stay for hours debating everything", e: { h: 8, s: 2, rel: { f: 6 } }, r: "You argued about cinema, politics and fish. Somehow you also got two good ideas." },
-          { l: "Leave early to work", e: { x: 2, rel: { f: -4 } }, r: "Responsible. Slightly boring." }
-        ] },
-      { id: "wb_cyclone", w: 2, t: "A cyclone warning for the coast. Heavy rain is expected in {city} for two days.",
-        c: [
-          { l: "Shut down safely and stock up", e: { c: -600, h: 2 }, r: "Boring, safe and correct." },
-          { l: "Keep going and hope for the best", e: { c: -1500, h: -6 }, r: "Your setup gets damaged. Should have listened." }
-        ] },
-      { id: "wb_derby", w: 2, who: "v", t: "Derby day. {rival} supports the other club and won't stop texting you about it.",
-        c: [
-          { l: "Bet him a plate of biryani", e: { h: 4, rel: { v: 5 } }, r: "You lose the bet, win a weird new friendship." },
-          { l: "Ignore him and focus", e: { x: 2 }, r: "Mature. He sends 40 memes anyway." }
-        ] }
-    ]
-  },
-  RJ: {
-    name: "Rajasthan", city: "Jaipur", ci: 0.9, hue: "#e4775a",
-    greet: "Khamma Ghani", buddy: "bhai-sa", lang: "Rajasthani",
-    cast: { m: "Bhanwar-ji", v: "Mohit", f: "Kavya", p: "Maa" },
-    food: { item: "pyaaz kachori and masala chai", stall: "kachori stall", price: 30, margin: 13, base: 95 },
-    craft: { item: "hand block-printed textiles from Sanganer", margin: 500, base: 32 },
-    film: "Rajasthani cinema", festival: "Teej", sport: "the inter-district cricket match",
-    blurb: "Forts, desert light, block prints, tourists from everywhere and 47°C summers.",
-    ev: [
-      { id: "rj_tourist", w: 3, lives: ["street", "craft", "creator", "startup"], t: "Tourist season is here. A tour guide offers to send foreign groups your way, for a 30% commission.",
-        c: [
-          { l: "Accept the deal", e: { c: 1500, x: 4, rel: { m: -3 } }, r: "More customers, thinner margins." },
-          { l: "Build your own reviews instead", e: { s: 4, r: 6 }, r: "Slower, but the customers are yours." }
-        ] },
-      { id: "rj_heat", w: 3, t: "A heatwave: 47°C in {city}. Nobody wants to be outside after 11 am.",
-        c: [
-          { l: "Shift your hours to early morning and night", e: { s: 4, h: -3, x: 2 }, r: "Smart. You work when the city works." },
-          { l: "Push through the afternoon", e: { h: -10, c: -300 }, r: "Dizziness, a doctor visit and a lesson about heatstroke." }
-        ] },
-      { id: "rj_pushkar", w: 2, who: "f", t: "{friend} wants to go to the Pushkar fair. Camels, music, traders from everywhere.",
-        c: [
-          { l: "Go and explore", e: { h: 10, c: -700, s: 2, rel: { f: 8 } }, r: "You came back with sunburn and big ideas." },
-          { l: "Go and set up a small stall", e: { c: 1600, h: 3, x: 3 }, r: "Fair crowds buy everything." }
-        ] },
-      { id: "rj_shaadi", w: 2, who: "p", t: "Wedding season. {parent} wants you at three family weddings in one week.",
-        c: [
-          { l: "Attend all three", e: { h: 2, c: -1500, rel: { p: 12 } }, r: "Twelve kg of food, eight cousins and a very happy Maa." },
-          { l: "Attend one, send gifts to two", e: { c: -900, rel: { p: 3 } }, r: "Diplomatic. Maa accepts it, mostly." }
-        ] }
-    ]
-  },
   KA: {
     name: "Karnataka", city: "Bengaluru", ci: 1.25, hue: "#7b8cff",
     greet: "Namaskara", buddy: "maga", lang: "Kannada",
@@ -207,6 +140,71 @@ window.AE_STATES = {
           { l: "Ask for his pitch deck and numbers", e: { s: 4 }, r: "There's a logo and a lot of buzzwords. You pass." },
           { l: "Join part-time for equity", e: { h: -4, x: 1, set: "sideequity" }, r: "Your evenings now belong to someone else's dream." },
           { l: "Politely decline", e: { rel: { v: -3 } }, r: "He calls you 'not visionary'. You'll live." }
+        ] }
+    ]
+  },
+  TG: {
+    name: "Telangana", city: "Hyderabad", ci: 1.15, hue: "#e0638a",
+    greet: "Namaskaram", buddy: "mama", lang: "Telugu",
+    cast: { m: "Srinivas", v: "Vikram", f: "Sravani", p: "Amma" },
+    food: { item: "Irani chai and Osmania biscuits", stall: "Irani chai counter", price: 30, margin: 13, base: 95 },
+    craft: { item: "Pochampally ikat and Nirmal paintings", margin: 900, base: 22 },
+    film: "Telugu cinema", festival: "Bonalu", sport: "the colony cricket league",
+    blurb: "Biryani wars, HITEC City towers, Old City lanes and first-day-first-show madness.",
+    ev: [
+      { id: "tg_biryani", w: 3, who: "f", t: "{friend} starts a war in the group chat: which biryani place in {city} is the real one? Everyone wants your vote.",
+        c: [
+          { l: "Defend the old family place", e: { h: 6, rel: { f: 6 } }, r: "Forty messages later, nobody changed their mind. A perfect Hyderabad evening." },
+          { l: "Say 'all of them are good'", e: { rel: { f: -4 } }, r: "The group mutes you for being diplomatic. Unforgivable here." },
+          { l: "Organise a blind taste test", e: { c: -600, h: 10, r: 3, rel: { f: 10 } }, r: "Six plates, five friends, one winner nobody expected. Legendary." }
+        ] },
+      { id: "tg_bonalu", w: 3, who: "p", t: "It's {festival} season. Drums in every lane, and {parent} wants you at the temple procession with the family.",
+        c: [
+          { l: "Go with family", e: { h: 10, c: -500, rel: { p: 12 } }, r: "The drums, the colours, the crowd. You come back hoarse and happy." },
+          { l: "Work through it", e: { c: 1200, x: 2, rel: { p: -8 } }, r: "Productive day. The family photos without you sting a little." }
+        ] },
+      { id: "tg_fdfs", w: 2, who: "f", t: "A big star's film releases tonight. {friend} has tickets for the first-day-first-show at 4 am.",
+        c: [
+          { l: "Go. Whistles and all.", e: { h: 12, c: -400, x: -1, rel: { f: 10 } }, r: "Paper confetti, whistles, a hero entry at 4:15 am. Zero sleep, no regrets." },
+          { l: "Sleep. Watch it next week.", e: { s: 2, rel: { f: -5 } }, r: "Well rested. Also spoiled by 37 status updates." }
+        ] },
+      { id: "tg_land", w: 2, who: "v", t: "{rival} says he can get you a plot near the outer ring road 'before prices double'. Cash only, papers later.",
+        c: [
+          { l: "Ask for the title papers and check them at the government office", e: { s: 4, r: 2 }, r: "The 'plot' belongs to three other people. You dodged a classic land scam." },
+          { l: "Pay the token advance", e: { c: -3000, h: -8, set: "scammed" }, r: "The token advance vanished. So did {rival}'s phone number." }
+        ] }
+    ]
+  },
+  DL: {
+    name: "Delhi", city: "Delhi", ci: 1.3, hue: "#e86f3c",
+    greet: "Namaste", buddy: "bhai", lang: "Hindi",
+    cast: { m: "Gupta ji", v: "Rohan", f: "Simran", p: "Mummy" },
+    food: { item: "chole bhature and chai", stall: "chole bhature cart", price: 60, margin: 24, base: 85 },
+    craft: { item: "zari embroidery and block-print textiles", margin: 800, base: 24 },
+    film: "Delhi's indie film scene", festival: "Diwali", sport: "the park cricket league",
+    blurb: "Metro rides, winter fog, paratha breakfasts, big weddings and bigger opinions.",
+    ev: [
+      { id: "dl_smog", w: 3, t: "The air quality index crosses 400. Schools shut, everyone's coughing, and your plans for the week look grim.",
+        c: [
+          { l: "Mask up and keep going", e: { x: 2, h: -6 }, r: "You get work done. Your lungs file a complaint." },
+          { l: "Work from indoors for a few days", e: { h: 3, x: -1 }, r: "Slower week, but you stay healthy." },
+          { l: "Buy an air purifier for home", e: { c: -1500, h: 6 }, r: "Expensive, but the family sleeps better." }
+        ] },
+      { id: "dl_wedding", w: 3, who: "p", t: "Wedding season. {parent} has accepted invitations to five weddings this month, all 'compulsory'.",
+        c: [
+          { l: "Attend all five", e: { h: 4, c: -1500, x: -2, rel: { p: 12 } }, r: "Five weddings, three sherwanis, one very tired you. Mummy is delighted." },
+          { l: "Go to the two closest ones", e: { c: -600, rel: { p: 4 } }, r: "A fair compromise. You still dance to the same three songs." },
+          { l: "Skip them for work", e: { c: 1200, rel: { p: -10 } }, r: "Productive month. Every relative now asks if you're 'too busy for family'." }
+        ] },
+      { id: "dl_contact", w: 2, who: "v", t: "{rival} says his uncle 'knows someone in the ministry' and can fast-track any permission you need. Just ₹20,000 for 'expenses'.",
+        c: [
+          { l: "Decline and apply through the official portal", e: { s: 3, r: 3 }, r: "It takes three weeks, but it's real. 'Contacts' like that are how people get cheated, or arrested." },
+          { l: "Pay for the shortcut", shady: true, e: { c: -2000, set: "scammed" }, r: "The 'expenses' were spent. No permission ever came." }
+        ] },
+      { id: "dl_metro", w: 2, who: "f", t: "{friend} wants to explore Old Delhi on Sunday: parathas, the spice market and old lanes.",
+        c: [
+          { l: "Go. Metro at 8 am sharp.", e: { h: 10, c: -400, rel: { f: 10 } }, r: "Six parathas, one spice-sneezing fit, endless stories. Best Sunday in months." },
+          { l: "Stay in and rest", e: { h: 4, rel: { f: -4 } }, r: "Rested, but the photos look amazing." }
         ] }
     ]
   }

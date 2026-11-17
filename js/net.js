@@ -101,7 +101,7 @@ window.AE_NET = (function () {
     c.on("presence", { event: "sync" }, () => { if (c === ch) sync(); })
       .on("presence", { event: "join" }, () => { if (c === ch) sendMove(true); })
       .on("presence", { event: "leave" }, ({ key }) => { if (c === ch) { delete peers[key]; handlers.onLeave && handlers.onLeave(key); sync(); } })
-      .on("broadcast", { event: "mv" }, ({ payload }) => { const id = from(payload); if (id) handlers.onMove && handlers.onMove(id, int(payload.x, 0, COLS - 1), int(payload.y, 0, ROWS - 1)); })
+      .on("broadcast", { event: "mv" }, ({ payload }) => { const id = from(payload); if (id) { const x = int(payload.x, 0, COLS - 1), y = int(payload.y, 0, ROWS - 1); peers[id].x = x; peers[id].y = y; handlers.onMove && handlers.onMove(id, x, y); } })
       .on("broadcast", { event: "say" }, ({ payload }) => {
         const id = from(payload); if (!id) return;
         const list = payload.k === "e" ? EMOTES : PHRASES, i = int(payload.i, -1, list.length - 1);
@@ -113,8 +113,49 @@ window.AE_NET = (function () {
         (heard[id] = heard[id] || []).push({ t: r.text, at: new Date().toISOString() }); if (heard[id].length > 5) heard[id].shift();
         handlers.onSay && handlers.onSay(id, r.text, true);
       })
+      .on("broadcast", { event: "gift" }, ({ payload }) => {
+        const id = from(payload); if (!id || payload.to !== myId) return;
+        const amt = int(payload.amt, 0, 100000); if (amt > 0) handlers.onGift && handlers.onGift(id, amt, payload.why === "tip");
+      })
+      .on("broadcast", { event: "party" }, ({ payload }) => {
+        const id = from(payload); if (!id || (payload.to && payload.to !== myId)) return;
+        handlers.onParty && handlers.onParty(id, { k: String(payload.k || ""), pid: String(payload.pid || "").slice(0, 16), task: String(payload.task || "").slice(0, 24) });
+      })
+      .on("broadcast", { event: "gdone" }, ({ payload }) => {
+        const id = from(payload); if (!id || !Array.isArray(payload.members) || payload.members.indexOf(myId) < 0) return;
+        handlers.onGroupDone && handlers.onGroupDone(id, String(payload.task || "").slice(0, 24), int(payload.real, 0, 6));
+      })
       .subscribe(status => { if (status === "SUBSCRIBED" && c === ch) c.track(my); });
     return true;
+  }
+  function gift(to, amt, why) { if (!ch) return false; ch.send({ type: "broadcast", event: "gift", payload: { id: myId, to, amt: Math.round(amt), why: why || "" } }); return true; }
+  function party(to, k, pid, task) { if (!ch) return false; ch.send({ type: "broadcast", event: "party", payload: { id: myId, to: to || "", k, pid: pid || "", task: task || "" } }); return true; }
+  function groupDone(members, task, real) { if (!ch) return; ch.send({ type: "broadcast", event: "gdone", payload: { id: myId, members, task, real } }); }
+  function setState(patch) { if (!my) return; Object.assign(my, patch); if (ch) { try { ch.track(my); } catch (e) { } } }
+  function peerPos(id) { const p = peers[id]; return p ? { x: p.x, y: p.y } : null; }
+  function updatePeerPos(id, x, y) { if (peers[id]) { peers[id].x = x; peers[id].y = y; } }
+
+  // ── lobby: who is online in which life (for job locks) ──
+  let lob = null, lobCb = null, lobMine = null;
+  async function lobby(lifeId, cb) {
+    if (cb) lobCb = cb;
+    lobMine = { l: lifeId || "", nk: myNick() };
+    if (!enabled()) return;
+    myId = myId || Math.random().toString(36).slice(2, 10);
+    if (!lob) {
+      try {
+        if (isLocal()) lob = localChannel("ns-lobby");
+        else { const sb = await loadSupabase(); client = client || sb.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY, { realtime: { params: { eventsPerSecond: 4 } } }); lob = client.channel("ns-lobby", { config: { presence: { key: myId } } }); }
+        const L = lob;
+        L.on("presence", { event: "sync" }, () => { if (L === lob && lobCb) lobCb(); }).subscribe(st => { if (st === "SUBSCRIBED" && L === lob) L.track(lobMine); });
+      } catch (e) { lob = null; }
+    } else { try { lob.track(lobMine); } catch (e) { } }
+  }
+  function takenLives() {
+    const out = {}; if (!lob) return out;
+    const st = lob.presenceState();
+    Object.keys(st).forEach(k => { if (k === myId) return; const s = (st[k] && st[k][0]) || {}; if (/^[a-z]{2,10}$/.test(s.l || "")) out[s.l] = nickOf(s.nk); });
+    return out;
   }
 
   function sync() {
@@ -124,11 +165,13 @@ window.AE_NET = (function () {
     Object.keys(peers).forEach(k => { if (shown.indexOf(k) < 0) { delete peers[k]; handlers.onLeave && handlers.onLeave(k); } });
     shown.forEach(k => {
       const s = (st[k] && st[k][0]) || {};
-      const data = { nick: nickOf(s.nk), av: unpackAv(s.av), x: int(s.x, 0, COLS - 1), y: int(s.y, 0, ROWS - 1), o: /^[a-z_]{1,24}$/.test(s.o || "") ? s.o : "", hs: /^[A-Z]{2}$/.test(s.hs || "") ? s.hs : "" };
+      const data = { nick: nickOf(s.nk), av: unpackAv(s.av), x: int(s.x, 0, COLS - 1), y: int(s.y, 0, ROWS - 1), o: /^[a-z_]{1,24}$/.test(s.o || "") ? s.o : "", hs: /^[A-Z]{2}$/.test(s.hs || "") ? s.hs : "",
+        l: /^[a-z]{2,10}$/.test(s.l || "") ? s.l : "", rd: typeof s.rd === "number" && s.rd >= 0 && s.rd <= 5 ? Math.round(s.rd * 10) / 10 : 0, pt: /^[a-z0-9]{1,16}$/.test(s.pt || "") ? s.pt : "" };
       const prev = peers[k];
+      if (prev && prev.x !== undefined) { data.x = prev.x; data.y = prev.y; }
       peers[k] = data;
       if (!prev) handlers.onJoin && handlers.onJoin(k, data);
-      else if (prev.o !== data.o) handlers.onUpdate && handlers.onUpdate(k, data);
+      else if (prev.o !== data.o || prev.rd !== data.rd || prev.l !== data.l || prev.pt !== data.pt) handlers.onUpdate && handlers.onUpdate(k, data);
     });
     handlers.onCount && handlers.onCount(ids.length + 1);
   }
@@ -175,5 +218,5 @@ window.AE_NET = (function () {
   }
   function leave() { if (ch) { try { ch.unsubscribe(); } catch (e) { } } ch = null; peers = {}; heard = {}; }
 
-  return { configured, setOutfit, submitScore, topScores, enabled, join, move, say, sendText, check, mute, report, leave, PHRASES, EMOTES, nick: () => nickOf(myNick()), heardFrom: id => heard[id] || [] };
+  return { configured, setOutfit, gift, party, groupDone, setState, peerPos, lobby, takenLives, peers: () => peers, myId: () => myId, submitScore, topScores, enabled, join, move, say, sendText, check, mute, report, leave, PHRASES, EMOTES, nick: () => nickOf(myNick()), heardFrom: id => heard[id] || [] };
 })();

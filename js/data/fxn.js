@@ -1,16 +1,17 @@
 // FXN in-game rentals, dress-code events and the delivery gig.
 // FXN is a real fashion-rental startup owned by the game's creator. In-game prices and timings are for fun only.
 window.AE_FXN = {
-  disclosure: "FXN is a real fashion-rental startup from Kerala, owned by the creator of Next Station. In-game prices and delivery times are for fun and differ from real FXN.",
+  disclosure: "Next Station is presented by FXN India, a real fashion-rental startup from Kochi. In-game prices, delivery times and rider pay are for fun and differ from real FXN.",
   basics: { top: "#8f8d9e", bottom: "#2a2742", style: "tee" },
   // style: tee | shirt | kurta | suit | saree | lehenga | mundu | sport | gown ; acc = dupatta/shawl colour
   catalogue: [
     { id: "kasavu_saree", name: "Kasavu saree set", tags: ["onam", "festival", "local:KL"], price: 199, buy: 4999, look: { top: "#f4ead2", bottom: "#f4ead2", style: "saree", trim: "#d4a62a" } },
     { id: "kasavu_mundu", name: "Kasavu mundu and shirt", tags: ["onam", "festival", "local:KL"], price: 149, buy: 2999, look: { top: "#f7f3e8", bottom: "#f4ead2", style: "mundu", trim: "#d4a62a" } },
     { id: "paithani", name: "Paithani silk saree", tags: ["festival", "wedding", "local:MH"], price: 299, buy: 14999, look: { top: "#7a1f6b", bottom: "#7a1f6b", style: "saree", trim: "#2f9e5b" } },
-    { id: "phulkari", name: "Phulkari dupatta suit", tags: ["festival", "wedding", "local:PB"], price: 249, buy: 5999, look: { top: "#e94e3c", bottom: "#f1c232", style: "kurta", trim: "#f6a21a" } },
-    { id: "kantha_kurta", name: "Kantha kurta and dhoti", tags: ["festival", "local:WB"], price: 199, buy: 3999, look: { top: "#f2efe4", bottom: "#f7f3e8", style: "kurta", trim: "#c0392b" } },
-    { id: "bandhej", name: "Bandhej lehenga", tags: ["festival", "wedding", "local:RJ"], price: 299, buy: 8999, look: { top: "#e4572e", bottom: "#d81e5b", style: "lehenga", trim: "#f6c90e" } },
+    { id: "ikat_saree", name: "Pochampally ikat saree", tags: ["festival", "wedding", "local:TG"], price: 249, buy: 7999, look: { top: "#a0204a", bottom: "#a0204a", style: "saree", trim: "#1f6f8b" } },
+    { id: "ikat_kurta", name: "Ikat kurta set", tags: ["festival", "local:TG"], price: 169, buy: 2999, look: { top: "#1f4f8b", bottom: "#f7f3e8", style: "kurta", trim: "#a0204a" } },
+    { id: "bandhgala", name: "Bandhgala suit", tags: ["wedding", "formal", "local:DL"], price: 349, buy: 13999, look: { top: "#2b2140", bottom: "#2b2140", style: "suit", trim: "#d4af37" } },
+    { id: "anarkali", name: "Embroidered anarkali", tags: ["festival", "wedding", "local:DL"], price: 299, buy: 9999, look: { top: "#c2185b", bottom: "#c2185b", style: "gown", trim: "#f4c542" } },
     { id: "mysore_silk", name: "Mysore silk saree", tags: ["festival", "wedding", "local:KA"], price: 279, buy: 11999, look: { top: "#1f6f8b", bottom: "#1f6f8b", style: "saree", trim: "#f4c542" } },
     { id: "sherwani", name: "Sherwani", tags: ["wedding"], price: 399, buy: 12999, look: { top: "#e9d9b0", bottom: "#efe7d2", style: "kurta", trim: "#b8860b" } },
     { id: "lehenga", name: "Wedding lehenga", tags: ["wedding"], price: 499, buy: 24999, look: { top: "#b3123d", bottom: "#b3123d", style: "lehenga", trim: "#f4c542" } },
@@ -32,20 +33,20 @@ window.AE_FXN = {
     { id: "ev_wedding", dress: "wedding", title: "{f}'s cousin's wedding reception at the Town Hall", t: "An 800-guest reception. The DJ has one setting: loud.",
       c: [ { l: "Give a heartfelt toast", e: { r: 6, rel: { f: 12 } }, r: "Two aunties cry. One asks if you're single." },
            { l: "Own the dance floor", e: { h: 10, x: 4 }, r: "You are now 'that dancer' in 40 family WhatsApp videos." } ] },
-    { id: "ev_annual", dress: "formal", lives: ["job", "startup", "govt", "trader"], title: "Annual day and awards night at the Town Hall", t: "Formal dinner, awkward speeches and a buffet everyone pretends not to rush.",
+    { id: "ev_annual", dress: "formal", lives: ["job", "startup", "govt", "trader", "nurse", "teacher", "gulf"], title: "Annual day and awards night at the Town Hall", t: "Formal dinner, awkward speeches and a buffet everyone pretends not to rush.",
       c: [ { l: "Talk to the senior leadership", e: { x: 8, rel: { m: 6 } }, r: "The director remembers your name. That's half a promotion." },
            { l: "Head straight for the buffet", e: { h: 8 }, r: "The paneer was worth it." } ] },
     { id: "ev_collegefest", dress: "party", title: "College fest night at the Town Hall", t: "A band, neon lights and 2,000 students who skipped class for this.",
       c: [ { l: "Volunteer for the stage show", e: { x: 7, r: 4 }, r: "Your mic moment goes semi-viral on campus." },
            { l: "Make new friends at the food stalls", e: { h: 8, rel: { f: 6 } }, r: "Five new friends, three new inside jokes." } ] },
-    { id: "ev_premiere", dress: "premiere", lives: ["film", "creator", "reality"], title: "Film premiere red carpet at the Town Hall", t: "Flashbulbs, a red carpet and photographers shouting 'this side, this side!'",
+    { id: "ev_premiere", dress: "premiere", lives: ["film", "creator", "reality", "stylist", "band"], title: "Film premiere red carpet at the Town Hall", t: "Flashbulbs, a red carpet and photographers shouting 'this side, this side!'",
       c: [ { l: "Pose like a pro", e: { x: 10, r: 4 }, r: "Your photo makes the entertainment page. Small font, still counts." },
            { l: "Chat up a casting assistant", e: { x: 5, rel: { m: 6 } }, r: "'Send your portfolio.' Progress!" } ] },
     { id: "ev_match", dress: "sport", lives: ["cricket"], title: "Charity cricket match at the city ground", t: "A friendly charity match. Whites only, rules strict, samosas unlimited.",
       c: [ { l: "Open the batting", ck: { k: "sx", d: 40, ok: { e: { x: 9, r: 6 }, r: "A breezy 45 for charity. Local paper mentions you." }, no: { e: { x: -3 }, r: "Bowled first ball. For charity, of course." } } },
            { l: "Bowl tight and save runs", e: { s: 5, r: 4 }, r: "Economy rate of 4. The coach writes something down." } ] }
   ],
-  courierNames: { KL: "Ajmal", MH: "Rohit", PB: "Harjeet", WB: "Sourav", RJ: "Imran", KA: "Manju" },
+  courierNames: { KL: "Ajmal", MH: "Rohit", KA: "Manju", TG: "Sai", DL: "Aman" },
   courierLines: ["FXN delivery! Tried to be faster than your mother's phone call.", "Here you go. Return it clean, my supervisor checks with a magnifying glass.", "Delivered! Rate me 5 stars or my scooter cries.", "Your outfit has arrived. You'll look 30% more successful."],
   gig: { pay: 150, drops: 3 }
 };

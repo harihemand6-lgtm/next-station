@@ -52,7 +52,9 @@ window.AE = (function () {
       chapter: 1, step: 0, cash, startCash: cash, minCash: cash, r: 20, h: 60, s: L.s0, x: L.x0,
       rel: { m: 0, v: -10, f: 30, p: 30 }, flags: [], used: [], log: [], shady: 0,
       talks: 2, talked: [], current: null, summary: null, ending: null, done: false, result: null,
-      loc: stateId, missions: makeMissions(lifeId, stateId, seed), trips: 0
+      loc: stateId, missions: makeMissions(lifeId, stateId, seed), trips: 0,
+      papers: [], pending: [], fake: [], loans: [], house: { lvl: 0, wall: 0, items: [] }, spouse: null, romance: null,
+      lifeHistory: [lifeId], switches: 0, odd: null, oddDone: 0, missionsDone: 0, group: null, groupsDone: 0, shift: null, gifts: 0
     };
   }
 
@@ -125,8 +127,10 @@ window.AE = (function () {
     const L = life(g), rank = L.end.findIndex(e => e.id === g.result.id);
     const bonus = rank < 0 ? 0 : Math.max(0, (L.end.length - 1 - rank) * 120);
     const cash = Math.round(Math.max(0, g.cash) / (L.raw ? 100 : 100 * ci(g)));
-    const done = (g.missions || []).filter(m => m.done).length;
-    const raw = cash + g.r * 10 + g.x * 5 + bonus + done * 150 - g.shady * 100;
+    const done = (g.missions || []).filter(m => m.done).length + (g.missionsDone || 0);
+    const debt = (g.loans || []).reduce((n, l) => n + l.left, 0);
+    const extra = (g.house ? g.house.lvl * 150 + g.house.items.length * 15 : 0) + (g.spouse ? 200 : 0) + (g.groupsDone || 0) * 60 + (g.oddDone || 0) * 10;
+    const raw = cash - Math.round(debt / (L.raw ? 100 : 100 * ci(g))) + g.r * 10 + g.x * 5 + bonus + done * 150 + extra - g.shady * 100;
     return Math.max(0, Math.min(20000, Math.round(raw)));
   }
 
@@ -177,7 +181,7 @@ window.AE = (function () {
   }
 
   function needOf(g, ch) { return ch.need ? (life(g).raw ? ch.need : r10(ch.need * ci(g))) : 0; }
-  function canChoose(g, ch) { const n = needOf(g, ch); return n <= 0 || g.cash >= n; }
+  function canChoose(g, ch) { if (ch.paper && !hasPaper(g, ch.paper)) return false; const n = needOf(g, ch); return n <= 0 || g.cash >= n; }
 
   function chance(g, ck) {
     const v = ck.k === "sx" ? (g.s + g.x) / 2 : g[ck.k];
@@ -218,7 +222,7 @@ window.AE = (function () {
     g.log.push({ c: g.chapter, id: ev.id, t: fill(ev.t, g), l: fill(ch.l, g), r: text, d, alt: ev.c.filter((_, i) => i !== idx).map(o => fill(o.l, g)) });
     if (g.used.indexOf(ev.id) < 0) g.used.push(ev.id);
     g.current = null; g._quiet = null;
-    g.step++;
+    g.step++; g.clock = (g.clock || 0) + 1;
     let summary = null;
     if (g.step >= STEPS) summary = endChapter(g);
     return { text, d, reaction, passed, summary };
@@ -226,7 +230,7 @@ window.AE = (function () {
 
   function endChapter(g) {
     const L = life(g), K = kit(g);
-    const lines = (L.settle(g, K) || []).map(l => ({ label: l[0], amount: l[1], kind: l[2] || "money" }));
+    const lines = (L.settle(g, K) || []).map(l => ({ label: l[0], amount: l[1], kind: l[2] || "money" })).concat(citySettle(g, K));
     let net = 0;
     lines.forEach(l => { if (l.kind === "money") net += l.amount; });
     g.cash += net;
@@ -302,8 +306,168 @@ window.AE = (function () {
 
   function dailyPick(dateStr) {
     const h = hashStr("ns-" + dateStr);
-    const lives = LIVES(), states = Object.keys(STATES());
-    return { lifeId: lives[h % lives.length].id, stateId: states[(h >>> 8) % states.length], seed: h };
+    const lives = LIVES().filter(l => !l.mature);
+    return { lifeId: lives[h % lives.length].id, stateId: "KL", seed: h };
+  }
+
+  // ═══ City systems (data in data/city.js) ═══
+  const C = () => window.AE_CITY;
+  const money = (g, n) => (life(g).raw ? n : r10(n * ci(g)));
+  const clockOf = g => g.clock || 0;
+  function hasPaper(g, id) { return (g.papers || []).indexOf(id) >= 0; }
+  function paperStatus(g, id) {
+    const P = C().papers.find(p => p.id === id); if (!P) return "none";
+    if (hasPaper(g, id)) return "have";
+    const pe = (g.pending || []).find(x => x.id === id);
+    if (pe) return clockOf(g) >= pe.ready ? "ready" : "processing";
+    if (P.married && !(g.spouse && g.spouse.wed)) return "locked";
+    if (P.needs.some(n => !hasPaper(g, n))) return "locked";
+    return "none";
+  }
+  function paperFee(g, id) { const P = C().papers.find(p => p.id === id); return money(g, P.fee); }
+  function applyPaper(g, id, method) {
+    if (paperStatus(g, id) !== "none") return null;
+    const fee = paperFee(g, id);
+    if (method === "agent") {
+      const cost = fee * 4; if (g.cash < cost) return null;
+      g.cash -= cost; g.shady++; g.papers.push(id);
+      const fake = rnd(g) < 0.35; if (fake) g.fake.push(id);
+      return { text: "The agent comes back in an hour with a stamped paper. It cost four times the fee.", d: { cash: -cost }, now: true };
+    }
+    if (g.cash < fee) return null;
+    g.cash -= fee; g.h = clamp(g.h - 3, 0, 100);
+    g.pending.push({ id, ready: clockOf(g) + 1 });
+    return { text: pick(g, C().officeLines) + " Your application is in. Come back to collect it after your next scene.", d: { cash: -fee, h: -3 } };
+  }
+  function collectPaper(g, id) {
+    if (paperStatus(g, id) !== "ready") return false;
+    g.pending = g.pending.filter(x => x.id !== id); g.papers.push(id); g.r = clamp(g.r + 1, 0, 100);
+    return true;
+  }
+  // Loans
+  function loanOk(g, id) { const Lo = C().loans.find(l => l.id === id); return Lo && Lo.needs.every(n => hasPaper(g, n)) && (g.loans || []).filter(l => l.left > 0).length < 3 && !(g.loans || []).some(l => l.id === id && l.left > 0); }
+  function loanAmount(g, id) { return money(g, C().loans.find(l => l.id === id).amount); }
+  function takeLoan(g, id, amount) {
+    if (!loanOk(g, id)) return null;
+    const Lo = C().loans.find(l => l.id === id); amount = Math.min(amount || loanAmount(g, id), loanAmount(g, id));
+    const total = Math.round(amount * (1 + Lo.rate)), chaptersLeft = Math.max(2, CHAPTERS - g.chapter + 1);
+    const loan = { id, name: Lo.name, principal: amount, left: total, emi: Math.ceil(total / chaptersLeft / 10) * 10 };
+    g.loans.push(loan); if (!Lo.house) g.cash += amount;
+    return loan;
+  }
+  // House
+  function houseNext(g) { const H = C().houseLevels; return g.house.lvl + 1 < H.length ? H[g.house.lvl + 1] : null; }
+  function upgradeHouse(g, withLoan) {
+    const nx = houseNext(g); if (!nx) return false;
+    const cost = money(g, nx.cost);
+    if (withLoan) { const lo = takeLoan(g, "home", cost); if (!lo) return false; }
+    else { if (g.cash < cost) return false; g.cash -= cost; }
+    g.house.lvl++; g.h = clamp(g.h + 5, 0, 100); return true;
+  }
+  function buyDecor(g, id) {
+    const it = C().decor.find(d => d.id === id); if (!it || g.house.items.indexOf(id) >= 0) return false;
+    const cost = money(g, it.cost); if (g.cash < cost) return false;
+    g.cash -= cost; g.house.items.push(id); g.h = clamp(g.h + it.h, 0, 100); return true;
+  }
+  function paint(g, i) { const cost = money(g, 500); if (g.cash < cost) return false; g.cash -= cost; g.house.wall = i; return true; }
+  // Marriage
+  function profilesFor(g, want) { return C().profiles.filter(p => want === "any" || p.g === want); }
+  function sendInterest(g, pid, site) {
+    const P = C().profiles.find(p => p.id === pid); if (!P || g.spouse) return null;
+    const tried = (g.romanceTried || []); if (tried.indexOf(pid) >= 0) return { ok: false, text: P.name + " has already replied to you." };
+    g.romanceTried = tried.concat(pid);
+    const ch = clamp(0.55 + (g.r + g.h) / 200 - P.pick / 100, 0.15, 0.9);
+    if (rnd(g) < ch) { g.romance = { pid, site, stage: "date", score: 0 }; return { ok: true, text: P.name + " accepted your interest! Meet at Café Monsoon for a first chai." }; }
+    return { ok: false, text: P.name + " replied: 'You seem nice, but I don't think we're a match.' Ouch, but polite." };
+  }
+  function dateScene(g) { return C().dates[(g.romance && g.romance.round) || 0]; }
+  function dateChoose(g, idx) {
+    const R = g.romance, D = dateScene(g), c = D.c[idx], P = C().profiles.find(p => p.id === R.pid);
+    R.score += c.ok + Math.round((g.h - 50) / 10); R.round = (R.round || 0) + 1;
+    const text = c.r.replace(/\{p\}/g, P.name);
+    if (R.round >= C().dates.length) {
+      if (R.score >= 10) { R.stage = C().sites.find(s => s.id === R.site).family ? "family" : "family"; return { text: text + " At the end, " + P.name + " says: 'Let's meet each other's families.' Walk home to introduce them.", ok: true }; }
+      g.romance = null; g.h = clamp(g.h - 6, 0, 100);
+      return { text: text + " Later, " + P.name + " messages: 'I had fun, but I don't feel a spark.' You can try another profile.", ok: false };
+    }
+    return { text, more: true };
+  }
+  function familyMeet(g, idx) {
+    const R = g.romance, P = C().profiles.find(p => p.id === R.pid);
+    const opts = [
+      { r: P.name + "'s parents and yours discover they went to the same school. The meeting turns into a three-hour reunion. Engaged!", ok: true, h: 8 },
+      { r: "Your uncle asks " + P.name + " about salary, horoscope and cooking in one breath. " + P.name + " handles it like a pro. Engaged!", ok: true, h: 4 }
+    ];
+    const o = opts[idx] || opts[0];
+    R.stage = "engaged"; g.h = clamp(g.h + o.h, 0, 100);
+    return { text: o.r + " Rent wedding wear on FXN and plan the wedding at the Town Hall." };
+  }
+  function wed(g, wid) {
+    const R = g.romance, W = C().weddings.find(w => w.id === wid), P = C().profiles.find(p => p.id === R.pid);
+    const cost = money(g, W.cost); if (g.cash < cost) return null;
+    g.cash -= cost; g.h = clamp(g.h + W.h, 0, 100); g.r = clamp(g.r + W.r, 0, 100);
+    g.spouse = { pid: P.id, name: P.name, job: P.job, wed: true, chapter: g.chapter }; g.romance = null;
+    return { text: "You and " + P.name + " are married! " + (W.id === "grand" ? "Six hundred guests, four hundred selfies, one very tired couple." : W.id === "temple" ? "A beautiful ceremony and a sadya the relatives will discuss for years." : "Small, sweet and debt-free. Your favourite kind of wedding.") + " Register the marriage at the Government Office.", d: { cash: -cost, h: W.h, r: W.r } };
+  }
+  // Career switch / venture
+  function switchLife(g, lifeId, cityId) {
+    const L = LIVES().find(l => l.id === lifeId); if (!L || lifeId === g.lifeId) return false;
+    g.missionsDone = (g.missionsDone || 0) + (g.missions || []).filter(m => m.done).length;
+    g.lifeId = lifeId; if (cityId) g.stateId = cityId;
+    g.x = L.x0; g.s = Math.max(L.s0, Math.round(g.s * 0.6));
+    g.flags = g.flags.filter(f => f === "bailout");
+    g.current = null; g._quiet = null; g.switches = (g.switches || 0) + 1; g.lifeHistory = (g.lifeHistory || []).concat(lifeId);
+    g.missions = makeMissions(lifeId, g.stateId, g.seed + g.switches).filter(m => m.at > g.chapter).concat([]);
+    if (!g.missions.length && g.chapter < CHAPTERS) g.missions = [{ target: Object.keys(STATES()).filter(k => k !== g.stateId)[g.seed % 4], at: g.chapter + 1, step: 0, done: false }];
+    return true;
+  }
+  // Odd jobs & group tasks
+  function oddPay(g, J) { return money(g, J.pay); }
+  function finishOdd(g) {
+    const J = C().oddJobs.find(j => j.id === g.odd.id); const pay = oddPay(g, J);
+    g.cash += pay; if (J.r) g.r = clamp(g.r + J.r, 0, 100); if (J.h) g.h = clamp(g.h + J.h, 0, 100);
+    g.odd = null; g.oddDone = (g.oddDone || 0) + 1; g.oddThis = (g.oddThis || 0) + 1;
+    return { text: J.t + ": done! +" + inr(pay), pay };
+  }
+  function groupShare(g, T) { return money(g, Math.round(T.reward / T.size)); }
+  function finishGroup(g, T, realOthers) {
+    const share = groupShare(g, T), hired = Math.max(0, T.size - 1 - realOthers);
+    g.cash += share; g.r = clamp(g.r + (T.r || 0), 0, 100); if (T.h) g.h = clamp(g.h + T.h, 0, 100);
+    g.groupsDone = (g.groupsDone || 0) + 1; g.group = null;
+    return { share, hired, text: T.t + ": done! You earned " + inr(share) + (hired ? ". " + hired + " hired helper" + (hired > 1 ? "s" : "") + " took their share." : ". The whole team was real players!") };
+  }
+  // FXN rider shift
+  function riderPay(g) { return money(g, C().rider.pay); }
+  function rateDrop(g, secs, ideal) {
+    const ratio = secs / Math.max(8, ideal);
+    let stars = ratio <= 1.15 ? 5 : ratio <= 1.5 ? 4 : ratio <= 2 ? 3 : ratio <= 2.8 ? 2 : 1;
+    if (rnd(g) < 0.15 && stars > 1) stars--;
+    const tip = stars >= 4 ? money(g, Math.round(C().rider.tipMax * (stars - 3) / 2 * (0.5 + rnd(g) / 2))) : 0;
+    g.shift.ratings.push(stars); g.shift.tips += tip; g.cash += tip; g.shift.left--;
+    const lines = stars >= 4 ? C().rate5 : stars === 3 ? C().rate3 : C().rate1;
+    return { stars, tip, line: pick(g, lines), cust: pick(g, C().customers) };
+  }
+  function endShift(g) {
+    const S = g.shift, avg = S.ratings.reduce((a, b) => a + b, 0) / S.ratings.length;
+    const paid = avg >= C().rider.minAvg, pay = paid ? riderPay(g) * S.ratings.length : 0;
+    g.cash += pay; if (paid) g.r = clamp(g.r + 2, 0, 100); else g.r = clamp(g.r - 2, 0, 100);
+    g.shifts = (g.shifts || 0) + 1; g.shift = null; g.shiftThis = (g.shiftThis || 0) + 1;
+    return { avg: Math.round(avg * 10) / 10, paid, pay, tips: S.tips };
+  }
+  // Extra settle lines at the end of each chapter
+  function citySettle(g, K) {
+    const out = [];
+    (g.loans || []).forEach(l => { if (l.left > 0) { const emi = Math.min(l.emi, l.left); l.left -= emi; out.push({ label: l.name + " EMI", amount: -emi, kind: "money" }); } });
+    const H = C().houseLevels[g.house ? g.house.lvl : 0];
+    if (H && H.upkeep) { out.push({ label: H.name + " upkeep", amount: -money(g, H.upkeep), kind: "money" }); g.h = clamp(g.h + H.h, 0, 100); }
+    if (g.spouse) { out.push({ label: g.spouse.name + "'s share of household costs", amount: money(g, 2500), kind: "money" }); g.h = clamp(g.h + 3, 0, 100); }
+    if ((g.fake || []).length && rnd(g) < 0.5) {
+      const id = g.fake.shift(), P = C().papers.find(p => p.id === id);
+      g.papers = g.papers.filter(x => x !== id); g.r = clamp(g.r - 8, 0, 100);
+      out.push({ label: "Fine: your " + P.name + " from the agent was fake", amount: -money(g, P.fee * 6), kind: "money" });
+    }
+    g.oddThis = 0; g.shiftThis = 0;
+    return out;
   }
 
   const REALITY = {
@@ -316,8 +480,19 @@ window.AE = (function () {
     film: "Real casting never requires paying a fee. Most actors build careers through theatre, ads, TV and small roles first.",
     cricket: "Real players are selected through district and state trials. Approaches to fix matches must be reported; corruption ends careers.",
     reality: "Real reality shows are produced entertainment. Contestants sign contracts, and much of the drama is shaped by editing.",
+    nurse: "Real nursing jobs abroad go through registered recruiting agencies and the hospital's own process. Paying lakhs for a 'guaranteed job' is the most common nurse recruitment scam.",
+    cab: "Real auto and taxi drivers need a permit, insurance and a fitness certificate for the vehicle. App commissions vary a lot, so compare before you sign up.",
+    teacher: "Real tuition centres live on word of mouth. Never use students' photos or results in ads without the parents' permission.",
+    kitchen: "Real home kitchens need a food-safety registration before selling, and delivery apps check it. Fake reviews break platform rules and can get you removed.",
+    homestay: "Real homestays are registered with the state tourism department. Ratings and repeat guests matter more than fancy decor.",
+    stylist: "Real stylists build portfolios first. Renting outfits for shoots keeps costs low and lets you show variety.",
+    band: "Real musicians should never sign a contract they haven't fully read. Keep the rights to your songs whenever you can.",
+    planner: "Real wedding planners earn on trust. Dowry is a crime in India under the Dowry Prohibition Act, 1961, for both giving and taking.",
+    seafood: "Kerala has an annual monsoon trawling ban so fish can breed. Exporters need registrations and must follow strict quality rules.",
+    gulf: "Many returnees lose savings to loans to relatives, oversized houses and chain-marketing schemes. Schemes that pay you mainly for recruiting people are a warning sign.",
     trader: "SEBI found over 91% of individual traders lost money in equity derivatives in FY25. Investing through diversified index funds over years is the slower, safer path. This game is not investment advice."
   };
 
-  return { applyEffects: apply, missionGuide, missionScene, missionChoose, activeMission, travel, fare, score, line, langOf, CHAPTERS, STEPS, clamp, has, inr, fill, life, st, ci, kit, newGame, nextEvent, currentEvent, canChoose, needOf, chance, choose, talk, metric, mood, dailyPick, finish, REALITY, rnd };
+  const CITY = { hasPaper, paperStatus, paperFee, applyPaper, collectPaper, loanOk, loanAmount, takeLoan, houseNext, upgradeHouse, buyDecor, paint, profilesFor, sendInterest, dateScene, dateChoose, familyMeet, wed, switchLife, oddPay, finishOdd, groupShare, finishGroup, riderPay, rateDrop, endShift, money };
+  return { CITY, applyEffects: apply, missionGuide, missionScene, missionChoose, activeMission, travel, fare, score, line, langOf, CHAPTERS, STEPS, clamp, has, inr, fill, life, st, ci, kit, newGame, nextEvent, currentEvent, canChoose, needOf, chance, choose, talk, metric, mood, dailyPick, finish, REALITY, rnd };
 })();

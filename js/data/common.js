@@ -98,24 +98,40 @@ window.AE_COMMON = {
     film: "Real producers never ask actors for money. Never.",
     cricket: "Fitness keeps you in the team when form doesn't.",
     reality: "The audience can smell fake from a mile away.",
-    trader: "If someone promises guaranteed returns, they're selling you something."
+    trader: "If someone promises guaranteed returns, they're selling you something.",
+    nurse: "Write down every handover clearly. The next shift depends on it.",
+    cab: "A clean vehicle and a polite 'good morning' get you more regulars than any discount.",
+    teacher: "If a student is quiet, they're not lazy. Ask them one easy question and build from there.",
+    kitchen: "Pack food like it's going on a bumpy scooter ride, because it is.",
+    homestay: "Guests forgive small problems. They never forget being ignored.",
+    stylist: "Style the person, not the trend. Comfort shows in photos.",
+    band: "Read every contract twice. Then ask someone else to read it.",
+    planner: "Always have a Plan B for rain. In Kerala, have a Plan C.",
+    seafood: "The sea gives warnings. Listen to them, and to the old fishermen.",
+    gulf: "Every relative has a business idea. Very few have a business plan."
   },
 
   local: {
     KL: ["Kochi rewards patience. Nothing happens fast here, but when it does, everyone knows.", "Rain for half the year and people still show up. That's Kerala.", "Half the town has a relative in the Gulf. Everyone has an opinion on your future."],
     MH: ["Mumbai never sleeps, and neither will you if you want to make it here.", "The local train will teach you more about people than any book.", "Rent is brutal, but opportunity is everywhere."],
-    PB: ["Ludhiana works hard and eats harder.", "Punjab gives everyone a big welcome and bigger portions.", "Everyone here is either in business or planning one."],
-    WB: ["Kolkata runs on adda, cha and strong opinions.", "Durga Puja is when the whole city becomes one big family.", "People here respect ideas, books and a good argument."],
-    RJ: ["Jaipur's tourists keep half the city going.", "Summers here test everyone. Plan your days around the heat.", "Every craft here has hundreds of years behind it."],
-    KA: ["Bengaluru: great weather, terrible traffic, endless startups.", "Filter coffee is a love language here.", "Half the city is from somewhere else, so everyone's welcome."]
+    KA: ["Bengaluru: great weather, terrible traffic, endless startups.", "Filter coffee is a love language here.", "Half the city is from somewhere else, so everyone's welcome."],
+    TG: ["Hyderabad argues about biryani the way other cities argue about politics.", "HITEC City by day, Old City by night. Two different worlds.", "First-day-first-show here is a festival, not a movie."],
+    DL: ["Delhi has an opinion on everything, including you.", "The metro is the best thing that happened to this city.", "Winter here means fog, parathas and a wedding every weekend."]
   },
 
   badges: [
     { id: "first", t: "First Life", d: "Finish any life" },
     { id: "five", t: "Five Lives", d: "Finish five different lives" },
-    { id: "all10", t: "Lived Them All", d: "Finish all ten lives" },
-    { id: "explorer", t: "State Hopper", d: "Finish a life in all six playable states" },
-    { id: "kerala", t: "God's Own Player", d: "Finish a life in Kerala" },
+    { id: "all10", t: "Ten Lives", d: "Finish ten different lives" },
+    { id: "all20", t: "Lived Them All", d: "Finish all twenty lives" },
+    { id: "explorer", t: "City Hopper", d: "Visit all five cities in one life" },
+    { id: "kerala", t: "Kochi Local", d: "Finish a life in Kochi" },
+    { id: "married", t: "Happily Married", d: "Get married and register it at the Government Office" },
+    { id: "homeowner", t: "Homeowner", d: "Upgrade to an independent house or better" },
+    { id: "rider5", t: "Five-Star Rider", d: "Finish an FXN rider shift with a 5.0 rating" },
+    { id: "team", t: "Team Player", d: "Complete a group task" },
+    { id: "generous", t: "Generous", d: "Send money to another player" },
+    { id: "paperwork", t: "Paperwork Pro", d: "Hold four Government Office papers in one life" },
     { id: "honest", t: "Clean Hands", d: "Finish a life without one shady choice" },
     { id: "lakh", t: "Lakhpati (in game)", d: "End a life with ₹1 lakh or more" },
     { id: "comeback", t: "Comeback", d: "Go below ₹1,000 and still finish above ₹10,000" },

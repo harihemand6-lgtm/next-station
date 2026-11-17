@@ -1,11 +1,11 @@
-// Character speech in 7 languages. Story text and choices stay in English.
+// Character speech in 6 languages. Story text and choices stay in English.
 // Each non-English line is [what the character says, English subtitle].
 // Roles: m mentor, v rival, f friend, p parent. Moods: warm, neutral, cold.
 // {name} = player name, {city} = city, {tip} = life tip (English), {local} = city fact (English).
 // Native speakers: fix any line right here; no code changes needed.
 window.AE_DIALOGUE = {
-  langs: { auto: "Auto (each state's language)", en: "English", ml: "Malayalam", hi: "Hindi", mr: "Marathi", pa: "Punjabi", bn: "Bengali", kn: "Kannada" },
-  stateLang: { KL: "ml", MH: "mr", PB: "pa", WB: "bn", RJ: "hi", KA: "kn" },
+  langs: { auto: "Auto (each city's language)", en: "English", ml: "Malayalam", hi: "Hindi", mr: "Marathi", kn: "Kannada", te: "Telugu" },
+  stateLang: { KL: "ml", MH: "mr", KA: "kn", TG: "te", DL: "hi" },
   packs: {
     en: {
       react: {
@@ -139,72 +139,6 @@ window.AE_DIALOGUE = {
       cityCold: ["Google kar.", "Google it."]
     },
 
-    pa: {
-      react: {
-        m: { warm: [["Maada nahi, {name}. Main tainu naukri de dinda. Kise nu dassi na.", "Not bad, {name}. I'd hire you. Don't tell anyone."], ["Tera progress mere bhateeje ton tez aa. Bar neeva aa, phir vi.", "Faster than my nephew. Low bar, but still."]],
-             neutral: [["Hmm. Ik hafte baad puchhin.", "Hmm. Ask me in a week."], ["Har faisle di keemat hundi aa. Kujh EMI te hunde ne.", "Every decision has a price. Some are on EMI."]],
-             cold: [["Is ton changge faisle taan kabootar kar lainda.", "A pigeon makes better decisions."], ["Ronda na aayin. Chal, aa ja, par samose lai ke.", "Don't come crying. Fine, come, but bring samosas."]] },
-        v: { warm: [["Theek aa, smart si. Thoda jealous haan bas.", "Fine, that was smart. Just a bit jealous."], ["Sulah? Kal savere tak.", "Truce? Till tomorrow morning."]],
-             neutral: [["Vadiya move. Dekhde aan Monday tak chalda ke nahi.", "Nice move. Let's see if it lasts till Monday."], ["Main nazar rakh reha haan, {name}. Vehla haan is layi.", "I'm watching you, {name}. Only because I'm free."]],
-             cold: [["Mauj kar lai. Veervaar tak.", "Enjoy it. Till Thursday."], ["Is shehar ch sadde dona layi jagah nahi. Mere ego layi vi nahi.", "No room in this city for both of us. Not even my ego."]] },
-        f: { warm: [["Oye hoye, kamaal kar ditti! Party teri, obviously.", "Wow, amazing! Party's on you, obviously."], ["Legend! Is pal da screenshot lai.", "Legend! Screenshot this moment."]],
-             neutral: [["Okay... main eda kardi aan jive plan samajh aa gaya.", "Okay... I'll act like I understood the plan."], ["Himmat aa. Bewakoofi vi ho sakdi aa. Dekhde aan.", "Brave. Could be silly. Let's see."]],
-             cold: [["Tu kaun? Mera yaar kithe gaya?", "Who are you? Where's my friend?"], ["Jado yaad aave main zinda haan, phone kar layin.", "Call when you remember I'm alive."]] },
-        p: { warm: [["Family group ch paa ditta. 47 thumbs up aa gaye!", "Posted in the family group. 47 thumbs up already!"], ["Bada maan aa puttar! Hun kujh kha lai.", "So proud, child! Now eat something."]],
-             neutral: [["Theek aa theek aa. Roti khaadi?", "Okay okay. Did you eat?"], ["Gwaandiyan de munde di phir promotion ho gayi. Bas dass rahi aan.", "The neighbours' son got promoted again. Just saying."]],
-             cold: [["Main naraz nahi aan. Bas tinn motivational video bhej rahi aan.", "I'm not angry. Just sending three motivational videos."], ["Teri umar ch na phone si, na problem.", "At your age there was no phone and no problem."]] }
-      },
-      howru: {
-        m: { warm: ["Busy aan, par tera progress din da best hissa aa.", "Busy, but your progress is the best part of my day."], neutral: ["Ohi roz da. Kamm di chhutti nahi hundi.", "Same as always. Work takes no holiday."], cold: ["Theek. Kujh chahida ya time barbaad karna?", "Fine. Need something, or just wasting time?"] },
-        v: { warm: ["Sach dassan? Tere naal muqabla mainu sharp rakhda.", "Honestly? Competing with you keeps me sharp."], neutral: ["Vadiya. Tere ton changga, obviously.", "Great. Better than you, obviously."], cold: ["Kyon? Meri zindagi vi copy karni?", "Why? Want to copy my life too?"] },
-        f: { warm: ["Hun vadiya! Lassi peeyiye? Paise teri jeb ton.", "Better now! Lassi? Out of your pocket."], neutral: ["Umeed te Maggi te zinda haan.", "Surviving on hope and Maggi."], cold: ["Oh, hun mera number yaad aaya?", "Oh, now you remember my number?"] },
-        p: { warm: ["Sab vadiya! Teri photo hun mere phone da wallpaper aa.", "All good! Your photo is my phone wallpaper now."], neutral: ["Ohi sab. Tere papa ne pakha theek kita. Hale vi awaaz karda.", "Same. Papa fixed the fan. It still makes noise."], cold: ["Phone aunda taan pata hunda.", "If you called, we'd know."] }
-      },
-      opinion: {
-        m: { warm: ["Tainu dekh ke apni jawani yaad aundi aa. Compliment aa, zaya na karin.", "You remind me of my youth. It's a compliment, don't waste it."], neutral: ["Kaabliyat hai. Result... loading.", "Potential, yes. Results... loading."], cold: ["Sach? Ik hor maada hafta, phir lecture.", "Honestly? One more bad week, then a lecture."] },
-        v: { warm: ["Ithe main sirf teri izzat karda haan. Sir te na chadh.", "You're the only one I respect here. Don't let it go to your head."], neutral: ["Tu competition aa. Personal nahi. Accha, thoda personal.", "You're competition. Not personal. Okay, a bit personal."], cold: ["Tu mere raah ch aa. Paase ho ja, please.", "You're in my way. Move aside, please."] },
-        f: { warm: ["{city} ch mera favourite banda. Baaki dostan nu na dassin.", "My favourite person in {city}. Don't tell my other friends."], neutral: ["Theek aa. 7/10. Phir milange.", "Okay. 7/10. Would meet again."], cold: ["Hale faisla nahi kita. Lakshan changge nahi.", "Haven't decided. The signs aren't good."] },
-        p: { warm: ["Tu mera maan aa. Te meri retirement plan vi. Koi pressure nahi.", "You're my pride. And my retirement plan. No pressure."], neutral: ["Tu mera bachcha aa. 60 saal da vi hoyein, chinta karangi.", "You're my child. I'll worry even when you're 60."], cold: ["Mainu purana tu chahida. Aitvaar nu phone aunda si.", "I want the old you back. Sunday calls used to come."] }
-      },
-      advice: { m: ["Muft da gyaan: {tip}", "Free wisdom: {tip}"], v: ["Chal, ik tip, phir dushman: {tip}", "Fine, one tip, then enemies again: {tip}"], f: ["Yaar di salaah: {tip} Te so ja.", "Friend advice: {tip} And sleep."], p: ["Vaddeyan di gall sun: {tip} Te sweater paa.", "Listen to your elders: {tip} And wear a sweater."] },
-      adviceCold: ["Pehlan meri salaah kamaa.", "Earn my advice first."],
-      city: { m: ["Sun: {local}", "Listen: {local}"], v: ["{local} Tere ton nahi hona.", "{local} Not your cup of tea."], f: ["{local} Sab ton vadiya gall? Main.", "{local} Best part? Me."], p: ["{local} Bas tyohaar te ghar aa jaayin.", "{local} Just come home for festivals."] },
-      cityCold: ["Google kar lai.", "Google it."]
-    },
-
-    bn: {
-      react: {
-        m: { warm: [["Kharap na, {name}. Ami tomake chakri ditam. Kauke bolo na.", "Not bad, {name}. I'd hire you. Don't tell anyone."], ["Tomar progress amar bhaipor theke fast. Bar niche, tobuo.", "Faster than my nephew. Low bar, but still."]],
-             neutral: [["Hmm. Ek hapta pore jiggesh koro.", "Hmm. Ask me in a week."], ["Protyek siddhanter daam ache. Kichu EMI te.", "Every decision has a price. Some are on EMI."]],
-             cold: [["Er cheye bhalo siddhanto payra-o ney.", "Even a pigeon decides better."], ["Kaadte kaadte esho na. Accha esho, kintu telebhaja niye.", "Don't come crying. Fine, come, but bring telebhaja."]] },
-        v: { warm: [["Thik ache, smart chilo. Ektu hingshe hocche shudhu.", "Fine, that was smart. Just a little jealous."], ["Shandhi? Kaal shokal porjonto.", "Truce? Till tomorrow morning."]],
-             neutral: [["Bhalo chaal. Dekhi Shombar porjonto tike kina.", "Nice move. Let's see if it lasts till Monday."], ["Ami nojor rakhchi, {name}. Kaaj nei bole.", "I'm watching you, {name}. Only because I'm free."]],
-             cold: [["Moja koro. Brihoshpotibar porjonto.", "Enjoy it. Till Thursday."], ["Ei shohore amader dujoner jaayga nei. Amar ego-r-o nei.", "No room in this city for both of us. Not even my ego."]] },
-        f: { warm: [["Darun! Treat tomar, obviously.", "Brilliant! Treat's on you, obviously."], ["Legend! Ei muhurter screenshot nao.", "Legend! Screenshot this moment."]],
-             neutral: [["Accha... bhaab korchi plan ta bujhechi.", "Okay... I'll pretend I understood the plan."], ["Shahosh ache. Bokami-o hote pare. Dekha jak.", "Brave. Could be silly. Let's see."]],
-             cold: [["Tumi ke? Amar bondhu kothay?", "Who are you? Where's my friend?"], ["Mone porle je ami bneche achi, phone koro.", "Call when you remember I'm alive."]] },
-        p: { warm: [["Family group e diyechi. 47 ta thumbs up already!", "Posted in the family group. 47 thumbs up already!"], ["Khub gorbo hocche! Ebar kichu khao.", "So proud! Now eat something."]],
-             neutral: [["Accha accha. Kheyecho?", "Okay okay. Did you eat?"], ["Paasher barir chheler abar promotion holo. Emni bollam.", "The neighbour's son got promoted again. Just saying."]],
-             cold: [["Ami raag kori ni. Shudhu tinte motivational video pathachhi.", "I'm not angry. Just sending three motivational videos."], ["Tomar boyeshe amar phone-o chhilo na, problem-o na.", "At your age I had no phone and no problems."]] }
-      },
-      howru: {
-        m: { warm: ["Byasto, kintu tomar progress din-er shera ongsho.", "Busy, but your progress is the best part of my day."], neutral: ["Shei eki. Kaajer chhuti nei.", "Same as always. Work takes no holiday."], cold: ["Bhalo. Kichu lagbe, naki shudhu shomoy noshto?", "Fine. Need something, or just wasting time?"] },
-        v: { warm: ["Shotti bolbo? Tomar shathe protijogita amake sharp rakhe.", "Honestly? Competing with you keeps me sharp."], neutral: ["Darun. Tomar cheye bhalo, obviously.", "Great. Better than you, obviously."], cold: ["Keno? Amar jibon-o copy korbe?", "Why? Want to copy my life too?"] },
-        f: { warm: ["Ekhon bhalo! Cha khabe? Taka tumi debe.", "Better now! Tea? You're paying."], neutral: ["Asha aar Maggi diye bneche achi.", "Surviving on hope and Maggi."], cold: ["Oh, ekhon amar number mone porlo?", "Oh, now you remember my number?"] },
-        p: { warm: ["Shob bhalo! Tomar chhobi ekhon amar phone-er wallpaper.", "All good! Your photo is my phone wallpaper now."], neutral: ["Shei eki. Baba pakha thik koreche. Ekhono awaaz kore.", "Same. Baba fixed the fan. It still makes noise."], cold: ["Phone korle jaante.", "If you called, you'd know."] }
-      },
-      opinion: {
-        m: { warm: ["Tomake dekhe amar jouboner kotha mone pore. Compliment, noshto koro na.", "You remind me of my youth. It's a compliment, don't waste it."], neutral: ["Khomota ache. Result... loading.", "Potential, yes. Results... loading."], cold: ["Shotti? Aar ekta kharap hapta, tarpor lecture.", "Honestly? One more bad week, then a lecture."] },
-        v: { warm: ["Ekhane shudhu tomake shomman kori. Mathay uthe jeo na.", "You're the only one I respect here. Don't let it go to your head."], neutral: ["Tumi protidwondi. Personal na. Accha, ektu personal.", "You're competition. Not personal. Okay, a bit personal."], cold: ["Tumi amar raastay. Shoro, please.", "You're in my way. Move, please."] },
-        f: { warm: ["{city}-te amar favourite manush. Onno bondhuder bolo na.", "My favourite person in {city}. Don't tell my other friends."], neutral: ["Thik ache. 7/10. Abar adda debo.", "Okay. 7/10. Would adda again."], cold: ["Ekhono thik kori ni. Lokkhon bhalo na.", "Haven't decided. The signs aren't good."] },
-        p: { warm: ["Tumi amar gorbo. Aar amar retirement plan-o. Kono chap nei.", "You're my pride. And my retirement plan. No pressure."], neutral: ["Tumi amar shontan. 60 bochor holeo chinta korbo.", "You're my child. I'll worry even when you're 60."], cold: ["Purono tomake chai. Je Robibar phone korto.", "I want the old you back. The one who called on Sundays."] }
-      },
-      advice: { m: ["Free te gyan: {tip}", "Free wisdom: {tip}"], v: ["Accha, ekta tip, tarpor abar shotru: {tip}", "Fine, one tip, then enemies again: {tip}"], f: ["Bondhur poramorsho: {tip} Aar ghumao.", "Friend advice: {tip} And sleep."], p: ["Boro der kotha shono: {tip} Aar sweater poro.", "Listen to your elders: {tip} And wear a sweater."] },
-      adviceCold: ["Age amar poramorsho arjon koro.", "Earn my advice first."],
-      city: { m: ["Shono: {local}", "Listen: {local}"], v: ["{local} Tumi tikte parbe, shondeho ache.", "{local} Doubt you'll last."], f: ["{local} Shobcheye bhalo jinish? Ami.", "{local} Best part? Me."], p: ["{local} Shudhu Pujor shomoy bari esho.", "{local} Just come home for Puja."] },
-      cityCold: ["Google koro.", "Google it."]
-    },
-
     kn: {
       react: {
         m: { warm: [["Kettadilla, {name}. Ninage kelsa kodtidde. Yaarigu helbeda.", "Not bad, {name}. I'd hire you. Don't tell anyone."], ["Nin progress nan aliyanigintha fast ide. Bar kelage ide, aadru.", "Faster than my nephew. Low bar, but still."]],
@@ -236,6 +170,39 @@ window.AE_DIALOGUE = {
       adviceCold: ["Modalu nan salahe sampaadisu.", "Earn my advice first."],
       city: { m: ["Kelu: {local}", "Listen: {local}"], v: ["{local} Neenu uLiyteeya anta anumaana.", "{local} Doubt you'll last."], f: ["{local} Best part? Naanu.", "{local} Best part? Me."], p: ["{local} Habbakke manege baa.", "{local} Come home for festivals."] },
       cityCold: ["Google maadu.", "Google it."]
+    },
+
+    te: {
+      react: {
+        m: { warm: [["Baagundi {name}. Ninnu udyogamlo pettukuntaanu. Evvarikee cheppaku.", "Not bad, {name}. I'd hire you. Don't tell anyone."], ["Maa menalludi kanna fast ga nerchukuntunnav. Adi pedda goppa kaadu, ainaa.", "You learn faster than my nephew. Low bar, but still."]],
+             neutral: [["Hmm. Oka vaaram aagi malli adugu.", "Hmm. Ask me again in a week."], ["Prathi nirnayaaniki oka dhara undi. Konni EMI lo.", "Every decision has a price. Some are on EMI."]],
+             cold: [["Deeni kanna paavuram baaga decide chestundi.", "A pigeon decides better than this."], ["Edustu raaku. Sare raa, kaani samosalu techhuko.", "Don't come crying. Okay, come, but bring samosas."]] },
+        v: { warm: [["Sare, adi smart move. Naaku konchem asooya ga undi.", "Fine, that was smart. I'm a little jealous."], ["Sandhi? Repu podduna varaku maatrame.", "Truce? Only till tomorrow morning."]],
+             neutral: [["Manchi move. Somavaram varaku nilustundo choodaali.", "Nice move. Let's see if it lasts till Monday."], ["Ninnu gamanistunnaa, {name}. Vere pani ledu kaabatti.", "I'm watching you, {name}. Only because I'm free."]],
+             cold: [["Enjoy cheyyi. Guruvaaram varaku.", "Enjoy it. Till Thursday."], ["Ee ooru manaiddariki saripodu. Naa ego ki kooda.", "This town isn't big enough for both of us. Or my ego."]] },
+        f: { warm: [["Mama, adaragottav! Treat nuvve, obviously.", "Mama, you smashed it! Treat's on you, obviously."], ["Legend! Ee moment ki screenshot teeyi.", "Legend! Screenshot this moment."]],
+             neutral: [["Sare... nee plan ardhamaindi ani natistaanu.", "Okay... I'll pretend I understood your plan."], ["Dhairyam undi. Pichi kooda kaavachu. Chooddaam.", "Brave. Could also be crazy. Let's see."]],
+             cold: [["Nuvvu evaru? Naa friend ekkada?", "Who are you? Where's my friend?"], ["Nenu brathiki unnaanani gurthocchinappudu call cheyyi.", "Call me when you remember I'm alive."]] },
+        p: { warm: [["Family group lo pettaanu. Appude 47 thumbs up!", "Posted in the family group. 47 thumbs up already!"], ["Chaala garvanga undi raa! Ippudu emaina tinu.", "So proud of you! Now eat something."]],
+             neutral: [["Sare sare. Annam tinnava?", "Okay okay. Did you eat?"], ["Pakkinti abbayiki malli promotion vacchindi. Oorike cheptunnaa.", "The neighbour's boy got promoted again. Just saying."]],
+             cold: [["Naaku kopam ledu. Moodu motivation videos pamputunnaa, anthe.", "I'm not angry. Just sending three motivation videos."], ["Nee vayasulo naaku phone ledu, problems kooda levu.", "At your age I had no phone and no problems."]] }
+      },
+      howru: {
+        m: { warm: ["Busy ga unnaa, kaani nee progress choodatame naa rojulo best part.", "Busy, but your progress is the best part of my day."], neutral: ["Eppatilaage. Paniki selavulu undavu.", "Same as always. Work has no holidays."], cold: ["Baagunnaa. Emaina kaavaala, leka time waste aa?", "Fine. Need something, or just wasting time?"] },
+        v: { warm: ["Nijam cheppaalante? Neetho potee nannu sharp ga unchutundi.", "Honestly? Competing with you keeps me sharp."], neutral: ["Super. Nee kanna better, obviously.", "Great. Better than you, obviously."], cold: ["Enduku? Naa life kooda copy kottadaanikaa?", "Why? Planning to copy my life too?"] },
+        f: { warm: ["Ippudu better! Saayantram chai? Nuvve pay cheyyaali.", "Better now! Chai this evening? You're paying."], neutral: ["Aasa meeda, Maggi meeda brathukutunnaa.", "Surviving on hope and Maggi."], cold: ["Oh, ippudu naa number gurthocchindaa?", "Oh, now you remember my number?"] },
+        p: { warm: ["Antha baagundi! Nee photo ippudu naa phone wallpaper.", "All good! Your photo is my phone wallpaper now."], neutral: ["Eppatilaage. Mee naanna fan baagu chesaaru. Inkaa sound chestundi.", "Same. Your father fixed the fan. It still makes noise."], cold: ["Nuvvu call chesthe telustundi kadaa.", "We'd know how you are if you called."] }
+      },
+      opinion: {
+        m: { warm: ["Nee vayasulo nenu ilaage undevaadini. Idi compliment, waste cheyyaku.", "You remind me of me at your age. It's a compliment."], neutral: ["Potential undi. Results... inkaa loading.", "Potential, yes. Results... still loading."], cold: ["Nijam cheppaalante? Inko chedda vaaram vasthe lecture vintaav.", "Honestly? One more bad week and you get a lecture."] },
+        v: { warm: ["Ikkada nenu respect chese okkadivi nuvve. Talaki ekkinchukoku.", "You're the only one here I respect. Don't let it go to your head."], neutral: ["Nuvvu competition. Personal kaadu. Sare, konchem personal.", "You're competition. Nothing personal. Okay, a little."], cold: ["Naa daariki addam vasthunnav. Konchem pakkaki jarugu.", "You're in my way. Kindly move aside."] },
+        f: { warm: ["{city} lo naa favourite person nuvve. Migathavaallaki cheppaku.", "My favourite person in {city}. Don't tell the others."], neutral: ["Nuvvu okay. 7/10. Malli kalustaanu.", "You're okay. 7/10. Would meet again."], cold: ["Inkaa decide chestunnaa. Baagaa ledu.", "Still deciding. It's not looking good."] },
+        p: { warm: ["Nuvve naa garvam. Naa retirement plan kooda. Pressure ledu.", "You're my pride. Also my retirement plan. No pressure."], neutral: ["Nuvvu naa biddavi. Neeku 60 ellochinaa nenu tension padathaa.", "You're my child. I'll worry even when you're 60."], cold: ["Paata nuvvu kaavaali. Aadivaaram call chese aa nuvvu.", "I want the old you back. The one who called on Sundays."] }
+      },
+      advice: { m: ["Free salaha: {tip}", "Free advice: {tip}"], v: ["Sare, okka tip, tarvaatha malli shatruvulam: {tip}", "Fine, one tip, then we're enemies again: {tip}"], f: ["Friend salaha: {tip} Inkaa, nidrapo.", "Friend advice: {tip} Also, sleep."], p: ["Peddala maata vinu: {tip} Sweater kooda vesuko.", "Listen to your elders: {tip} And wear a sweater."] },
+      adviceCold: ["Mundu naa salaha sampaadinchu.", "Earn my advice first."],
+      city: { m: ["Vinu: {local}", "Listen: {local}"], v: ["{local} Nuvvu tattukuntavo ledo telidu.", "{local} Not sure you'll survive it."], f: ["{local} Best part? Nenu.", "{local} Best part? Me."], p: ["{local} Pandagalaki intiki vacchey.", "{local} Just come home for festivals."] },
+      cityCold: ["Google cheyyi.", "Google it."]
     }
   }
 };
