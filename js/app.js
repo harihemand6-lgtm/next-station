@@ -1,0 +1,384 @@
+// Next Station — UI layer. All game rules live in engine.js; this file only renders and routes.
+(function () {
+  const GAME_NAME = "Next Station";
+  const AE = window.AE, AV = window.AE_AVATAR, LIVES = window.AE_LIVES, STATES = window.AE_STATES, MAP = window.AE_MAP, COMMON = window.AE_COMMON;
+  const $app = document.getElementById("app");
+
+  // ── storage (browser only, never leaves the device) ──
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } },
+    del(k) { try { localStorage.removeItem(k); } catch (e) { } }
+  };
+  const blankProfile = () => ({ xp: 0, lives: [], states: [], endings: [], badges: [], dailies: [], runs: 0 });
+  let char = store.get("ns.char", null);
+  let profile = store.get("ns.profile", blankProfile());
+  let game = store.get("ns.game", null);
+  let ui = { view: "home", stateId: null, lifeId: null, daily: null, outcome: null, talk: null, talkRole: null, talkAnswer: null, confirmReset: false, draft: null, copied: false, newBadges: [], xpGain: 0 };
+
+  const save = () => { store.set("ns.char", char); store.set("ns.profile", profile); store.set("ns.game", game); };
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const inr = AE.inr;
+  const level = xp => Math.floor(Math.sqrt(xp / 60)) + 1;
+  const today = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+  const lifeById = id => LIVES.find(l => l.id === id);
+  const unitPlural = u => u.toLowerCase() + "s";
+  const fillS = (t, stateId, lifeId) => {
+    const s = STATES[stateId], L = lifeById(lifeId);
+    const w = { city: s.city, state: s.name, stall: s.food.stall, food: s.food.item, craft: s.craft.item, film: s.film, sport: s.sport, lang: s.lang,
+      start: L ? Math.round(L.cash0 * (L.raw ? 1 : s.ci)).toLocaleString("en-IN") : "" };
+    return t.replace(/\{(\w+)\}/g, (m, k) => (w[k] !== undefined ? w[k] : m));
+  };
+
+  function go(view, extra) { Object.assign(ui, { view, outcome: null, talk: null, talkRole: null, talkAnswer: null, confirmReset: false, copied: false }, extra || {}); render(); window.scrollTo(0, 0); }
+
+  // ── shared bits ──
+  const topbar = (back) => `
+    <header class="topbar">
+      ${back ? `<button class="icon-btn" data-act="${back}" aria-label="Back">←</button>` : `<span class="brand"><span class="brand-dot"></span>${GAME_NAME}</span>`}
+      ${back ? `<span class="brand small">${GAME_NAME}</span>` : ""}
+      <button class="chip-btn" data-act="profile" aria-label="Your profile">${char ? `<span class="mini-av">${AV.svg(char, 22)}</span>` : ""}Lv ${level(profile.xp)}</button>
+    </header>`;
+  const footer = () => `<footer class="foot">A fictional game. People, companies, shows and exams are made up. Not career, legal or investment advice. Your character and progress are saved only on this device.</footer>`;
+
+  // ── HOME ──
+  function vHome() {
+    const d = AE.dailyPick(today()), dl = lifeById(d.lifeId), ds = STATES[d.stateId];
+    const cont = game && !game.done;
+    const done = profile.dailies.indexOf(today()) >= 0;
+    return `${topbar()}
+    <main class="wrap">
+      <section class="hero">
+        <p class="kicker">India-wide life simulator · 10 lives · 36 stations</p>
+        <h1>Live a thousand lives.<br><span class="hl">Discover your own.</span></h1>
+        <p class="lede">Run a ${esc(STATES.KL.food.stall)} in Kochi, crack a government exam in Kolkata or survive Spotlight House. Every choice costs pretend rupees and has real consequences.</p>
+        <div class="row">
+          ${cont ? `<button class="btn primary" data-act="resume">Continue: ${esc(lifeById(game.lifeId).title)}, ${esc(STATES[game.stateId].city)}</button>` : ""}
+          <button class="btn ${cont ? "" : "primary"}" data-act="newlife">${char ? "Start a new life" : "Create your character"}</button>
+        </div>
+      </section>
+      <section class="ticket">
+        <div class="ticket-l"><span class="tag">Today's challenge</span><h2>${esc(dl.title)}</h2><p>${esc(ds.city)}, ${esc(ds.name)} · same day for every player</p></div>
+        <button class="btn ${done ? "" : "accent2"}" data-act="daily">${done ? "Played today ✓ Replay" : "Play today's challenge"}</button>
+      </section>
+      <h3 class="sec">The lives</h3>
+      <div class="life-rail">${LIVES.map(L => `<div class="life-pill"><b>${esc(L.title)}</b><span>${L.unit === "Week" ? "6 weeks" : "6 months"}${L.mature ? " · Mature" : ""}</span></div>`).join("")}</div>
+      <h3 class="sec">The route</h3>
+      ${mapHTML(null, true)}
+    </main>${footer()}`;
+  }
+
+  // ── MAP ──
+  function mapHTML(sel, mini) {
+    const cells = MAP.map(([id, name, c, r]) => {
+      const live = !!STATES[id];
+      return `<button class="tile ${live ? "live" : ""} ${sel === id ? "sel" : ""}" style="grid-column:${c + 1};grid-row:${r + 1};${live ? `--h:${STATES[id].hue}` : ""}" ${mini ? "tabindex='-1'" : `data-act="pickstate" data-arg="${id}"`} title="${esc(name)}${live ? "" : " (coming soon)"}" aria-label="${esc(name)}${live ? "" : ", coming soon"}">${id}</button>`;
+    }).join("");
+    return `<div class="map ${mini ? "mini" : ""}" role="group" aria-label="Map of Indian states">${cells}</div>`;
+  }
+  function vState() {
+    const s = ui.stateId && STATES[ui.stateId];
+    const m = ui.stateId && MAP.find(x => x[0] === ui.stateId);
+    return `${topbar("home")}
+    <main class="wrap">
+      <h1 class="h1s">Choose your station</h1>
+      <p class="lede">Six states are open now: Kerala, Maharashtra, Punjab, West Bengal, Rajasthan and Karnataka. The rest of India is on the route and coming soon.</p>
+      ${mapHTML(ui.stateId, false)}
+      ${s ? `<section class="panel state-panel" style="--h:${s.hue}">
+          <p class="kicker">${esc(s.greet)} · ${esc(s.city)}</p><h2>${esc(s.name)}</h2><p>${esc(s.blurb)}</p>
+          <ul class="facts"><li><span>Street food</span>${esc(s.food.item)}</li><li><span>Craft</span>${esc(s.craft.item)}</li><li><span>Festival</span>${esc(s.festival)}</li></ul>
+          <button class="btn primary" data-act="tolife">Choose a life in ${esc(s.name)}</button></section>`
+        : m ? `<section class="panel"><h2>${esc(m[1])}</h2><p>This station isn't open yet. Its storyline is coming in a future update.</p></section>`
+        : `<p class="hint">Tap a highlighted state.</p>`}
+    </main>${footer()}`;
+  }
+
+  // ── LIFE PICK ──
+  function vLife() {
+    const s = STATES[ui.stateId];
+    return `${topbar("newlife")}
+    <main class="wrap">
+      <p class="kicker">${esc(s.city)}, ${esc(s.name)}</p><h1 class="h1s">Choose a life</h1>
+      <div class="cards">${LIVES.map(L => `
+        <button class="life-card" data-act="picklife" data-arg="${L.id}" style="--h:${s.hue}">
+          <span class="lc-top"><b>${esc(L.title)}</b>${L.mature ? `<span class="pill warn">Mature</span>` : ""}</span>
+          <span class="lc-tag">${esc(fillS(L.tag, ui.stateId, L.id))}</span>
+          <span class="lc-meta">6 ${unitPlural(L.unit)} · ${profile.lives.indexOf(L.id) >= 0 ? "Played" : "New"}</span>
+        </button>`).join("")}</div>
+    </main>${footer()}`;
+  }
+
+  function vIntro() {
+    const s = STATES[ui.stateId], L = lifeById(ui.lifeId);
+    return `${topbar(ui.daily ? "home" : "tolife")}
+    <main class="wrap">
+      <section class="panel intro" style="--h:${s.hue}">
+        ${ui.daily ? `<span class="tag">Today's challenge</span>` : ""}
+        <p class="kicker">${esc(s.city)}, ${esc(s.name)}</p>
+        <h1 class="h1s">${esc(L.title)}</h1>
+        <p class="lede">${esc(fillS(L.blurb, ui.stateId, L.id))}</p>
+        ${L.mature ? `<p class="note warn">Mature theme: this life shows the real risks of speculative trading and debt. It contains no real money and is not investment advice.</p>` : ""}
+        <h3 class="sec">Who you'll meet</h3>
+        <ul class="cast">${["m", "v", "f", "p"].map(r => `<li><span class="init" data-role="${r}">${esc(s.cast[r][0])}</span><div><b>${esc(s.cast[r])}</b><span>${esc(L.roles[r])}</span></div></li>`).join("")}</ul>
+        <p class="hint">6 ${unitPlural(L.unit)}, 3 decisions each. Talk to people between decisions to build relationships.</p>
+        <button class="btn primary big" data-act="start">Start this life</button>
+      </section>
+    </main>${footer()}`;
+  }
+
+  // ── CHARACTER CREATOR ──
+  function vCreator() {
+    const d = ui.draft;
+    const sw = (key, arr) => arr.map((c, i) => `<button class="sw ${d[key] === i ? "on" : ""}" style="background:${c}" data-act="set" data-k="${key}" data-v="${i}" aria-label="Colour ${i + 1}"></button>`).join("");
+    const chips = (key, arr, labels) => arr.map((v, i) => `<button class="chip ${d[key] === v ? "on" : ""}" data-act="set" data-k="${key}" data-v="${v}">${labels ? labels[i] : v}</button>`).join("");
+    return `${topbar("home")}
+    <main class="wrap creator">
+      <h1 class="h1s">Create your character</h1>
+      <div class="creator-grid">
+        <div class="preview"><div id="avatar">${AV.svg(d, 150)}</div><p class="pv-name">${esc(d.name || "Your name")}</p><p class="hint">${d.height} cm · ${d.weight} kg</p></div>
+        <div class="fields">
+          <label class="f"><span>Name</span><input id="f-name" maxlength="18" value="${esc(d.name)}" placeholder="e.g. Arjun" autocomplete="off"></label>
+          <div class="f"><span>Pronouns</span><div class="chips">${chips("pronoun", ["he", "she", "they"], ["He/him", "She/her", "They/them"])}</div></div>
+          <div class="f"><span>Skin tone</span><div class="sws">${sw("skin", AV.SKIN)}</div></div>
+          <label class="f"><span>Height: <b id="hv">${d.height} cm</b></span><input type="range" id="f-height" min="140" max="200" value="${d.height}"></label>
+          <label class="f"><span>Weight: <b id="wv">${d.weight} kg</b></span><input type="range" id="f-weight" min="40" max="120" value="${d.weight}"></label>
+          <div class="f"><span>Hair</span><div class="chips">${chips("hair", AV.STYLES.hair)}</div></div>
+          <div class="f"><span>Hair colour</span><div class="sws">${sw("hairColor", AV.HAIR)}</div></div>
+          <div class="f"><span>Outfit</span><div class="chips">${chips("top", AV.STYLES.top)}</div></div>
+          <div class="f"><span>Outfit colour</span><div class="sws">${sw("outfit", AV.OUTFIT)}</div></div>
+          <div class="f"><span>Extras</span><div class="chips">${chips("acc", AV.STYLES.acc)}</div></div>
+          <p class="note">Looks are just for fun. They never change your story, chances or results.</p>
+          <button class="btn primary big" data-act="savechar">Save character</button>
+        </div>
+      </div>
+    </main>${footer()}`;
+  }
+
+  // ── PLAY ──
+  function hud(g) {
+    const L = AE.life(g);
+    const bar = (label, v, cls) => `<div class="stat ${cls || ""}"><span>${label}</span><div class="bar"><i style="width:${v}%"></i></div><b>${Math.round(v)}</b></div>`;
+    return `<section class="hud">
+      <div class="hud-top"><div class="cash"><span>Cash</span><b class="${g.cash < 0 ? "neg" : ""}">${inr(g.cash)}</b></div>
+        <div class="prog"><span>${L.unit} ${Math.min(g.chapter, 6)} of 6</span><div class="dots">${[0, 1, 2].map(i => `<i class="${i < g.step ? "on" : ""}"></i>`).join("")}</div></div></div>
+      <div class="stats">${bar("Reputation", g.r)}${bar("Happiness", g.h, g.h < 30 ? "low" : "")}${bar(esc(L.sl), g.s)}
+        <div class="stat metric"><span>${esc(L.xl)}</span><b>${AE.metric(g)}</b></div></div>
+    </section>`;
+  }
+  function deltaPills(d, g) {
+    const L = AE.life(g), out = [];
+    if (d.cash) out.push(`<span class="dp ${d.cash > 0 ? "up" : "down"}">${d.cash > 0 ? "+" : ""}${inr(d.cash)}</span>`);
+    const names = { r: "Reputation", h: "Happiness", s: L.sl, x: L.xl };
+    ["r", "h", "s", "x"].forEach(k => { if (d[k]) out.push(`<span class="dp ${d[k] > 0 ? "up" : "down"}">${esc(names[k])} ${d[k] > 0 ? "+" : ""}${d[k]}</span>`); });
+    ["m", "v", "f", "p"].forEach(k => { const v = d["rel_" + k]; if (v) out.push(`<span class="dp ${v > 0 ? "up" : "down"}">${esc(AE.st(g).cast[k])} ${v > 0 ? "♥" : "↓"}</span>`); });
+    return out.join("");
+  }
+  function vPlay() {
+    const g = game, s = AE.st(g), L = AE.life(g);
+    if (g.done) return vEnding();
+    let body;
+    if (ui.outcome) {
+      const o = ui.outcome;
+      body = `<section class="card outcome">
+        ${o.passed === true ? `<span class="pill good">It worked</span>` : o.passed === false ? `<span class="pill bad">Didn't work out</span>` : ""}
+        <p class="result">${esc(o.text)}</p>
+        <div class="deltas">${deltaPills(o.d, g)}</div>
+        ${o.reaction ? `<div class="bubble"><span class="init" data-role="${o.reaction.role}">${esc(o.reaction.name[0])}</span><div><b>${esc(o.reaction.name)}</b><p>“${esc(o.reaction.line)}”</p></div></div>` : ""}
+        <button class="btn primary big" data-act="next">${o.summary ? (g.done ? "See how it ended" : `End of ${L.unit.toLowerCase()} ${o.summary.chapter}`) : "Continue"}</button>
+      </section>`;
+    } else {
+      const ev = AE.nextEvent(g); save();
+      const who = ev.who;
+      body = `<section class="card event">
+        ${who ? `<div class="speaker"><span class="init" data-role="${who}">${esc(s.cast[who][0])}</span><b>${esc(s.cast[who])}</b><span>${esc(L.roles[who])}</span></div>` : ""}
+        <p class="ev-text">${esc(AE.fill(ev.t, g))}</p>
+        <div class="choices">${ev.c.map((c, i) => {
+          const can = AE.canChoose(g, c), need = AE.needOf(g, c);
+          const risk = c.ck ? `<span class="pill">${Math.round(AE.chance(g, c.ck) * 100)}% chance</span>` : "";
+          return `<button class="choice" data-act="choose" data-arg="${i}" ${can ? "" : "disabled"}><span>${esc(AE.fill(c.l, g))}</span>${risk}${!can ? `<span class="pill bad">Needs ${inr(need)}</span>` : ""}</button>`;
+        }).join("")}</div>
+      </section>
+      <button class="btn ghost" data-act="talk">Talk to someone <span class="pill">${g.talks} bonding chats left</span></button>`;
+    }
+    return `${topbar("home")}<main class="wrap play" style="--h:${s.hue}">
+      <p class="kicker">${esc(L.title)} · ${esc(s.city)}</p>
+      ${hud(g)}${body}${ui.talk ? talkSheet() : ""}</main>`;
+  }
+
+  function talkSheet() {
+    const g = game, s = AE.st(g), L = AE.life(g);
+    const role = ui.talkRole;
+    let inner;
+    if (!role) {
+      inner = `<h2>Who do you want to talk to?</h2><ul class="cast pick">${["m", "v", "f", "p"].map(r => {
+        const md = AE.mood(g.rel[r]);
+        return `<li><button data-act="talkto" data-arg="${r}"><span class="init" data-role="${r}">${esc(s.cast[r][0])}</span><div><b>${esc(s.cast[r])}</b><span>${esc(L.roles[r])}</span></div><span class="pill ${md === "warm" ? "good" : md === "cold" ? "bad" : ""}">${md === "warm" ? "Friendly" : md === "cold" ? "Cold" : "Neutral"}</span></button></li>`;
+      }).join("")}</ul>`;
+    } else {
+      inner = `<div class="speaker"><span class="init" data-role="${role}">${esc(s.cast[role][0])}</span><b>${esc(s.cast[role])}</b></div>
+        ${ui.talkAnswer ? `<div class="bubble big"><p>“${esc(ui.talkAnswer.text)}”</p>${ui.talkAnswer.gain ? `<span class="pill good">You grew closer</span>` : ""}</div>` : ""}
+        <div class="choices">${COMMON.talk.map((t, i) => `<button class="choice small" data-act="ask" data-arg="${i}">${esc(AE.fill(t.q, g))}</button>`).join("")}</div>
+        <button class="btn ghost" data-act="talkback">Talk to someone else</button>`;
+    }
+    return `<div class="sheet-bg" data-act="closetalk"></div><section class="sheet" role="dialog" aria-label="Talk">${inner}<button class="btn" data-act="closetalk">Back to your day</button></section>`;
+  }
+
+  // ── CHAPTER SUMMARY ──
+  function vSummary() {
+    const g = game, sm = g.summary, L = AE.life(g);
+    return `${topbar("home")}<main class="wrap" style="--h:${AE.st(g).hue}">
+      <section class="card">
+        <p class="kicker">${esc(L.title)} · ${esc(AE.st(g).city)}</p>
+        <h1 class="h1s">${L.unit} ${sm.chapter} wrap-up</h1>
+        <table class="ledger">${sm.lines.map(l => `<tr><td>${esc(l.label)}</td><td class="${l.kind === "money" ? (l.amount >= 0 ? "up" : "down") : ""}">${l.kind === "money" ? (l.amount > 0 ? "+" : "") + inr(l.amount) : l.amount.toLocaleString("en-IN")}</td></tr>`).join("")}
+          <tr class="tot"><td>Net this ${L.unit.toLowerCase()}</td><td class="${sm.net >= 0 ? "up" : "down"}">${sm.net > 0 ? "+" : ""}${inr(sm.net)}</td></tr>
+          <tr class="tot"><td>Cash now</td><td>${inr(sm.cash)}</td></tr></table>
+        <p class="hint">${esc(L.xl)}: ${AE.metric(g)} · Reputation ${g.r} · Happiness ${g.h}</p>
+        <button class="btn primary big" data-act="aftersummary">${g.done ? "See how your life turned out" : `Start ${L.unit.toLowerCase()} ${g.chapter}`}</button>
+      </section></main>`;
+  }
+
+  // ── ENDING ──
+  function award(g) {
+    if (g.awarded) return;
+    g.awarded = true;
+    const before = profile.badges.slice(), xp0 = profile.xp;
+    profile.runs++;
+    let xp = 100;
+    if (profile.lives.indexOf(g.lifeId) < 0) { profile.lives.push(g.lifeId); xp += 30; }
+    if (profile.states.indexOf(g.stateId) < 0) profile.states.push(g.stateId);
+    const ek = g.lifeId + ":" + g.result.id;
+    if (profile.endings.indexOf(ek) < 0) { profile.endings.push(ek); xp += 40; }
+    if (g.daily && profile.dailies.indexOf(g.daily) < 0) { profile.dailies.push(g.daily); xp += 50; }
+    profile.xp += xp;
+    const B = id => { if (profile.badges.indexOf(id) < 0) profile.badges.push(id); };
+    B("first");
+    if (profile.lives.length >= 5) B("five");
+    if (profile.lives.length >= 10) B("all10");
+    if (Object.keys(STATES).every(k => profile.states.indexOf(k) >= 0)) B("explorer");
+    if (g.stateId === "KL") B("kerala");
+    if (g.shady === 0) B("honest");
+    if (g.cash >= 100000) B("lakh");
+    if (g.minCash < 1000 && g.cash >= 10000) B("comeback");
+    if (["m", "v", "f", "p"].every(r => g.rel[r] >= 30)) B("friends");
+    if (profile.endings.length >= 12) B("endings");
+    if (g.daily) B("daily");
+    if (g.lifeId === "trader" && AE.has(g, "quit")) B("walked");
+    if (AE.has(g, "emergencyfund")) B("rainy");
+    ui.newBadges = profile.badges.filter(b => before.indexOf(b) < 0);
+    ui.xpGain = profile.xp - xp0;
+    save();
+  }
+  function shareText(g) {
+    const L = AE.life(g), s = AE.st(g);
+    const row = (g.nets || []).map(n => (n >= 0 ? "▲" : "▼")).join("");
+    return `${GAME_NAME.toUpperCase()} · ${L.title} · ${s.city}${g.daily ? " · Daily " + g.daily : ""}\n${L.unit} 6 · ${inr(g.cash)} · Rep ${g.r} · Ending: ${g.result.t}\n${row}\n(simulation achievement, not real money)`;
+  }
+  function vEnding() {
+    const g = game, L = AE.life(g), s = AE.st(g);
+    award(g);
+    const bad = ["margincall", "broke", "burnout", "banned", "suspended"].indexOf(g.result.id) >= 0;
+    const key = g.log.slice().sort((a, b) => (Math.abs(b.d.cash || 0) / 1000 + Math.abs(b.d.r || 0) + Math.abs(b.d.x || 0)) - (Math.abs(a.d.cash || 0) / 1000 + Math.abs(a.d.r || 0) + Math.abs(a.d.x || 0))).slice(0, 3);
+    const badgeById = id => COMMON.badges.find(b => b.id === id);
+    return `${topbar("home")}<main class="wrap" style="--h:${s.hue}">
+      <section class="card ending">
+        <div class="end-head"><div class="end-av">${AV.svg(g.player, 96)}</div><div><p class="kicker">${esc(L.title)} · ${esc(s.city)}, ${esc(s.name)}</p><h1 class="h1s">${esc(g.result.t)}</h1><p>${esc(g.result.d)}</p></div></div>
+        <div class="grid4"><div><span>Final cash</span><b>${inr(g.cash)}</b></div><div><span>Reputation</span><b>${g.r}</b></div><div><span>${esc(L.xl)}</span><b>${AE.metric(g)}</b></div><div><span>Happiness</span><b>${g.h}</b></div></div>
+        ${ui.xpGain ? `<p class="xp">+${ui.xpGain} XP · Level ${level(profile.xp)}</p>` : ""}
+        ${ui.newBadges.length ? `<div class="badges new">${ui.newBadges.map(b => `<span class="badge on"><b>${esc(badgeById(b).t)}</b>${esc(badgeById(b).d)}</span>`).join("")}</div>` : ""}
+        ${bad && (g.lifeId === "trader" || g.result.id === "burnout" || g.result.id === "broke") ? `<p class="note warn">If money stress or anxiety is affecting you in real life, Tele-MANAS is the government's free, 24/7 mental health helpline: <b>14416</b> or <b>1-800-891-4416</b>.</p>` : ""}
+      </section>
+      <section class="card"><h2>The moments that mattered</h2>
+        <ol class="key">${key.map(k => `<li><p class="q">${esc(k.t)}</p><p><b>You chose:</b> ${esc(k.l)}</p><p class="hint">${esc(k.r)}</p>${k.alt.length ? `<p class="what">What if you'd chosen: ${k.alt.map(esc).join(" / ")}?</p>` : ""}</li>`).join("")}</ol></section>
+      <section class="card"><h2>Your journey</h2>
+        <ol class="timeline">${g.log.map(e => `<li><span>${L.unit[0]}${e.c}</span><div><b>${esc(e.l)}</b><p>${esc(e.r)}</p></div></li>`).join("")}</ol></section>
+      <section class="card"><h2>Reality check</h2><p>${esc(AE.REALITY[g.lifeId])}</p></section>
+      <section class="card"><h2>Share your result</h2><pre class="share" id="sharetext">${esc(shareText(g))}</pre>
+        <button class="btn accent2" data-act="copy">${ui.copied ? "Copied ✓" : "Copy result"}</button><p class="hint">Paste it on WhatsApp or Instagram and challenge friends to beat you.</p></section>
+      <div class="row center"><button class="btn primary" data-act="again">Play this life again</button><button class="btn" data-act="newlife">Try another life</button></div>
+    </main>${footer()}`;
+  }
+
+  // ── PROFILE ──
+  function vProfile() {
+    const lv = level(profile.xp), next = Math.pow(lv, 2) * 60, prev = Math.pow(lv - 1, 2) * 60;
+    const totalEnds = LIVES.reduce((n, L) => n + L.end.length, 0);
+    return `${topbar("home")}<main class="wrap">
+      <section class="card prof">
+        <div class="end-head"><div class="end-av">${char ? AV.svg(char, 90) : ""}</div><div><h1 class="h1s">${esc(char ? char.name : "No character yet")}</h1><p>Level ${lv} · ${profile.xp} XP</p>
+          <div class="bar wide"><i style="width:${Math.min(100, (profile.xp - prev) / (next - prev) * 100)}%"></i></div></div></div>
+        <div class="grid4"><div><span>Lives finished</span><b>${profile.lives.length}/10</b></div><div><span>States played</span><b>${profile.states.length}/6</b></div><div><span>Endings found</span><b>${profile.endings.length}/${totalEnds}</b></div><div><span>Runs</span><b>${profile.runs}</b></div></div>
+        <button class="btn" data-act="editchar">Edit character</button>
+      </section>
+      <section class="card"><h2>Badges</h2><div class="badges">${COMMON.badges.map(b => `<span class="badge ${profile.badges.indexOf(b.id) >= 0 ? "on" : ""}"><b>${esc(b.t)}</b>${esc(b.d)}</span>`).join("")}</div></section>
+      <section class="card"><h2>Your data</h2><p class="hint">Everything is stored only in this browser. Nothing is sent anywhere.</p>
+        ${ui.confirmReset ? `<p>Delete your character and all progress? This can't be undone.</p><div class="row"><button class="btn danger" data-act="reset">Yes, delete everything</button><button class="btn" data-act="profile">Cancel</button></div>`
+        : `<button class="btn ghost" data-act="askreset">Reset all data</button>`}</section>
+    </main>${footer()}`;
+  }
+
+  // ── render & events ──
+  function render() {
+    const V = { home: vHome, state: vState, life: vLife, intro: vIntro, creator: vCreator, play: vPlay, summary: vSummary, profile: vProfile }[ui.view] || vHome;
+    $app.innerHTML = V();
+    if (ui.view === "creator") bindCreator();
+  }
+  function bindCreator() {
+    const d = ui.draft, upd = () => { document.getElementById("avatar").innerHTML = AV.svg(d, 150); document.getElementById("hv").textContent = d.height + " cm"; document.getElementById("wv").textContent = d.weight + " kg"; document.querySelector(".pv-name").textContent = d.name || "Your name"; };
+    document.getElementById("f-name").addEventListener("input", e => { d.name = e.target.value.replace(/[<>]/g, "").slice(0, 18); upd(); });
+    document.getElementById("f-height").addEventListener("input", e => { d.height = +e.target.value; upd(); });
+    document.getElementById("f-weight").addEventListener("input", e => { d.weight = +e.target.value; upd(); });
+  }
+  function startGame(stateId, lifeId, opts) {
+    game = AE.newGame(char, lifeId, stateId, opts);
+    save(); go("play");
+  }
+
+  $app.addEventListener("click", e => {
+    const b = e.target.closest("[data-act]"); if (!b || b.disabled) return;
+    const act = b.dataset.act, arg = b.dataset.arg;
+    switch (act) {
+      case "home": go("home"); break;
+      case "profile": go("profile"); break;
+      case "resume": go(game._showSummary ? "summary" : "play"); break;
+      case "newlife": if (!char) { ui.after = "state"; go("creator", { draft: defaultDraft() }); } else go("state", { daily: null }); break;
+      case "editchar": ui.after = "profile"; go("creator", { draft: Object.assign({}, char) }); break;
+      case "daily": { const d = AE.dailyPick(today()); ui.dailyPending = d; if (!char) { ui.after = "daily"; go("creator", { draft: defaultDraft() }); } else go("intro", { stateId: d.stateId, lifeId: d.lifeId, daily: today() }); break; }
+      case "pickstate": ui.stateId = arg; render(); break;
+      case "tolife": go("life", { stateId: ui.stateId || "KL", daily: null }); break;
+      case "picklife": go("intro", { lifeId: arg }); break;
+      case "start": startGame(ui.stateId, ui.lifeId, ui.daily ? { seed: AE.dailyPick(ui.daily).seed, daily: ui.daily } : {}); break;
+      case "set": { const k = b.dataset.k, v = b.dataset.v; ui.draft[k] = isNaN(+v) ? v : +v; render(); break; }
+      case "savechar": {
+        const nm = (document.getElementById("f-name").value || "").replace(/[<>]/g, "").trim().slice(0, 18);
+        ui.draft.name = nm || "Player"; char = Object.assign({}, ui.draft); save();
+        if (ui.after === "daily") { const d = AE.dailyPick(today()); go("intro", { stateId: d.stateId, lifeId: d.lifeId, daily: today() }); }
+        else if (ui.after === "profile") go("profile"); else go("state");
+        break;
+      }
+      case "choose": { const o = AE.choose(game, +arg); if (o) { ui.outcome = o; save(); render(); } break; }
+      case "next": { const o = ui.outcome; ui.outcome = null; if (o && o.summary) { game._showSummary = true; save(); go("summary"); } else { render(); window.scrollTo(0, 0); } break; }
+      case "aftersummary": game._showSummary = false; save(); go("play"); break;
+      case "talk": ui.talk = true; ui.talkRole = null; ui.talkAnswer = null; render(); break;
+      case "talkto": ui.talkRole = arg; ui.talkAnswer = null; render(); break;
+      case "talkback": ui.talkRole = null; ui.talkAnswer = null; render(); break;
+      case "ask": ui.talkAnswer = AE.talk(game, ui.talkRole, +arg); save(); render(); break;
+      case "closetalk": ui.talk = null; render(); break;
+      case "copy": {
+        const t = shareText(game);
+        const done = () => { ui.copied = true; render(); };
+        try { navigator.clipboard.writeText(t).then(done, () => selectShare()); } catch (err) { selectShare(); }
+        break;
+      }
+      case "again": startGame(game.stateId, game.lifeId, {}); break;
+      case "askreset": ui.confirmReset = true; render(); break;
+      case "reset": store.del("ns.char"); store.del("ns.profile"); store.del("ns.game"); char = null; profile = blankProfile(); game = null; go("home"); break;
+    }
+  });
+  function selectShare() { const el = document.getElementById("sharetext"); if (!el) return; const r = document.createRange(); r.selectNodeContents(el); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); }
+  function defaultDraft() { return { name: "", pronoun: "they", skin: 3, height: 168, weight: 62, hair: "short", hairColor: 0, top: "tee", outfit: 0, acc: "none" }; }
+
+  // resume into the right screen on load
+  if (game && !game.done && game._showSummary) ui.view = "summary";
+  render();
+})();
