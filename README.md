@@ -1,6 +1,6 @@
 # Next Station
 
-A Kochi-first life simulator, presented by FXN India. Everyone starts in Kochi; missions, team tasks and new ventures take you to Bengaluru, Hyderabad, Mumbai and Delhi.
+A second-life simulator set in Kochi, presented by FXN India. Arrive in Kochi, get a job, eat, sleep, build a home, marry and raise children, in a 3D Kochi built on its real layout (Fort Kochi, Willingdon Island, Marine Drive, MG Road, Kaloor, Kadavanthra, Vyttila). Missions, team tasks and new ventures take you to Bengaluru, Hyderabad, Mumbai and Delhi.
 Static web game: no accounts, ₹0 running cost. Optional live players and chat via a free Supabase project (see SUPABASE_SETUP.md).
 
 ## What's inside
@@ -22,9 +22,11 @@ js/data/lives2.js   lives 11–20
 js/data/city.js     papers, loans, house, matrimony profiles, odd jobs, team tasks, FXN rider settings
 js/data/common.js   shared events, dialogue, chat answers, badges
 js/engine.js        game rules (deterministic, seeded)
+js/life.js          second-life layer: clock, energy, hunger, sleep, food, family, children, life goals
+js/data/mallu.js    Manglish lines for people in the city and reactions (native speakers: edit here)
 js/avatar.js        character drawing
 js/data/dialogue.js character speech in 6 languages (native speakers: edit lines here)
-js/world.js         3D city (Three.js): third-person camera, joystick/WASD/tap walking, characters, mission beacons, FXN courier
+js/world.js         3D city (Three.js r147): Kochi on its real layout, day/night, water, palms, traffic, ferry, people, mini map
 js/data/missions.js away missions that send you to other cities and back
 js/data/fxn.js      FXN rental catalogue, dress-code events, delivery gig (FXN is real; in-game prices are not)
 js/net.js           live players, phrases, 18+ typed chat, filters, reports, gifts, groups, job-lock lobby

@@ -129,7 +129,7 @@ window.AE = (function () {
     const cash = Math.round(Math.max(0, g.cash) / (L.raw ? 100 : 100 * ci(g)));
     const done = (g.missions || []).filter(m => m.done).length + (g.missionsDone || 0);
     const debt = (g.loans || []).reduce((n, l) => n + l.left, 0);
-    const extra = (g.house ? g.house.lvl * 150 + g.house.items.length * 15 : 0) + (g.spouse ? 200 : 0) + (g.groupsDone || 0) * 60 + (g.oddDone || 0) * 10;
+    const extra = (g.house ? g.house.lvl * 150 + g.house.items.length * 15 : 0) + (g.spouse ? 200 : 0) + (g.kids || []).length * 200 + (g.goalsDone || []).length * 40 + (g.groupsDone || 0) * 60 + (g.oddDone || 0) * 10;
     const raw = cash - Math.round(debt / (L.raw ? 100 : 100 * ci(g))) + g.r * 10 + g.x * 5 + bonus + done * 150 + extra - g.shady * 100;
     return Math.max(0, Math.min(20000, Math.round(raw)));
   }
@@ -168,6 +168,7 @@ window.AE = (function () {
       let roll = rnd(g) * total;
       for (const b of bag) { roll -= b[1]; if (roll <= 0) { ev = b[0]; break; } }
       if (!ev && bag.length) ev = bag[bag.length - 1][0];
+      if (!ev && g.sandbox && !g._recycled) { const keep = a.life.concat(a.state, a.common).filter(e => e.at || e.req).map(e => e.id); g.used = (g.used || []).filter(id => keep.indexOf(id) >= 0); g._recycled = true; const r = nextEvent(g); g._recycled = false; return r; }
     }
     if (!ev) ev = { id: "quiet_" + g.chapter + "_" + g.step, t: "A quiet stretch. Nothing dramatic, just steady work.", c: [{ l: "Keep going", e: { s: 2, h: 2 }, r: "Steady days build something too." }] };
     g.current = ev.id;
@@ -230,7 +231,7 @@ window.AE = (function () {
 
   function endChapter(g) {
     const L = life(g), K = kit(g);
-    const lines = (L.settle(g, K) || []).map(l => ({ label: l[0], amount: l[1], kind: l[2] || "money" })).concat(citySettle(g, K));
+    const lines = (L.settle(g, K) || []).map(l => ({ label: l[0], amount: l[1], kind: l[2] || "money" })).concat(citySettle(g, K), window.AE_LIFE ? window.AE_LIFE.settleLines(g, K) : []);
     let net = 0;
     lines.forEach(l => { if (l.kind === "money") net += l.amount; });
     g.cash += net;
@@ -241,14 +242,18 @@ window.AE = (function () {
         g.cash += bail; g.flags.push("bailout"); g.rel.p = clamp(g.rel.p - 10, -100, 100);
         lines.push({ label: fill("{p} lent you money to stay afloat", g), amount: bail, kind: "money" });
         net += bail;
+      } else if (g.sandbox) {
+        const bail = L.raw ? Math.max(5000, -g.cash + 2000) : K.m(4000) + Math.max(0, -g.cash);
+        g.cash += bail; g.h = clamp(g.h - 8, 0, 100); g.r = clamp(g.r - 3, 0, 100);
+        lines.push({ label: "Family helped again (it was awkward)", amount: bail, kind: "money" }); net += bail;
       } else g.ending = L.id === "trader" ? "margincall" : "broke";
     }
-    if (g.h <= 0 && !g.ending) g.ending = "burnout";
+    if (g.h <= 0 && !g.ending) { if (g.sandbox) { g.h = 25; g.energy = 0; lines.push({ label: "Burnout: you need rest", amount: 0, kind: "n" }); } else g.ending = "burnout"; }
     g.nets = (g.nets || []).concat(net);
     const s = { chapter: g.chapter, unit: L.unit, lines, net, cash: g.cash };
     g.summary = s;
     g.chapter++; g.step = 0; g.talks = 2;
-    if (g.ending || g.chapter > CHAPTERS) finish(g);
+    if (!g.sandbox && (g.ending || g.chapter > CHAPTERS)) finish(g);
     return s;
   }
 
@@ -350,7 +355,7 @@ window.AE = (function () {
   function takeLoan(g, id, amount) {
     if (!loanOk(g, id)) return null;
     const Lo = C().loans.find(l => l.id === id); amount = Math.min(amount || loanAmount(g, id), loanAmount(g, id));
-    const total = Math.round(amount * (1 + Lo.rate)), chaptersLeft = Math.max(2, CHAPTERS - g.chapter + 1);
+    const total = Math.round(amount * (1 + Lo.rate)), chaptersLeft = g.sandbox ? 6 : Math.max(2, CHAPTERS - g.chapter + 1);
     const loan = { id, name: Lo.name, principal: amount, left: total, emi: Math.ceil(total / chaptersLeft / 10) * 10 };
     g.loans.push(loan); if (!Lo.house) g.cash += amount;
     return loan;

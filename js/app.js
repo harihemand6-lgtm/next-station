@@ -37,7 +37,7 @@
 
   function go(view, extra) {
     if (view !== "play") { NET.leave(); netKey = null; }
-    Object.assign(ui, { view, sheet: null, msg: null, venture: false, outcome: null, eventOpen: false, mscene: null, cityEv: null, fxn: false, travel: false, courier: null, talk: null, talkRole: null, talkAnswer: null, muteTarget: null, reported: false, ageGate: false, confirmReset: false, copied: false }, extra || {});
+    Object.assign(ui, { view, sheet: null, msg: null, venture: false, payday: null, welcome: false, kinLine: null, confirmNew: false, outcome: null, eventOpen: false, mscene: null, cityEv: null, fxn: false, travel: false, courier: null, talk: null, talkRole: null, talkAnswer: null, muteTarget: null, reported: false, ageGate: false, confirmReset: false, copied: false }, extra || {});
     render(); window.scrollTo(0, 0);
   }
   const speech = (t, sub) => `<p>“${esc(t)}”</p>${prefs.subs && sub ? `<p class="sub">${esc(sub)}</p>` : ""}`;
@@ -58,35 +58,43 @@
   const footer = () => `<footer class="foot"><b>Presented by FXN India</b> · <a href="#rules" data-act="rules">Rules, privacy &amp; grievance contact</a><br>A fictional game. People, apps, shows and exams are made up; FXN is a real fashion-rental startup that presents this game. In-game money is pretend and can't be bought or cashed out. Not career, legal or investment advice. Your character and progress are saved only on this device.</footer>`;
 
   // ── HOME ──
+  function heroArt() {
+    return `<svg class="hero-art" viewBox="0 0 400 260" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs><linearGradient id="sk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b2b6e"/><stop offset=".55" stop-color="#e8775a"/><stop offset="1" stop-color="#f7c37a"/></linearGradient>
+      <linearGradient id="wt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0a46a"/><stop offset="1" stop-color="#2a3f6e"/></linearGradient></defs>
+      <rect width="400" height="260" fill="url(#sk)"/><circle cx="292" cy="150" r="34" fill="#ffd89a" opacity=".95"/>
+      <g fill="#2a1f3d" opacity=".55">${[[200, 120], [222, 100], [244, 128], [266, 90], [300, 112], [330, 98], [352, 124], [380, 106]].map(([x, h]) => `<rect x="${x}" y="${190 - h}" width="20" height="${h}"/>`).join("")}</g>
+      <rect y="186" width="400" height="74" fill="url(#wt)"/>
+      <g stroke="#1b1430" stroke-width="3" fill="none"><path d="M40 190 L95 120 L150 190"/><path d="M95 120 L60 80 M95 120 L135 78"/><path d="M60 80 Q95 60 135 78" stroke-width="1.5"/><path d="M58 82 L58 140 M137 80 L137 140" stroke-width="1"/></g>
+      <rect x="30" y="186" width="130" height="6" fill="#1b1430"/>
+      ${[[178, 1.0, -0.12], [338, 1.15, 0.1], [372, 0.8, 0.18]].map(([x, k, lean]) => { const top = [x + lean * 120, 190 - 92 * k]; const leaves = [[-46, 10], [-34, -14], [-8, -24], [22, -18], [44, 4], [30, 26], [-26, 28]].map(([dx, dy]) => `<path d="M${top[0]} ${top[1]} q${dx * 0.5 * k} ${(dy - 18) * 0.5 * k} ${dx * k} ${dy * k} q${-dx * 0.35 * k} ${-4 * k} ${-dx * k} ${-dy * k}z" fill="#1b1430"/>`).join(""); return `<path d="M${x} 192 Q${x + lean * 40} ${190 - 50 * k} ${top[0]} ${top[1]}" stroke="#1b1430" stroke-width="${5 * k}" fill="none" stroke-linecap="round"/>${leaves}<circle cx="${top[0]}" cy="${top[1] + 5}" r="${4 * k}" fill="#1b1430"/>`; }).join("")}
+      <path d="M210 214 q20 -6 40 0 l-6 6 h-28z" fill="#1b1430"/><path d="M226 208 h14 v6 h-14z" fill="#1b1430"/>
+    </svg>`;
+  }
   function vHome() {
-    const d = AE.dailyPick(today()), dl = lifeById(d.lifeId);
     const cont = game && !game.done;
-    const done = profile.dailies.indexOf(today()) >= 0;
-    const order = ["KL", "KA", "TG", "MH", "DL"];
-    return `${topbar()}
-    <main class="wrap">
-      <section class="hero">
-        <p class="kicker">Kochi-first life simulator · 20 lives · 5 cities · Presented by FXN India</p>
-        <h1>Live a thousand lives.<br><span class="hl">Start in Kochi.</span></h1>
-        <p class="lede">Run a cloud kitchen, ride for FXN, find a partner on a matrimony app, upgrade your house, take a bank loan and open a business in Bengaluru, Hyderabad, Mumbai or Delhi. Every choice costs pretend rupees and has real consequences.</p>
-        <div class="row">
-          ${cont ? `<button class="btn primary" data-act="resume">Continue: ${esc(lifeById(game.lifeId).title)}, ${esc(STATES[game.loc || game.stateId].city)}</button>` : ""}
-          <button class="btn ${cont ? "" : "primary"}" data-act="newlife">${char ? "Start a new life" : "Create your character"}</button>
-          <button class="btn ghost" data-act="leaders">Leaderboard</button>
+    if (ui.confirmNew) return `<main class="home2"><section class="card confirm"><h2>Start a new life?</h2><p>Your current life (${esc(lifeById(game.lifeId).title)}, day ${game.day || 1}${game.spouse ? ", married to " + esc(game.spouse.name) : ""}) will end. You can't undo this.</p><div class="row"><button class="btn danger" data-act="newlifeyes">Yes, start over</button><button class="btn" data-act="newlifeno">Keep my life</button></div></section></main>`;
+    return `<main class="home2">
+      <section class="hero2">${heroArt()}
+        <div class="hero2-in">
+          <span class="kick2">Presented by FXN India</span>
+          <h1>Next Station</h1>
+          <p>Your second life in Kochi. Get a job, build a home, fall in love, raise a family.</p>
+          ${cont ? `<button class="btn primary big" data-act="resume">▶ Continue: Day ${game.day || 1} · ${esc(lifeById(game.lifeId).title)}</button>` : ""}
+          <button class="btn ${cont ? "glass" : "primary"} big" data-act="newlife">${cont ? "Start a new life" : "▶ Start your second life"}</button>
+          <div class="row center"><button class="btn glass small" data-act="leaders">🏆 Leaderboard</button><button class="btn glass small" data-act="profile">👤 ${char ? esc(char.name) : "Profile"} · Lv ${level(profile.xp)}</button></div>
         </div>
       </section>
-      <section class="ticket">
-        <div class="ticket-l"><span class="tag">Today's challenge</span><h2>${esc(dl.title)}</h2><p>Kochi · same day for every player</p></div>
-        <button class="btn ${done ? "" : "accent2"}" data-act="daily">${done ? "Played today ✓ Replay" : "Play today's challenge"}</button>
+      <section class="feat">
+        <div><b>🏠</b><span>Rent a room, then build your dream house</span></div>
+        <div><b>💍</b><span>Find love, marry, raise children</span></div>
+        <div><b>💼</b><span>20 jobs, from nurse to wedding planner</span></div>
+        <div><b>👗</b><span>Rent outfits on FXN for every occasion</span></div>
+        <div><b>🗺️</b><span>Real Kochi: Marine Drive, Fort Kochi, MG Road</span></div>
+        <div><b>🧑‍🤝‍🧑</b><span>Meet real players, team up, send gifts</span></div>
       </section>
-      <h3 class="sec">The cities</h3>
-      <div class="route">${order.map((k, i) => `<div class="stop ${i === 0 ? "hub" : ""}" style="--h:${STATES[k].hue}"><b>${esc(STATES[k].city)}</b><span>${i === 0 ? "Where every life starts" : esc(STATES[k].blurb)}</span></div>`).join("")}</div>
-      <h3 class="sec">The lives</h3>
-      <div class="life-rail">${LIVES.map(L => `<div class="life-pill"><b>${esc(L.title)}</b><span>${L.unit === "Week" ? "6 weeks" : "6 months"}${L.mature ? " · Mature" : ""}</span></div>`).join("")}</div>
-      <section class="card fxn-card"><b class="fxn-logo">FXN</b><p>Next Station is presented by <b>FXN India</b>, a fashion-rental startup from Kochi. In the game, rent outfits for events, weddings and premieres, or ride for FXN as a part-time job.</p></section>
-    </main>${footer()}`;
+      ${footer()}</main>`;
   }
-
   // ── MAP ──
   function mapHTML(sel, mini) {
     const cells = MAP.map(([id, name, c, r]) => {
@@ -113,19 +121,23 @@
   }
 
   // ── LIFE PICK ──
+  const JOB_ICON = { street: "🍢", job: "💻", govt: "📚", creator: "📱", startup: "🚀", craft: "🧵", film: "🎬", cricket: "🏏", reality: "📺", trader: "📈", nurse: "🩺", cab: "🛺", teacher: "✏️", kitchen: "🍛", homestay: "🏡", stylist: "👗", band: "🎸", planner: "💐", seafood: "🐟", gulf: "✈️" };
+  const JOB_GROUPS = [["Steady jobs", ["job", "nurse", "teacher", "govt", "cab"]], ["Run a business", ["kitchen", "street", "homestay", "stylist", "planner", "seafood", "gulf", "craft", "startup"]], ["Fame and talent", ["creator", "band", "film", "cricket", "reality"]], ["Risky", ["trader"]]];
+  const JOB_LINE = { street: "Run a snack stall on Broadway", job: "Office job at Infopark", govt: "Crack the government exam", creator: "Grow a following online", startup: "Build an app from scratch", craft: "Sell handloom crafts", film: "Chase the silver screen", cricket: "Make the state team", reality: "Survive a reality show house", trader: "Trade options (very risky)", nurse: "Care for patients at City Hospital", cab: "Drive an auto, build a cab fleet", teacher: "Start a tuition class", kitchen: "Cook and sell on delivery apps", homestay: "Host tourists in Fort Kochi", stylist: "Style brides and influencers", band: "Play gigs, write songs", planner: "Plan big Kerala weddings", seafood: "Fish and sell to exporters", gulf: "Back from Dubai with savings" };
   function vLife() {
-    const s = STATES.KL, taken = NET.takenLives ? NET.takenLives() : {};
-    return `${topbar("home")}
-    <main class="wrap">
-      <p class="kicker">Kochi, Kerala · everyone starts here</p><h1 class="h1s">Choose a life</h1>
-      <p class="hint">A life that another player is living right now is locked until they quit or switch. ${NET.enabled() ? "" : "(Locks work when the game is online.)"}</p>
-      <div class="cards">${LIVES.map(L => { const t = taken[L.id]; return `
-        <button class="life-card" data-act="picklife" data-arg="${L.id}" style="--h:${s.hue}" ${t ? "disabled" : ""}>
-          <span class="lc-top"><b>${esc(L.title)}</b>${L.mature ? `<span class="pill warn">Mature</span>` : ""}${t ? `<span class="pill">Taken by ${esc(t)}</span>` : ""}</span>
-          <span class="lc-tag">${esc(fillS(L.tag, "KL", L.id))}</span>
-          <span class="lc-meta">6 ${unitPlural(L.unit)} · ${profile.lives.indexOf(L.id) >= 0 ? "Played" : "New"}</span>
-        </button>`; }).join("")}</div>
-    </main>${footer()}`;
+    const taken = NET.takenLives ? NET.takenLives() : {};
+    const R = (n => () => ((n = (n * 1664525 + 1013904223) >>> 0) / 4294967296))(profile.runs * 31 + new Date().getDate());
+    const pool = ["job", "nurse", "kitchen", "cab", "stylist", "teacher", "homestay", "planner", "street", "band", "gulf", "seafood"].filter(id => !taken[id]);
+    const feat = []; while (feat.length < 3 && pool.length) feat.push(pool.splice(Math.floor(R() * pool.length), 1)[0]);
+    const card = (id, big) => { const L = lifeById(id), t = taken[id]; return `<button class="job ${big ? "big" : ""}" data-act="picklife" data-arg="${id}" ${t ? "disabled" : ""}><span class="ji">${JOB_ICON[id]}</span><span class="jt"><b>${esc(L.title)}</b><span>${esc(JOB_LINE[id])}</span>${t ? `<em>Taken by ${esc(t)} (online)</em>` : L.mature ? `<em>Mature: real risks of trading</em>` : ""}</span></button>`; };
+    return `<main class="wrap pick">
+      <button class="icon-btn back" data-act="home" aria-label="Back">←</button>
+      <h1 class="h1s">Pick your first job</h1>${ui.pickNote ? `<p class="note warn">${esc(ui.pickNote)}</p>` : ""}
+      <p class="hint">You can switch jobs anytime from your phone. Everyone starts in Kochi.</p>
+      <div class="jobs">${feat.map(id => card(id, true)).join("")}</div>
+      <button class="btn accent2 big" data-act="surprise">🎲 Surprise me</button>
+      <details class="alljobs"><summary>See all 20 jobs</summary>${JOB_GROUPS.map(([gName, ids]) => `<h3 class="sec">${gName}</h3><div class="jobs">${ids.map(id => card(id)).join("")}</div>`).join("")}</details>
+    </main>`;
   }
   function vIntro() {
     const s = STATES[ui.stateId], L = lifeById(ui.lifeId);
@@ -150,29 +162,28 @@
     const d = ui.draft;
     const sw = (key, arr) => arr.map((c, i) => `<button class="sw ${d[key] === i ? "on" : ""}" style="background:${c}" data-act="set" data-k="${key}" data-v="${i}" aria-label="Colour ${i + 1}"></button>`).join("");
     const chips = (key, arr, labels) => arr.map((v, i) => `<button class="chip ${d[key] === v ? "on" : ""}" data-act="set" data-k="${key}" data-v="${v}">${labels ? labels[i] : v}</button>`).join("");
-    return `${topbar("home")}
-    <main class="wrap creator">
-      <h1 class="h1s">Create your character</h1>
-      <div class="creator-grid">
-        <div class="preview"><div id="avatar">${AV.svg(d, 150)}</div><p class="pv-name">${esc(d.name || "Your name")}</p><p class="hint">${d.height} cm · ${d.weight} kg</p></div>
-        <div class="fields">
-          <label class="f"><span>Name</span><input id="f-name" maxlength="18" value="${esc(d.name)}" placeholder="e.g. Arjun" autocomplete="off"></label>
-          <div class="f"><span>Pronouns</span><div class="chips">${chips("pronoun", ["he", "she", "they"], ["He/him", "She/her", "They/them"])}</div></div>
-          <div class="f"><span>Skin tone</span><div class="sws">${sw("skin", AV.SKIN)}</div></div>
-          <label class="f"><span>Height: <b id="hv">${d.height} cm</b></span><input type="range" id="f-height" min="140" max="200" value="${d.height}"></label>
-          <label class="f"><span>Weight: <b id="wv">${d.weight} kg</b></span><input type="range" id="f-weight" min="40" max="120" value="${d.weight}"></label>
-          <div class="f"><span>Hair</span><div class="chips">${chips("hair", AV.STYLES.hair)}</div></div>
-          <div class="f"><span>Hair colour</span><div class="sws">${sw("hairColor", AV.HAIR)}</div></div>
-          <p class="note">Everyone starts in plain basics. Rent outfits for events from the <b>FXN app</b> inside the game.</p>
-          <div class="f"><span>Extras</span><div class="chips">${chips("acc", AV.STYLES.acc)}</div></div>
-          ${langPicker()}
-          <p class="note">Looks are just for fun. They never change your story, chances or results.</p>
-          <button class="btn primary big" data-act="savechar">Save character</button>
-        </div>
-      </div>
-    </main>${footer()}`;
+    return `<main class="wrap creator2">
+      <button class="icon-btn back" data-act="home" aria-label="Back">←</button>
+      <h1 class="h1s">Who are you in Kochi?</h1>
+      <div class="cr-top"><div class="pv3d" id="pv3d">${WORLD.available() ? "" : `<div id="avatar">${AV.svg(d, 150)}</div>`}</div>
+        <div class="cr-quick">
+          <label class="f"><span>Your name</span><input id="f-name" maxlength="18" value="${esc(d.name)}" placeholder="e.g. Arjun" autocomplete="off"></label>
+          <div class="f"><span>Pronouns</span><div class="chips">${chips("pronoun", ["he", "she", "they"], ["He", "She", "They"])}</div></div>
+          <button class="btn glass small" data-act="randomlook">🎲 Random look</button>
+        </div></div>
+      <details class="more" ${ui.moreLook ? "open" : ""}><summary data-act="morelook">Customise your look</summary>
+        <div class="f"><span>Skin tone</span><div class="sws">${sw("skin", AV.SKIN)}</div></div>
+        <label class="f"><span>Height: <b id="hv">${d.height} cm</b></span><input type="range" id="f-height" min="140" max="200" value="${d.height}"></label>
+        <label class="f"><span>Build: <b id="wv">${d.weight} kg</b></span><input type="range" id="f-weight" min="40" max="120" value="${d.weight}"></label>
+        <div class="f"><span>Hair</span><div class="chips">${chips("hair", AV.STYLES.hair)}</div></div>
+        <div class="f"><span>Hair colour</span><div class="sws">${sw("hairColor", AV.HAIR)}</div></div>
+        <div class="f"><span>Extras</span><div class="chips">${chips("acc", AV.STYLES.acc)}</div></div>
+        ${langPicker()}
+      </details>
+      <p class="hint">Everyone starts in plain clothes. Rent outfits from the FXN app in the game.</p>
+      <button class="btn primary big" data-act="savechar">Next: pick a job →</button>
+    </main>`;
   }
-
   // ── PLAY ──
   function hud(g) {
     const L = AE.life(g);
@@ -209,63 +220,119 @@
   const dressName = tag => ({ festival: "festive wear", onam: "Kasavu", wedding: "wedding wear", formal: "office formals", party: "party wear", premiere: "red-carpet look", sport: "cricket whites" }[tag] || tag);
   const wearing = (g, tag) => { const it = g.outfit && fxItem(g.outfit); return !!(it && it.tags.indexOf(tag) >= 0); };
 
+  const LF = window.AE_LIFE;
+  const pct = v => Math.max(0, Math.min(100, Math.round(v)));
+  function hud2(g) {
+    const L = AE.life(g);
+    return `<div class="hud2">
+      <button class="hb" data-act="home" aria-label="Menu">☰</button>
+      <div class="hp cash"><b id="hud-cash" class="${g.cash < 0 ? "neg" : ""}">${inr(g.cash)}</b><span>${esc(JOB_ICON[g.lifeId] || "")} ${esc(L.title)}</span></div>
+      <div class="hp meters">
+        <span title="Energy">⚡<i><em id="hud-en" style="width:${pct(g.energy)}%"></em></i></span>
+        <span title="Hunger">🍛<i><em id="hud-hu" style="width:${pct(g.hunger)}%"></em></i></span>
+        <span title="Mood">😊<i><em id="hud-mo" style="width:${pct(g.h)}%"></em></i></span>
+      </div>
+      <div class="hp clock"><b id="hud-clock">${LF.clock(g)}</b><span>Day ${g.day}</span></div>
+    </div>`;
+  }
+  function updateHud() {
+    const g = game; if (!g) return;
+    const set = (id, w) => { const e = document.getElementById(id); if (e) e.style.width = pct(w) + "%"; };
+    set("hud-en", g.energy); set("hud-hu", g.hunger); set("hud-mo", g.h);
+    const c = document.getElementById("hud-clock"); if (c) { c.textContent = LF.clock(g); c.nextElementSibling.textContent = "Day " + g.day; }
+    const m = document.getElementById("hud-cash"); if (m) { m.textContent = inr(g.cash); m.classList.toggle("neg", g.cash < 0); }
+    document.querySelectorAll(".hud2 .meters em").forEach(e => e.classList.toggle("low", parseFloat(e.style.width) < 20));
+  }
+  function paydayCard() {
+    const g = game, sm = ui.payday, L = AE.life(g);
+    return `<span class="tag pay">💰 Payday</span><h2>${esc(L.title)} · Day ${g.day}</h2>
+      <table class="ledger">${sm.lines.map(l => `<tr><td>${esc(l.label)}</td><td class="${l.kind === "money" ? (l.amount >= 0 ? "up" : "down") : ""}">${l.kind === "money" ? (l.amount > 0 ? "+" : "") + inr(l.amount) : Number(l.amount).toLocaleString("en-IN")}</td></tr>`).join("")}
+        <tr class="tot"><td>Net</td><td class="${sm.net >= 0 ? "up" : "down"}">${sm.net > 0 ? "+" : ""}${inr(sm.net)}</td></tr><tr class="tot"><td>Cash now</td><td>${inr(sm.cash)}</td></tr></table>
+      <p class="hint">${esc(L.xl)}: ${AE.metric(g)} · Reputation ${g.r} · Mood ${Math.round(g.h)}</p>
+      <button class="btn primary big" data-act="paydayok">Continue</button>`;
+  }
+  function welcomeCard() {
+    return `<div class="cardwrap"><div class="cardsheet welcome"><h2>Welcome to Kochi, ${esc((char || {}).name || "friend")}!</h2>
+      <ul class="tips"><li><b>🕹️</b>Drag the joystick (or tap the ground) to walk.</li><li><b>➤</b>Follow the arrow at the top. It always shows your next stop.</li><li><b>!</b>A <b>!</b> means something is happening. Walk to it.</li><li><b>⚡🍛</b>Watch energy and hunger. Eat at the chayakkada, sleep at home.</li><li><b>📱</b>Your phone has FXN, jobs, matrimony and your life goals.</li></ul>
+      <button class="btn primary big" data-act="welcomeok">Let's go</button></div></div>`;
+  }
   function vPlay() {
     const g = game, s = AE.st(g), L = AE.life(g), here = locState(g);
     if (g.done) return vEnding();
-    let body;
-    if (ui.outcome) {
+    LF.init(g);
+    let card = "";
+    if (ui.payday) card = paydayCard();
+    else if (ui.outcome) {
       const o = ui.outcome;
-      body = `<section class="card outcome">
-        ${o.passed === true ? `<span class="pill good">It worked</span>` : o.passed === false ? `<span class="pill bad">Didn't work out</span>` : ""}
-        ${o.complete ? `<span class="pill good">Mission complete</span>` : ""}
-        <p class="result">${esc(o.text)}</p>
-        <div class="deltas">${deltaPills(o.d, g)}</div>
+      card = `${o.passed === true ? `<span class="pill good">It worked</span>` : o.passed === false ? `<span class="pill bad">Didn't work out</span>` : ""}${o.complete ? `<span class="pill good">Mission complete</span>` : ""}
+        <p class="result">${esc(o.text)}</p><div class="deltas">${deltaPills(o.d || {}, g)}</div>
         ${o.reaction ? `<div class="bubble"><span class="init" data-role="${o.reaction.role}">${esc(o.reaction.name[0])}</span><div><b>${esc(o.reaction.name)}</b>${speech(o.reaction.line, o.reaction.sub)}</div></div>` : ""}
-        <button class="btn primary big" data-act="next">${o.summary ? (g.done ? "See how it ended" : `End of ${L.unit.toLowerCase()} ${o.summary.chapter}`) : "Continue"}</button>
-      </section>`;
+        ${(o.goals || []).map(G => `<p class="note goal">🎯 Goal complete: ${esc(G.t)}${G.reward ? " · +" + inr(G.reward) : ""}</p>`).join("")}
+        <button class="btn primary big" data-act="next">${o.summary ? "💰 Payday" : "Continue"}</button>`;
     } else if (ui.mscene) {
       const m = ui.mscene;
-      body = `<section class="card event"><span class="tag">Mission</span><p class="ev-text">${esc(m.t)}</p>
-        <div class="choices">${m.kind === "scene" ? m.c.map((c, i) => `<button class="choice" data-act="mchoose" data-arg="${i}"><span>${esc(c.l)}</span>${c.ck ? `<span class="pill">${Math.round(AE.chance(g, c.ck) * 100)}% chance</span>` : ""}</button>`).join("") : `<button class="choice" data-act="mchoose" data-arg="0"><span>Finish the mission</span></button>`}</div></section>`;
+      card = `<span class="tag">Mission</span><p class="ev-text">${esc(m.t)}</p>
+        <div class="choices">${m.kind === "scene" ? m.c.map((c, i) => `<button class="choice" data-act="mchoose" data-arg="${i}"><span>${esc(c.l)}</span>${c.ck ? `<span class="pill">${Math.round(AE.chance(g, c.ck) * 100)}%</span>` : ""}</button>`).join("") : `<button class="choice" data-act="mchoose" data-arg="0"><span>Finish the mission</span></button>`}</div>`;
     } else if (ui.cityEv) {
       const ev = ui.cityEv;
-      body = `<section class="card event"><span class="tag">${esc(AE.fill(ev.title, g))}</span><p class="ev-text">${esc(AE.fill(ev.t, g))}</p>
-        <div class="choices">${ev.c.map((c, i) => `<button class="choice" data-act="evchoose" data-arg="${i}"><span>${esc(AE.fill(c.l, g))}</span>${c.ck ? `<span class="pill">${Math.round(AE.chance(g, c.ck) * 100)}% chance</span>` : ""}</button>`).join("")}</div></section>`;
-    } else if (g.shift) {
-      body = `<section class="card next"><span class="tag fxn-tag">FXN rider shift</span><p class="ev-teaser">Deliver parcel ${CITY.rider.drops - g.shift.left + 1} of ${CITY.rider.drops} to <b>${esc(g.shift.cust)}</b> at the glowing door. Faster deliveries get better ratings and tips. If your average rating falls below ${CITY.rider.minAvg}★, FXN can't pay the shift. Your life's scenes wait until the shift is done.</p></section>`;
-    } else if (g.stateId !== g.loc && !AE.missionGuide(g) && g.lifeHistory && g.lifeHistory.length > 1 && g._moved) {
-      body = `<section class="card next"><p class="ev-teaser">Your new venture is in <b>${esc(s.city)}</b>. Walk to the Railway Station and take the train there to begin.</p></section>`;
-    } else if (away(g)) {
-      body = `<section class="card next"><p class="ev-teaser">You're visiting <b>${esc(here.city)}</b>. Your next scene is waiting back home in <b>${esc(s.city)}</b>. Explore and meet players, then <b>walk to the Railway Station</b> to buy a ticket home. Follow the arrow, or tap the mini map to see where it is.</p>
-        ${WORLD.available() ? "" : `<button class="btn primary" data-act="travelopen">Train tickets</button>`}</section>`;
-    } else if (!ui.eventOpen) {
+      card = `<span class="tag">${esc(AE.fill(ev.title, g))}</span><p class="ev-text">${esc(AE.fill(ev.t, g))}</p>
+        <div class="choices">${ev.c.map((c, i) => `<button class="choice" data-act="evchoose" data-arg="${i}"><span>${esc(AE.fill(c.l, g))}</span>${c.ck ? `<span class="pill">${Math.round(AE.chance(g, c.ck) * 100)}%</span>` : ""}</button>`).join("")}</div>`;
+    } else if (ui.eventOpen) {
       const ev = AE.nextEvent(g); save();
       const who = ev.who;
-      ui._marker = who || "board";
-      body = `<section class="card next"><p class="ev-teaser">${who ? `<b>${esc(s.cast[who])}</b> wants a word. Walk to the <span class="bang">!</span> in the city.` : `Something's up at the <b>Notice Board</b>. Walk to the <span class="bang">!</span>.`} Follow the arrow, or tap the mini map to see the way.</p>
-        ${WORLD.available() ? "" : `<button class="btn primary" data-act="openev">Open it now</button>`}</section>`;
-    } else {
-      const ev = AE.nextEvent(g); save();
-      const who = ev.who;
-      body = `<section class="card event">
-        ${who ? `<div class="speaker"><span class="init" data-role="${who}">${esc(s.cast[who][0])}</span><b>${esc(s.cast[who])}</b><span>${esc(L.roles[who])}</span></div>` : ""}
+      card = `${who ? `<div class="speaker"><span class="init" data-role="${who}">${esc(s.cast[who][0])}</span><b>${esc(s.cast[who])}</b><span>${esc(L.roles[who])}</span></div>` : `<span class="tag">${esc(JOB_ICON[g.lifeId] || "")} ${esc(L.title)}</span>`}
         <p class="ev-text">${esc(AE.fill(ev.t, g))}</p>
         <div class="choices">${ev.c.map((c, i) => {
           if (c.req && !AE.has(g, c.req)) return "";
           const can = AE.canChoose(g, c), need = AE.needOf(g, c), noPaper = c.paper && !CS.hasPaper(g, c.paper);
           const risk = c.ck ? `<span class="pill">${Math.round(AE.chance(g, c.ck) * 100)}% chance</span>` : "";
-          return `<button class="choice" data-act="choose" data-arg="${i}" ${can ? "" : "disabled"}><span>${esc(AE.fill(c.l, g))}</span>${risk}${noPaper ? `<span class="pill bad">Needs ${esc(paperName(c.paper))} from the Government Office</span>` : !can ? `<span class="pill bad">Needs ${inr(need)}</span>` : ""}</button>`;
+          return `<button class="choice" data-act="choose" data-arg="${i}" ${can ? "" : "disabled"}><span>${esc(AE.fill(c.l, g))}</span>${risk}${noPaper ? `<span class="pill bad">Needs ${esc(paperName(c.paper))} (Govt Office)</span>` : !can ? `<span class="pill bad">Needs ${inr(need)}</span>` : ""}</button>`;
         }).join("")}</div>
-      </section>`;
+        <button class="btn ghost small" data-act="later">Not now</button>`;
     }
-    const tools = `<div class="row tools"><button class="btn ghost" data-act="talk" ${g.shift ? "disabled" : ""}>Talk to someone</button><button class="btn" data-act="phone">Phone</button><button class="btn fxn-btn" data-act="fxnopen">FXN app</button>${L.closed || WORLD.available() ? "" : `<button class="btn ghost" data-act="travelopen">Train</button>`}</div>`;
-    return `${topbar("home")}<main class="wrap play" style="--h:${here.hue}">
-      <p class="kicker">${esc(L.title)} · ${esc(here.city)}${away(g) ? ` (visiting, base: ${esc(s.city)})` : ""}${g.outfit ? ` · wearing ${esc(fxItem(g.outfit).name)}` : ""}${g.spouse ? ` · married to ${esc(g.spouse.name)}` : ""}</p>
-      ${hud(g)}<div id="world-slot"></div>
-      ${NET.enabled() ? `<p class="hint net-note">Other players see you as <b>${esc(NET.nick())}</b>, never your real name. Tap a player to mute or report them.</p>` : ""}
-      ${body}${tools}${ui.talk ? talkSheet() : ""}${ui.muteTarget ? muteSheet() : ""}${ui.ageGate ? ageSheet() : ""}${ui.fxn ? fxnSheet() : ""}${ui.travel ? travelSheet() : ""}${ui.sheet ? citySheet() : ""}</main>`;
+    ui._marker = null;
+    if (!card && !g.shift && !away(g) && !g._moved && LF.canWork(g) && !g.babyReady) { const ev = AE.nextEvent(g); save(); ui._marker = ev.who || "board"; }
+    if (!game.welcomed && !card) ui.welcome = true;
+    return `<main class="play2" style="--h:${here.hue}">
+      <div id="world-slot"></div>
+      ${hud2(g)}
+      <div class="dock">
+        <button class="dk" data-act="phone" aria-label="Phone"><span>📱</span>Phone</button>
+        <button class="dk fxn" data-act="fxnopen" aria-label="FXN app"><span>👗</span>FXN</button>
+        <button class="dk" data-act="talk" ${g.shift ? "disabled" : ""} aria-label="Talk"><span>💬</span>Talk</button>
+      </div>
+      ${card ? `<div class="cardwrap"><div class="cardsheet">${card}</div></div>` : ui.welcome ? welcomeCard() : ""}
+      ${ui.talk ? talkSheet() : ""}${ui.muteTarget ? muteSheet() : ""}${ui.ageGate ? ageSheet() : ""}${ui.fxn ? fxnSheet() : ""}${ui.travel ? travelSheet() : ""}${ui.sheet ? citySheet() : ""}</main>`;
   }
 
+  // ── second-life sheets ──
+  function kinSheet() {
+    const g = game, sp = g.spouse, kids = g.kids || [];
+    const lines = ["Did you eat? I made extra.", "My office is chaos. Tell me something good.", "Should we repaint the kitchen? Don't answer, I've decided.", "Proud of you. Now help me find the TV remote.", "Weekend plan: Fort Kochi, ice cream, no phones. Deal?"];
+    return sheetBox("Family", `${sp ? `<p>💑 <b>${esc(sp.name)}</b> · ${esc(sp.job)}</p>` : `<p>You're single. Try MangalyaMatch or ChaiDate on your phone.</p>`}
+      ${kids.length ? `<div class="list">${kids.map(k => { const a = LF.kidAge(g, k); return item("👶 " + esc(k.name), esc(LF.stage(a)) + " · age " + a, ""); }).join("")}</div>` : ""}
+      ${ui.kinLine ? `<p class="note">“${esc(ui.kinLine)}”</p>` : ""}
+      <div class="row">${sp ? `<button class="btn" data-act="kinchat" data-arg="${Math.floor(Math.random() * lines.length)}">💬 Spend time together</button>` : ""}
+        ${LF.canPlanBaby(g) ? `<button class="btn primary" data-act="planbaby">👶 Plan a baby</button>` : ""}</div>
+      ${sp && !LF.canPlanBaby(g) && !g.babyDue && kids.length < 3 && g.house.lvl < 1 ? `<p class="hint">Move out of the rented room first (upgrade your house) before planning a baby.</p>` : ""}
+      ${g.babyDue ? `<p class="note">A baby is on the way! ${g.babyReady ? "Go to City Hospital now." : "Due on day " + g.babyDue + "."}</p>` : ""}
+      <p class="hint">Children grow a year every two days. Little ones cost a bit each payday, and make home happier.</p>`);
+  }
+  function babySheet() {
+    const g = game, sug = LF.NAMES.filter(n => !(g.kids || []).some(k => k.name === n)).slice((g.day * 3) % 8, (g.day * 3) % 8 + 6);
+    return sheetBox("Welcome, little one!", `<p>The baby has arrived and everyone is well. What will you name them?</p>
+      <div class="chips">${sug.map(n => `<button class="chip" data-act="babyname" data-arg="${n}">${n}</button>`).join("")}</div>
+      <label class="f"><span>Or type a name</span><input id="f-baby" maxlength="16" placeholder="Name"></label>
+      <button class="btn primary" data-act="babyname" data-arg="">Choose this name</button>`);
+  }
+  function goalsSheet() {
+    const g = game;
+    return sheetBox("Life goals", `<div class="list">${LF.GOALS.map(G => { const done = (g.goalsDone || []).indexOf(G.id) >= 0; return item((done ? "✅ " : "⬜ ") + esc(G.t), done ? "Done" : esc(G.hint) + (G.reward ? " · reward " + inr(LF.money(g, G.reward)) : ""), ""); }).join("")}</div>`);
+  }
+  function retireSheet() {
+    const g = game;
+    return sheetBox("Retire this life?", `<p>See how your second life turned out and post your score. Day ${g.day}, ${inr(g.cash)}${g.spouse ? ", married to " + esc(g.spouse.name) : ""}${(g.kids || []).length ? ", " + g.kids.length + " kid" + (g.kids.length > 1 ? "s" : "") : ""}.</p><div class="row"><button class="btn danger" data-act="retireyes">Retire and see my story</button></div>`);
+  }
   function fxnSheet() {
     const g = game, tab = ui.fxnTab || "all", ev = !away(g) && cityEvent(g), here = g.loc || g.stateId;
     const tabs = [["all", "All"], ev ? ["event", "Tonight's dress code"] : null, ["local", "Local wear: " + locState(g).name], ["wedding", "Wedding"], ["festival", "Festival"], ["formal", "Formal"], ["party", "Party"], ["sport", "Sport"]].filter(Boolean);
@@ -325,13 +392,19 @@
     }
     const mg = AE.missionGuide(g);
     if (mg) return { text: mg.title + ": " + mg.text, sub: hints.join(" · "), key: mg.target, actions: go(mg.target) };
+    const base = !away(g), foodKey = base && g.stateId === "KL" ? "food" : "cafe";
+    if (g.babyReady) return { text: "The baby is coming! Walk to " + (WORLD.spotAt("hospital") ? "City Hospital" : "your home"), sub: "Your partner is already on the way", key: WORLD.spotAt("hospital") ? "hospital" : "house", actions: go("hospital") };
+    if (base && LF.night(g)) return { text: "It's " + LF.clock(g) + ". Walk home to sleep", sub: ["Hungry? Grab a late chaaya first"].concat(hints).join(" · "), key: "house", actions: go("house") };
+    if (g.energy < 12) return { text: "You're exhausted. Walk home and rest", sub: "Sleep or take a nap at home", key: base ? "house" : "station", actions: go("house") };
+    if (g.hunger < 20) return { text: "You're hungry! " + (foodKey === "food" ? "Eat at the chayakkada on Marine Drive" : "Eat at Café Monsoon"), sub: hints.join(" · "), key: foodKey, actions: go(foodKey) };
     if (!away(g)) {
       const ev = cityEvent(g), ok = ev && wearing(g, ev.dress);
       const evSub = ev ? "Also: " + AE.fill(ev.title, g) + " (dress code: " + dressName(ev.dress) + (ok ? " ✓" : "") + ")" : "";
       const evActs = ev ? (ok ? go("hall") : [["fxnopen", "Rent on FXN"]]) : [];
       const sub = [evSub].concat(hints).filter(Boolean).join(" · ");
-      if (!ui.eventOpen && !ui.outcome && ui._marker) return { text: (ui._marker === "board" ? "Next scene: walk to the Notice Board" : "Next scene: walk to " + AE.st(g).cast[ui._marker]), sub, key: ui._marker, actions: (walk ? [["openev", "Open it now"]] : []).concat(evActs) };
+      if (!ui.eventOpen && !ui.outcome && ui._marker) return { text: (ui._marker === "board" ? "Work: walk to the Notice Board" : "Walk to " + AE.st(g).cast[ui._marker] + " (!)"), sub, key: ui._marker, actions: (walk ? [["openev", "Open it now"]] : []).concat(evActs) };
       if (ev) return { text: AE.fill(ev.title, g), sub: ["Dress code: " + dressName(ev.dress) + (ok ? " ✓" : "")].concat(hints).join(" · "), key: "hall", actions: evActs.length ? evActs : go("hall") };
+      const G = LF.nextGoal(g); if (G) return { text: "🎯 " + G.t, sub: G.hint, key: null };
     } else return { text: g._moved ? "Start your venture in " + AE.st(g).city : "Your next scene is back in " + AE.st(g).city, sub: ["Walk to the Railway Station to buy a ticket"].concat(hints).join(" · "), key: "station", actions: go("station") };
     return null;
   }
@@ -340,7 +413,7 @@
   function onArrive(k) {
     const g = game; if (!g || g.done || ui.outcome || ui.mscene || ui.cityEv || ui.sheet) return;
     if (g.shift) { if (k === "gig") riderDrop(); return; }
-    if (k === "odd" && g.odd) { WORLD.setExtraSpot("odd", null); const r = CS.finishOdd(g); WORLD.note(r.text); save(); render(); return; }
+    if (k === "odd" && g.odd) { WORLD.setExtraSpot("odd", null); const r = CS.finishOdd(g); WORLD.note(r.text); WORLD.react("odd"); g.min = Math.min(g.min + 60, 23 * 60 + 50); save(); render(); return; }
     const mg = AE.missionGuide(g);
     if (mg && mg.target === k && k !== "station" && ((mg.m.step === 2 && away(g)) || (mg.m.step === 4 && !away(g)))) { ui.mscene = AE.missionScene(g); render(); return; }
     if (k === "station" && travelTargets(g).length) { ui.travel = true; render(); return; }
@@ -361,6 +434,7 @@
   }
   function spotLabel(k) {
     const g = game, here = locState(g);
+    if (k === "f" && !away(g)) return "🌳 Relax in the park";
     if (["m", "f", "v", "p"].indexOf(k) >= 0) return "Talk to " + here.cast[k];
     if (k === "station") return AE.life(g).closed ? null : "Buy a train ticket";
     if (k === "fxn") return "Open FXN store";
@@ -369,9 +443,11 @@
     if (k === "odd") return "Do the odd job";
     if (k === "office") return "Enter the Government Office";
     if (k === "bank") return "Enter the Bank";
-    if (k === "cafe") return g.romance && g.romance.stage === "date" ? "Meet " + profileById(g.romance.pid).name : null;
-    if (k === "house") return away(g) ? null : g.romance && g.romance.stage === "family" ? "Introduce your families" : "Your house";
-    if (k === "s") return g.spouse ? "Talk to " + g.spouse.name : null;
+    if (k === "cafe") return g.romance && g.romance.stage === "date" ? "Meet " + profileById(g.romance.pid).name : "🍛 Eat here · " + inr(LF.money(g, LF.FOOD.cafe.cost));
+    if (k === "food") return "☕ Chaaya & pazhampori · " + inr(LF.money(g, LF.FOOD.chaya.cost));
+    if (k === "hospital") return g.babyReady ? "👶 Meet your baby" : null;
+    if (k === "house") return away(g) ? null : g.romance && g.romance.stage === "family" ? "Introduce your families" : "🏠 Home: sleep, eat, family";
+    if (k === "s") return g.spouse ? "💑 " + g.spouse.name : null;
     if (k === "board") return "Notice Board: jobs and group tasks";
     return null;
   }
@@ -384,10 +460,26 @@
     if (k === "odd") return onArrive("odd");
     if (k === "office") return openSheet("office");
     if (k === "bank") return openSheet("bank", { venture: false });
-    if (k === "cafe") return openSheet("date", { dateText: null });
+    if (k === "cafe") { if (game.romance && game.romance.stage === "date") return openSheet("date", { dateText: null }); return doEat("cafe"); }
+    if (k === "food") return doEat("chaya");
+    if (k === "hospital") return game.babyReady ? openSheet("baby") : null;
+    if (k === "f" && !away(game)) { const r = LF.relax(game, "park"); WORLD.note(r.text); if (!r.none) WORLD.react("fun"); save(); updateHud(); return; }
     if (k === "house") return game.romance && game.romance.stage === "family" ? openSheet("family") : openSheet("house");
-    if (k === "s") { const lines = ["Did you eat? I made extra.", "My office is chaos. Tell me something good.", "Should we repaint the kitchen? Don't answer, I've decided.", "Your mother called. Twice. About 'grandchildren'. I hung up.", "Proud of you. Now help me find the TV remote."]; WORLD.npcSay("s", lines[Math.floor(Math.random() * lines.length)], null); return; }
+    if (k === "s") return openSheet("kin");
     if (k === "board") return openSheet("board");
+  }
+  function doEat(where) {
+    const r = LF.eat(game, where);
+    if (!r) { WORLD.note("Not enough cash to eat here."); WORLD.react("broke"); return; }
+    WORLD.note("😋 " + r.text); WORLD.react("eat"); afterAction(); updateHud();
+  }
+  // after anything that changes life: check goals, save, refresh the guide
+  function afterAction(noRender) {
+    const g = game; if (!g) return [];
+    const fresh = LF.checkGoals(g);
+    fresh.forEach(G => WORLD.note("🎯 Goal complete: " + G.t + (G.reward ? " · +" + inr(G.reward) : "")));
+    save(); if (!noRender) { if (ui.sheet || ui.outcome || ui.eventOpen || ui.fxn) render(); else { updateHud(); refreshGuide(); } }
+    return fresh;
   }
   function rent(id) {
     const g = game, it = fxItem(id), price = rentPrice(g, it);
@@ -396,7 +488,7 @@
     const st = locState(g), name = FX.courierNames[g.loc || g.stateId] || "Rider";
     ui.courier = name; ui.fxn = false; render();
     WORLD.spawnCourier(name, { skin: 4, height: 172, weight: 64, hair: "short", hairColor: 0, acc: "cap" }, { top: "#ff4f9a", bottom: "#1b1830", style: "tee", trim: "#1b1830" }, () => {
-      g.outfit = id; ui.courier = null; save();
+      g.outfit = id; ui.courier = null; g.rented = (g.rented || 0) + 1; save(); setTimeout(() => { WORLD.react("rent"); afterAction(); }, 1600);
       WORLD.setLook(char || g.player, it.look);
       WORLD.courierSay(FX.courierLines[Math.floor(AE.rnd(g) * FX.courierLines.length)]);
       WORLD.note("Delivered: " + it.name + ". Looking sharp!");
@@ -486,12 +578,14 @@
       `<button class="btn small primary" data-act="hupgrade" ${g.cash >= cost ? "" : "disabled"}>Pay cash</button><button class="btn small" data-act="hloan" ${CS.loanOk(g, "home") ? "" : "disabled"}>${CS.hasPaper(g, "id") ? "Home loan" : "Home loan (needs address proof)"}</button>`) : `<p class="hint">You have the best house in town.</p>`;
     const walls = `<div class="chips">${CITY.walls.map((w, i) => `<button class="sw ${h.wall === i ? "on" : ""}" style="background:${w[1]}" data-act="paint" data-arg="${i}" title="${esc(w[0])}" aria-label="Paint ${esc(w[0])}"></button>`).join("")}<span class="hint">Repaint: ${inr(CS.money(g, 500))}</span></div>`;
     const decor = CITY.decor.map(d => { const own = h.items.indexOf(d.id) >= 0, c = CS.money(g, d.cost); return `<button class="chip ${own ? "on" : ""}" data-act="decor" data-arg="${d.id}" ${own || g.cash < c ? "disabled" : ""}>${esc(d.name)}${own ? " ✓" : " · " + inr(c)}</button>`; }).join("");
-    return sheetBox("Your house: " + H[h.lvl].name, `${houseSVG(h)}${up}<h3 class="sec">Wall colour</h3>${walls}<h3 class="sec">Furnish it</h3><div class="chips">${decor}</div>`);
+    const canCook = h.lvl >= 1 || g.spouse, night = LF.night(g);
+    const life = `<div class="row homeacts"><button class="btn primary" data-act="sleep">${night || g.energy < 40 ? "😴 Sleep till morning" : "😴 Take a nap"}</button>${canCook ? `<button class="btn" data-act="eat" data-arg="home">🍛 Eat at home · ${inr(LF.money(g, LF.FOOD.home.cost))}</button>` : ""}${g.spouse ? `<button class="btn" data-act="kin">👨‍👩‍👧 Family</button>` : ""}</div>`;
+    return sheetBox("Your house: " + H[h.lvl].name, `${life}${houseSVG(h)}${up}<h3 class="sec">Wall colour</h3>${walls}<h3 class="sec">Furnish it</h3><div class="chips">${decor}</div>`);
   }
 
   function phoneSheet() {
     const g = game, P = myParty(), mates = partyHere();
-    const apps = [["fxnopen", "FXN", "Rent outfits"], ["site:mangalya", "MangalyaMatch", "Matrimony"], ["site:chaidate", "ChaiDate", "Dating"], ["career", "Career", "Quit or switch life"], ["status", "My papers", "Papers, loans, house"]];
+    const apps = [["goals", "🎯 Life goals", (LF.nextGoal(g) || { t: "All done!" }).t], ["fxnopen", "👗 FXN", "Rent outfits"], ["kin", "👨‍👩‍👧 Family", g.spouse ? g.spouse.name + ((g.kids || []).length ? " + " + g.kids.length : "") : "Single"], ["site:mangalya", "💍 MangalyaMatch", "Matrimony"], ["site:chaidate", "☕ ChaiDate", "Dating"], ["board", "📋 Odd jobs & teams", "Quick money, team tasks"], ["career", "💼 Career", "Switch job"], ["status", "🗂️ My papers", "Papers, loans, house"], ["retire", "🌅 Retire", "End this life"]];
     const party = P ? `<p>Your group: you${mates.length ? ", " + mates.map(m => esc(m.nick)).join(", ") : " (waiting for players to join)"}.</p><button class="btn small ghost" data-act="partyleave">Leave group</button>` : `<p class="hint">Tap a player in the city to invite them to your group (up to 6).</p>`;
     return sheetBox("Phone", `<div class="apps">${apps.map(a => `<button class="app" data-act="${a[0].indexOf("site:") === 0 ? "site" : a[0]}" ${a[0].indexOf("site:") === 0 ? `data-arg="${a[0].slice(5)}"` : ""}><b>${esc(a[1])}</b><span>${esc(a[2])}</span></button>`).join("")}</div><h3 class="sec">Group</h3>${party}`);
   }
@@ -589,6 +683,10 @@
     if (k === "player") return playerSheet();
     if (k === "invite") return inviteSheet();
     if (k === "shift") return shiftSheet();
+    if (k === "kin") return kinSheet();
+    if (k === "baby") return babySheet();
+    if (k === "goals") return goalsSheet();
+    if (k === "retire") return retireSheet();
     return "";
   }
   const openSheet = (k, extra) => { Object.assign(ui, { sheet: k, msg: null }, extra || {}); render(); };
@@ -628,6 +726,7 @@
     const P = profile.rider = profile.rider || { shifts: 0, avg: 0 };
     P.avg = Math.round(((P.avg * P.shifts) + res.avg) / (P.shifts + 1) * 10) / 10; P.shifts++;
     if (res.avg >= 5) g.rider5 = true;
+    setTimeout(() => WORLD.react(res.paid ? "rider5" : "riderLow"), 600);
     NET.setState && NET.setState({ rd: 0 });
     save(); openSheet("shift", { shiftEnd: res });
   }
@@ -695,18 +794,23 @@
     if (!game || game.done) { NET.leave(); netKey = null; return; }
     if (!slot) return;
     const g = game, here = locState(g), loc = g.loc || g.stateId, isBase = loc === g.stateId;
-    const key = [g.seed, g.lifeId, loc, isBase ? g.house.lvl + "." + g.house.wall : "", isBase && g.spouse ? g.spouse.name : ""].join(":");
+    const kidsHere = isBase ? (g.kids || []).map(k => ({ name: k.name, age: LF.kidAge(g, k) })) : [];
+    const key = [g.seed, g.lifeId, loc, isBase ? g.house.lvl + "." + g.house.wall : "", isBase && g.spouse ? g.spouse.name : "", kidsHere.map(k => k.name + (k.age < 12 ? "s" : "b")).join(",")].join(":");
     WORLD.mount(slot, {
       key, stateId: loc, lifeId: g.lifeId, hue: here.hue, cast: here.cast, avatar: char || g.player, meLabel: (char || g.player).name, outfit: outfitLook(g),
       base: isBase, house: isBase ? g.house : null, wallColor: CITY.walls[g.house.wall || 0][1], spouse: isBase && g.spouse ? g.spouse.name : null,
       words: { stall: here.food.stall, city: here.city, v: here.cast.v },
+      kids: kidsHere, startPos: g.pos && g.pos.loc === loc ? g.pos : null,
+      hour: () => LF.hour(game), langMode: () => prefs.lang === "en" ? "en" : prefs.subs ? "ml" : "mlonly",
+      kidLine: name => LF.kidLine(game, name),
+      onRide: () => { const r = LF.relax(game, "ferry"); setTimeout(() => { WORLD.react("fun"); }, 2500); save(); updateHud(); },
       onArrive, spotLabel, onSpot,
       onGuideAction: a => {
         if (a.indexOf("goto:") === 0) { if (WORLD.available()) return; const k = a.slice(5); onArrive(k); }
         else if (a === "openev") { ui.eventOpen = true; render(); }
         else if (a === "fxnopen") { ui.fxn = true; render(); }
       },
-      onMove: (x, y) => NET.move(x, y),
+      onMove: (x, y) => { NET.move(x, y); if (game) game.pos = { x, y, loc: game.loc || game.stateId }; },
       onSay: (k, i) => { const t = NET.say(k, i); if (t) WORLD.meSay(t); },
       onChatOpen: () => { if (prefs.adult === true) return true; if (prefs.adult === false) { WORLD.note("Typed chat is for 18+. Use Say… phrases instead."); return false; } ui.ageGate = true; render(); return false; },
       onType: v => { const r = NET.sendText(v); if (r.ok) { WORLD.meSay(r.text, true); return true; } WORLD.note(r.reason); return false; },
@@ -727,7 +831,7 @@
       NET.join(loc, char || g.player, WORLD.position(), {
         onJoin: (id, d) => WORLD.upsertRemote(id, Object.assign({}, d, { outfit: d.o && fxItem(d.o) ? fxItem(d.o).look : null, outfitKey: d.o || "", nick: tag(d) })),
         onUpdate: (id, d) => WORLD.upsertRemote(id, Object.assign({}, d, { outfit: d.o && fxItem(d.o) ? fxItem(d.o).look : null, outfitKey: d.o || "", nick: tag(d) })),
-        onGift: (id, amt, tip) => { if (!game || game.done) return; game.cash += amt; save(); const p = NET.peers()[id]; WORLD.note((p ? p.nick : "A player") + (tip ? " tipped you " : " sent you ") + inr(amt) + "!"); render(); },
+        onGift: (id, amt, tip) => { if (!game || game.done) return; game.cash += amt; save(); const p = NET.peers()[id]; WORLD.note((p ? p.nick : "A player") + (tip ? " tipped you " : " sent you ") + inr(amt) + "!"); WORLD.react("giftGot"); updateHud(); },
         onParty: (id, m) => {
           const p = NET.peers()[id], nick = p ? p.nick : "A player";
           if (m.k === "inv") { if (!ui.party) openSheet("invite", { invite: { id, nick, pid: m.pid } }); else NET.party(id, "busy", m.pid); }
@@ -886,22 +990,44 @@
   function render() {
     const V = { leaders: vLeaders, rules: vRules, home: vHome, state: vLife, life: vLife, intro: vIntro, creator: vCreator, play: vPlay, summary: vSummary, profile: vProfile }[ui.view] || vHome;
     $app.innerHTML = V();
-    if (ui.view === "creator") bindCreator();
+    if (ui.view === "creator") { bindCreator(); const pv = document.getElementById("pv3d"); if (pv && WORLD.available()) WORLD.preview(pv, ui.draft, null); }
     if (ui.view === "play") mountWorld();
     const fl = document.getElementById("f-lang"), fs = document.getElementById("f-subs");
     if (fl) fl.addEventListener("change", e => { prefs.lang = e.target.value; save(); });
     if (fs) fs.addEventListener("change", e => { prefs.subs = e.target.checked; save(); });
   }
   function bindCreator() {
-    const d = ui.draft, upd = () => { document.getElementById("avatar").innerHTML = AV.svg(d, 150); document.getElementById("hv").textContent = d.height + " cm"; document.getElementById("wv").textContent = d.weight + " kg"; document.querySelector(".pv-name").textContent = d.name || "Your name"; };
+    const d = ui.draft, upd = () => { const av = document.getElementById("avatar"); if (av) av.innerHTML = AV.svg(d, 150); const pv = document.getElementById("pv3d"); if (pv && WORLD.available()) WORLD.preview(pv, d, null); const hv = document.getElementById("hv"); if (hv) hv.textContent = d.height + " cm"; const wv = document.getElementById("wv"); if (wv) wv.textContent = d.weight + " kg"; };
     document.getElementById("f-name").addEventListener("input", e => { d.name = e.target.value.replace(/[<>]/g, "").slice(0, 18); upd(); });
     document.getElementById("f-height").addEventListener("input", e => { d.height = +e.target.value; upd(); });
     document.getElementById("f-weight").addEventListener("input", e => { d.weight = +e.target.value; upd(); });
   }
   function startGame(stateId, lifeId, opts) {
     game = AE.newGame(char, lifeId, stateId, opts);
+    LF.init(game); ui.matureOk = false; ui.pickNote = null;
     save(); go("play");
   }
+  const alertNote = t => { ui.pickNote = t; render(); };
+  window.NS_DEBUG = { game: () => game, ui: () => ui, LF: () => LF, render: () => render(), save: () => save() };
+  // ── the clock: one real second = three game minutes, paused while a card or sheet is open ──
+  let tickN = 0;
+  setInterval(() => {
+    if (ui.view !== "play" || !game || game.done || document.hidden) return;
+    if (ui.outcome || ui.eventOpen || ui.mscene || ui.cityEv || ui.payday || ui.sheet || ui.fxn || ui.travel || ui.talk || ui.welcome || (WORLD.riding && WORLD.riding())) return;
+    LF.init(game);
+    const evs = LF.tick(game, 1); tickN++;
+    updateHud();
+    let rer = false;
+    evs.forEach(e => {
+      if (e === "hungry") { WORLD.react("hungry"); WORLD.note("🍛 You're getting hungry."); }
+      if (e === "tired") { WORLD.react("tired"); WORLD.note("⚡ You're running low on energy."); }
+      if (e === "night") { WORLD.note("🌙 It's 9 pm. Work is over for today. Eat, relax, then sleep at home."); rer = true; }
+      if (e === "morning") rer = true;
+      if (e === "baby") { WORLD.note("👶 The baby is coming! Hurry to the hospital."); rer = true; }
+    });
+    if (rer) render(); else if (tickN % 3 === 0) refreshGuide();
+    if (tickN % 10 === 0) save();
+  }, 1000);
 
   $app.addEventListener("click", e => {
     const b = e.target.closest("[data-act]"); if (!b || b.disabled) return;
@@ -909,13 +1035,31 @@
     switch (act) {
       case "home": go("home"); break;
       case "profile": go("profile"); break;
-      case "resume": go(game._showSummary ? "summary" : "play"); break;
-      case "newlife": if (!char) { ui.after = "life"; go("creator", { draft: defaultDraft() }); } else { go("life", { stateId: "KL", daily: null }); if (NET.lobby) NET.lobby("", () => { if (ui.view === "life") render(); }); } break;
+      case "resume": game._showSummary = false; go("play"); break;
+      case "newlifeyes": game = null; store.del("ns.game"); ui.confirmNew = false; if (!char) { go("creator", { draft: defaultDraft() }); } else { go("creator", { draft: Object.assign({}, char) }); } break;
+      case "newlifeno": ui.confirmNew = false; render(); break;
+      case "surprise": { const taken = NET.takenLives ? NET.takenLives() : {}; const ids = LIVES.filter(L => !L.mature && !taken[L.id]).map(L => L.id); startGame("KL", ids[Math.floor(Math.random() * ids.length)], {}); break; }
+      case "randomlook": { const d = ui.draft, r = n => Math.floor(Math.random() * n); Object.assign(d, { skin: r(AV.SKIN.length), height: 150 + r(40), weight: 50 + r(40), hair: AV.STYLES.hair[r(AV.STYLES.hair.length)], hairColor: r(AV.HAIR.length), acc: AV.STYLES.acc[r(AV.STYLES.acc.length)] }); render(); break; }
+      case "morelook": ui.moreLook = !ui.moreLook; break;
+      case "later": ui.eventOpen = false; render(); break;
+      case "welcomeok": game.welcomed = true; ui.welcome = false; save(); render(); break;
+      case "paydayok": ui.payday = null; WORLD.react("pay"); afterAction(true); render(); break;
+      case "kin": openSheet("kin", { kinLine: null }); break;
+      case "kinchat": { const lines = ["Did you eat? I made extra.", "My office is chaos. Tell me something good.", "Should we repaint the kitchen? Don't answer, I've decided.", "Proud of you. Now help me find the TV remote.", "Weekend plan: Fort Kochi, ice cream, no phones. Deal?"]; ui.kinLine = lines[+arg] || lines[0]; game.h = Math.min(100, game.h + 4); game.min = Math.min(game.min + 45, 23 * 60 + 50); save(); render(); break; }
+      case "planbaby": if (LF.planBaby(game)) { ui.msg = "Exciting news! A baby is on the way. Due on day " + game.babyDue + "."; WORLD.react("good"); save(); render(); } break;
+      case "babyname": { const v = arg || (document.getElementById("f-baby") || {}).value || ""; const n = LF.nameBaby(game, v); ui.sheet = null; WORLD.react("baby"); WORLD.note("👶 Welcome, " + n + "!"); netKey = netKey; afterAction(true); render(); break; }
+      case "goals": openSheet("goals"); break;
+      case "board": openSheet("board"); break;
+      case "retire": openSheet("retire"); break;
+      case "retireyes": { ui.sheet = null; AE.finish(game); save(); render(); window.scrollTo(0, 0); break; }
+      case "sleep": { const r = LF.sleep(game); ui.sheet = null; WORLD.note("😴 " + r.text); WORLD.react("sleep"); (r.grew || []).forEach(n => WORLD.note("🎂 " + n + " is growing up!")); if (game.outfit && !r.nap) { game.outfit = null; WORLD.setLook(char || game.player, null); if (NET.setOutfit) NET.setOutfit(""); } afterAction(true); render(); break; }
+      case "eat": ui.sheet = null; render(); doEat(arg); break;
+      case "newlife": if (game && !game.done && ui.view === "home") { ui.confirmNew = true; render(); break; } if (!char) { ui.after = "life"; go("creator", { draft: defaultDraft() }); } else { go("life", { stateId: "KL", daily: null }); if (NET.lobby) NET.lobby("", () => { if (ui.view === "life") render(); }); } break;
       case "editchar": ui.after = "profile"; go("creator", { draft: Object.assign({}, char) }); break;
       case "daily": { const d = AE.dailyPick(today()); ui.dailyPending = d; if (!char) { ui.after = "daily"; go("creator", { draft: defaultDraft() }); } else go("intro", { stateId: "KL", lifeId: d.lifeId, daily: today() }); break; }
       case "pickstate": ui.stateId = arg; render(); break;
       case "tolife": go("life", { stateId: ui.stateId || "KL", daily: null }); break;
-      case "picklife": go("intro", { lifeId: arg, stateId: "KL" }); break;
+      case "picklife": { const L = lifeById(arg); if (L.mature && !ui.matureOk) { ui.matureOk = true; alertNote("The Trader is a mature life about the real risks of options trading. No real money is involved. Tap it again to start."); break; } startGame("KL", arg, {}); break; }
       case "start": if ((NET.takenLives ? NET.takenLives() : {})[ui.lifeId] && !ui.daily) { go("life", { stateId: "KL" }); break; } startGame("KL", ui.lifeId, ui.daily ? { seed: AE.dailyPick(ui.daily).seed, daily: ui.daily } : {}); break;
       case "set": { const k = b.dataset.k, v = b.dataset.v; ui.draft[k] = isNaN(+v) ? v : +v; render(); break; }
       case "savechar": {
@@ -923,9 +1067,19 @@
         ui.draft.name = nm || "Player"; char = Object.assign({}, ui.draft); save();
         if (ui.after === "daily") { const d = AE.dailyPick(today()); go("intro", { stateId: d.stateId, lifeId: d.lifeId, daily: today() }); }
         else if (ui.after === "profile") go("profile"); else { go("life", { stateId: "KL" }); if (NET.lobby) NET.lobby("", () => { if (ui.view === "life") render(); }); }
+        ui.moreLook = false;
         break;
       }
-      case "choose": { const o = AE.choose(game, +arg); if (o) { ui.outcome = o; ui.eventOpen = false; save(); render(); } break; }
+      case "choose": {
+        const ev = AE.currentEvent(game), ch = ev && ev.c[+arg];
+        const o = AE.choose(game, +arg);
+        if (o) {
+          LF.afterScene(game); ui.outcome = o; ui.eventOpen = false; o.goals = LF.checkGoals(game); save(); render();
+          const d = o.d || {}, good = (d.cash || 0) > 0 || (d.h || 0) > 0 || (d.r || 0) > 0 || (d.x || 0) > 0, bad = ((d.cash || 0) < 0 && (d.h || 0) <= 0 && (d.r || 0) <= 0) || o.passed === false;
+          setTimeout(() => WORLD.react(ch && ch.shady ? "shady" : bad ? "bad" : good ? "good" : "good"), 1800);
+        }
+        break;
+      }
       case "openev": ui.eventOpen = true; render(); break;
       case "mchoose": { const r = AE.missionChoose(game, +arg); if (r) { ui.outcome = r; ui.mscene = null; save(); render(); } break; }
       case "evchoose": {
@@ -955,7 +1109,8 @@
           if (g.odd) { g.odd = null; }
           const it = g.outfit && fxItem(g.outfit);
           if (arg !== g.stateId && it && it.tags.indexOf("local:" + arg) >= 0 && !(g.localBonus || []).includes(arg)) { g.localBonus = (g.localBonus || []).concat(arg); g.r = Math.min(100, g.r + 5); setTimeout(() => WORLD.note("Locals love your " + it.name + "! +5 reputation"), 400); }
-          save(); render(); setTimeout(() => WORLD.note("Welcome to " + STATES[arg].city + "! Ticket: " + inr(cost)), 300);
+          g.min = Math.min(g.min + 240, 23 * 60 + 50); g.pos = null;
+          save(); render(); setTimeout(() => { WORLD.note("Welcome to " + STATES[arg].city + "! Ticket: " + inr(cost)); WORLD.react(arg === "KL" ? "home" : "away"); }, 900);
         }
         break;
       }
@@ -969,7 +1124,7 @@
       case "notadult": prefs.adult = false; save(); ui.ageGate = false; render(); break;
       case "closeage": ui.ageGate = false; render(); break;
       case "rules": e.preventDefault(); go("rules"); break;
-      case "next": { const o = ui.outcome; ui.outcome = null; ui.eventOpen = false; if (o && o.summary && game.outfit) { game.outfit = null; if (NET.setOutfit) NET.setOutfit(""); } if (o && o.summary) { game._showSummary = true; save(); go("summary"); } else { render(); window.scrollTo(0, 0); } break; }
+      case "next": { const o = ui.outcome; ui.outcome = null; ui.eventOpen = false; if (o && o.summary) { ui.payday = game.summary; save(); render(); } else { render(); } break; }
       case "aftersummary": game._showSummary = false; save(); go("play"); break;
       case "talk": if (game.shift) break; ui.talk = true; ui.talkRole = null; ui.talkAnswer = null; render(); break;
       case "closesheet": ui.sheet = null; ui.msg = null; ui.venture = false; ui.dateText = null; render(); refreshGuide(); break;
@@ -978,10 +1133,10 @@
       case "career": openSheet("career"); break;
       case "site": openSheet("site", { site: arg }); break;
       case "seek": ui.seek = arg; render(); break;
-      case "apply": { const r = CS.applyPaper(game, arg, "queue"); if (r) { ui.msg = r.text; save(); render(); } break; }
+      case "apply": { const r = CS.applyPaper(game, arg, "queue"); if (r) { ui.msg = r.text; WORLD.react("paperApply"); save(); render(); } break; }
       case "agent": { const r = CS.applyPaper(game, arg, "agent"); if (r) { ui.msg = r.text; save(); render(); } break; }
-      case "collect": if (CS.collectPaper(game, arg)) { ui.msg = "Signed and stamped: " + paperName(arg) + ". " + (CITY.officeLines[Math.floor(Math.random() * CITY.officeLines.length)]); save(); render(); } break;
-      case "loan": { const lo = CS.takeLoan(game, arg); if (lo) { ui.msg = "Approved! " + inr(lo.principal) + " is in your account. EMI: " + inr(lo.emi) + " per " + unitOf(game) + "."; save(); render(); } break; }
+      case "collect": if (CS.collectPaper(game, arg)) { WORLD.react("paperGot"); setTimeout(afterAction, 50); ui.msg = "Signed and stamped: " + paperName(arg) + ". " + (CITY.officeLines[Math.floor(Math.random() * CITY.officeLines.length)]); save(); render(); } break;
+      case "loan": { const lo = CS.takeLoan(game, arg); if (lo) { WORLD.react("loan"); ui.msg = "Approved! " + inr(lo.principal) + " is in your account. EMI: " + inr(lo.emi) + " per " + unitOf(game) + "."; save(); render(); } break; }
       case "repay": { const l = game.loans[+arg]; if (l && game.cash >= l.left) { game.cash -= l.left; l.left = 0; ui.msg = "Loan closed. The bank manager smiles for the first time."; save(); render(); } break; }
       case "ventureopen": ui.venture = true; ui.vCity = null; ui.vLife = null; ui.msg = null; render(); break;
       case "ventureback": ui.venture = false; render(); break;
@@ -996,19 +1151,19 @@
         break;
       }
       case "switchlife": { const g = game; if ((g.switches || 0) >= 2) break; if (AE.CITY.switchLife(g, arg)) { ui.sheet = null; ui.eventOpen = false; save(); if (NET.lobby) NET.lobby(g.lifeId); netKey = null; render(); WORLD.note("You quit and started: " + lifeById(arg).title); } break; }
-      case "hupgrade": if (CS.upgradeHouse(game, false)) { ui.msg = "Moved in! Welcome to your " + CITY.houseLevels[game.house.lvl].name + "."; save(); render(); } break;
-      case "hloan": if (CS.upgradeHouse(game, true)) { ui.msg = "Home loan approved. Welcome to your " + CITY.houseLevels[game.house.lvl].name + "!"; save(); render(); } break;
+      case "hupgrade": if (CS.upgradeHouse(game, false)) { WORLD.react("house"); setTimeout(afterAction, 50); ui.msg = "Moved in! Welcome to your " + CITY.houseLevels[game.house.lvl].name + "."; save(); render(); } break;
+      case "hloan": if (CS.upgradeHouse(game, true)) { WORLD.react("house"); setTimeout(afterAction, 50); ui.msg = "Home loan approved. Welcome to your " + CITY.houseLevels[game.house.lvl].name + "!"; save(); render(); } break;
       case "paint": if (CS.paint(game, +arg)) { save(); render(); } break;
-      case "decor": if (CS.buyDecor(game, arg)) { save(); render(); } break;
+      case "decor": if (CS.buyDecor(game, arg)) { WORLD.react("decor"); save(); render(); } break;
       case "interest": {
         const g = game; if (g.interestCh !== g.chapter) { g.interestCh = g.chapter; g.interests = 0; }
         if (g.interests >= 3) break; g.interests++;
-        const r = CS.sendInterest(g, arg, ui.site); if (r) { ui.msg = r.text; save(); render(); } break;
+        const r = CS.sendInterest(g, arg, ui.site); if (r) { ui.msg = r.text; WORLD.react(r.ok ? "interestYes" : "interestNo"); afterAction(true); render(); } break;
       }
       case "datechoose": { const r = CS.dateChoose(game, +arg); ui.dateText = r.text; ui.dateMore = !!r.more; save(); render(); break; }
       case "datenext": ui.dateText = null; render(); break;
       case "family": { const r = CS.familyMeet(game, +arg); ui.sheet = null; save(); render(); WORLD.note(r.text); break; }
-      case "wed": { const r = CS.wed(game, arg); if (r) { ui.sheet = null; game.log.push({ c: game.chapter, id: "wedding", t: "Your wedding", l: "Married " + game.spouse.name, r: r.text, d: r.d, alt: [] }); ui.outcome = { text: r.text, d: r.d }; save(); netKey = null; render(); } break; }
+      case "wed": { const r = CS.wed(game, arg); if (r) { setTimeout(() => WORLD.react("wed"), 1500); LF.checkGoals(game); ui.sheet = null; game.log.push({ c: game.chapter, id: "wedding", t: "Your wedding", l: "Married " + game.spouse.name, r: r.text, d: r.d, alt: [] }); ui.outcome = { text: r.text, d: r.d }; save(); netKey = null; render(); } break; }
       case "btab": ui.btab = arg; render(); break;
       case "oddtake": { const g = game; if (g.odd || (g.oddThis || 0) >= 3) break; g.odd = { id: arg, target: WORLD.randomDoor(AE.rnd(g)) }; WORLD.setExtraSpot("odd", g.odd.target); ui.sheet = null; save(); render(); break; }
       case "grouptake": { const g = game, T = groupTask(arg); if (g.group) break; const key = T.where === "door" ? "grp" : T.where; g.group = { id: arg, key, target: key === "grp" ? WORLD.randomDoor(AE.rnd(g)) : null }; ui.sheet = null; save(); render(); if (key === "grp" && T.city === (g.loc || g.stateId)) WORLD.setExtraSpot("grp", g.group.target); break; }
@@ -1019,9 +1174,9 @@
         const r = CS.finishGroup(g, T, here.length);
         if (here.length) NET.groupDone(here.map(m => m.id), T.id, here.length + 1);
         if (!r.hired) g.r = Math.min(100, g.r + 5);
-        WORLD.setExtraSpot("grp", null); ui.sheet = null; ui.outcome = { text: r.text, d: { cash: r.share, r: T.r } }; save(); render(); break;
+        WORLD.setExtraSpot("grp", null); ui.sheet = null; ui.outcome = { text: r.text, d: { cash: r.share, r: T.r } }; g.min = Math.min(g.min + 120, 23 * 60 + 50); g.energy = Math.max(0, g.energy - 10); save(); render(); setTimeout(() => WORLD.react("group"), 1500); break;
       }
-      case "gift": case "tip": { const g = game, amt = +arg, t = ui.target; if (!t || g.cash < amt) break; if (NET.gift(t.id, amt, act === "tip" ? "tip" : "")) { g.cash -= amt; g.gifts = (g.gifts || 0) + 1; ui.msg = "Sent " + inr(amt) + " to " + t.nick + "."; save(); render(); } break; }
+      case "gift": case "tip": { const g = game, amt = +arg, t = ui.target; if (!t || g.cash < amt) break; if (NET.gift(t.id, amt, act === "tip" ? "tip" : "")) { g.cash -= amt; g.gifts = (g.gifts || 0) + 1; WORLD.react("giftSent"); ui.msg = "Sent " + inr(amt) + " to " + t.nick + "."; save(); render(); } break; }
       case "invite": { if (!ui.party) { ui.party = { pid: Math.random().toString(36).slice(2, 10) }; NET.setState({ pt: ui.party.pid }); } NET.party(ui.target.id, "inv", ui.party.pid); ui.msg = "Invite sent to " + ui.target.nick + "."; render(); break; }
       case "inviteyes": { const v = ui.invite; ui.party = { pid: v.pid }; NET.setState({ pt: v.pid }); NET.party(v.id, "acc", v.pid); ui.sheet = null; render(); WORLD.note("You joined " + v.nick + "'s group."); break; }
       case "inviteno": NET.party(ui.invite.id, "dec", ui.invite.pid); ui.sheet = null; render(); break;
