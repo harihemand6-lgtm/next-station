@@ -82,14 +82,45 @@ window.AE_NET = (function () {
     };
   }
 
-  async function join(roomName, character, pos, h, extra) {
-    leave();
+  // ── rooms: each city is split into rooms of ROOM_SIZE players so realtime traffic stays small ──
+  const CAP = CFG.ROOM_SIZE || 8;
+  let city = null, roomN = 1, hops = 0, lobbyReady = null;
+  function roomCounts(c) {
+    const out = {}; if (!lob) return out;
+    const st = lob.presenceState();
+    Object.keys(st).forEach(k => { if (k === myId) return; const s = (st[k] && st[k][0]) || {}; const n = int(s.n, 0, 999); if (s.c === c && n > 0) out[n] = (out[n] || 0) + 1; });
+    return out;
+  }
+  function pickRoom(c, skip) { const cnt = roomCounts(c); for (let n = 1; n < 500; n++) if (n !== skip && (cnt[n] || 0) < CAP) return n; return 1; }
+  function rooms(c) {
+    const cnt = roomCounts(c || city), list = [], top = Math.max(roomN, ...Object.keys(cnt).map(Number), 1);
+    for (let n = 1; n <= top + 1; n++) list.push({ n, count: (cnt[n] || 0) + (n === roomN && c === city ? 1 : 0), cap: CAP, mine: n === roomN && (c || city) === city });
+    return list;
+  }
+
+  async function join(cityId, character, pos, h, extra, forceN) {
+    leave(true);
     if (!enabled()) return false;
-    handlers = h || {}; room = roomName;
+    handlers = h || {}; city = cityId; hops = 0;
     myId = myId || Math.random().toString(36).slice(2, 10);
     my = Object.assign({ nk: myNick(), av: packAv(character), x: pos.x, y: pos.y }, extra || {});
     try { muted = JSON.parse(sessionStorage.getItem("ns.muted") || "{}"); } catch (e) { muted = {}; }
-    const name = "ns-city-" + roomName;
+    if (!lob) await lobby(lobMine ? lobMine.l : "");
+    if (lobbyReady) await Promise.race([lobbyReady, new Promise(r => setTimeout(r, 1500))]);
+    return openRoom(forceN && forceN > 0 ? forceN : pickRoom(cityId));
+  }
+  async function switchRoom(n) {
+    if (!city || !my || n === roomN) return false;
+    const cnt = roomCounts(city); if ((cnt[n] || 0) >= CAP) return false;
+    hops = 0; return openRoom(n);
+  }
+  async function openRoom(n) {
+    if (ch) { try { ch.unsubscribe(); } catch (e) { } }
+    Object.keys(peers).forEach(k => handlers.onLeave && handlers.onLeave(k));
+    ch = null; peers = {}; heard = {};
+    roomN = n; my.t = Date.now();
+    if (lobMine) { lobMine.c = city; lobMine.n = n; if (lob) { try { lob.track(lobMine); } catch (e) { } } }
+    const name = "ns-city-" + city + "-" + n;
     if (isLocal()) ch = localChannel(name);
     else {
       const sb = await loadSupabase();
@@ -98,7 +129,7 @@ window.AE_NET = (function () {
     }
     const c = ch;
     const from = p => (c === ch && p && !muted[p.id] && peers[p.id]) ? String(p.id) : null;
-    c.on("presence", { event: "sync" }, () => { if (c === ch) sync(); })
+    c.on("presence", { event: "sync" }, () => { if (c === ch) { if (!overflow()) sync(); } })
       .on("presence", { event: "join" }, () => { if (c === ch) sendMove(true); })
       .on("presence", { event: "leave" }, ({ key }) => { if (c === ch) { delete peers[key]; handlers.onLeave && handlers.onLeave(key); sync(); } })
       .on("broadcast", { event: "mv" }, ({ payload }) => { const id = from(payload); if (id) { const x = int(payload.x, 0, COLS - 1), y = int(payload.y, 0, ROWS - 1); peers[id].x = x; peers[id].y = y; handlers.onMove && handlers.onMove(id, x, y); } })
@@ -128,6 +159,15 @@ window.AE_NET = (function () {
       .subscribe(status => { if (status === "SUBSCRIBED" && c === ch) c.track(my); });
     return true;
   }
+  // Two players can pick the same last seat at once. The newest arrivals move to the next room.
+  function overflow() {
+    if (!ch || hops >= 3) return false;
+    const st = ch.presenceState(), all = Object.keys(st);
+    if (all.length <= CAP) return false;
+    const order = all.map(k => ({ k, t: k === myId ? my.t : +(((st[k] || [])[0] || {}).t) || 0 })).sort((a, b) => a.t - b.t || (a.k < b.k ? -1 : 1));
+    if (order.findIndex(o => o.k === myId) < CAP) return false;
+    hops++; openRoom(pickRoom(city, roomN)); return true;
+  }
   function gift(to, amt, why) { if (!ch) return false; ch.send({ type: "broadcast", event: "gift", payload: { id: myId, to, amt: Math.round(amt), why: why || "" } }); return true; }
   function party(to, k, pid, task) { if (!ch) return false; ch.send({ type: "broadcast", event: "party", payload: { id: myId, to: to || "", k, pid: pid || "", task: task || "" } }); return true; }
   function groupDone(members, task, real) { if (!ch) return; ch.send({ type: "broadcast", event: "gdone", payload: { id: myId, members, task, real } }); }
@@ -139,15 +179,17 @@ window.AE_NET = (function () {
   let lob = null, lobCb = null, lobMine = null;
   async function lobby(lifeId, cb) {
     if (cb) lobCb = cb;
-    lobMine = { l: lifeId || "", nk: myNick() };
+    const same = lobMine && lobMine.l === (lifeId || "");
+    lobMine = Object.assign(lobMine || {}, { l: lifeId || "", nk: myNick() });
+    if (same && lob) return; // nothing changed: don't re-broadcast presence
     if (!enabled()) return;
     myId = myId || Math.random().toString(36).slice(2, 10);
     if (!lob) {
       try {
         if (isLocal()) lob = localChannel("ns-lobby");
         else { const sb = await loadSupabase(); client = client || sb.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY, { realtime: { params: { eventsPerSecond: 4 } } }); lob = client.channel("ns-lobby", { config: { presence: { key: myId } } }); }
-        const L = lob;
-        L.on("presence", { event: "sync" }, () => { if (L === lob && lobCb) lobCb(); }).subscribe(st => { if (st === "SUBSCRIBED" && L === lob) L.track(lobMine); });
+        const L = lob; let ready; lobbyReady = new Promise(r => (ready = r));
+        L.on("presence", { event: "sync" }, () => { if (L !== lob) return; ready(); if (lobCb) lobCb(); if (handlers.onRooms) handlers.onRooms(); }).subscribe(st => { if (st === "SUBSCRIBED" && L === lob) L.track(lobMine); });
       } catch (e) { lob = null; }
     } else { try { lob.track(lobMine); } catch (e) { } }
   }
@@ -166,22 +208,26 @@ window.AE_NET = (function () {
     shown.forEach(k => {
       const s = (st[k] && st[k][0]) || {};
       const data = { nick: nickOf(s.nk), av: unpackAv(s.av), x: int(s.x, 0, COLS - 1), y: int(s.y, 0, ROWS - 1), o: /^[a-z_]{1,24}$/.test(s.o || "") ? s.o : "", hs: /^[A-Z]{2}$/.test(s.hs || "") ? s.hs : "",
-        l: /^[a-z]{2,10}$/.test(s.l || "") ? s.l : "", rd: typeof s.rd === "number" && s.rd >= 0 && s.rd <= 5 ? Math.round(s.rd * 10) / 10 : 0, pt: /^[a-z0-9]{1,16}$/.test(s.pt || "") ? s.pt : "" };
+        l: /^[a-z]{2,10}$/.test(s.l || "") ? s.l : "", rd: typeof s.rd === "number" && s.rd >= 0 && s.rd <= 5 ? Math.round(s.rd * 10) / 10 : 0, pt: /^[a-z0-9]{1,16}$/.test(s.pt || "") ? s.pt : "", vh: /^[a-z]{2,10}$/.test(s.vh || "") ? s.vh : "", vc: int(s.vc, 0, 7) };
       const prev = peers[k];
       if (prev && prev.x !== undefined) { data.x = prev.x; data.y = prev.y; }
       peers[k] = data;
       if (!prev) handlers.onJoin && handlers.onJoin(k, data);
-      else if (prev.o !== data.o || prev.rd !== data.rd || prev.l !== data.l || prev.pt !== data.pt) handlers.onUpdate && handlers.onUpdate(k, data);
+      else if (prev.o !== data.o || prev.rd !== data.rd || prev.l !== data.l || prev.pt !== data.pt || prev.vh !== data.vh || prev.vc !== data.vc) handlers.onUpdate && handlers.onUpdate(k, data);
     });
-    handlers.onCount && handlers.onCount(ids.length + 1);
+    handlers.onCount && handlers.onCount(ids.length + 1, roomN);
   }
 
+  // The world sends where you are heading (a tap target, or a point ~1 s ahead on the joystick), so other phones
+  // can animate the walk themselves. That is one message per tap and at most about one a second while steering.
+  let lastSent = "";
   function move(x, y) { if (!my) return; my.x = x; my.y = y; sendMove(false); }
   function sendMove(force) {
     if (!ch || !my) return;
-    const now = Date.now();
-    if (!force && now - lastMove < 400) { clearTimeout(sendMove._t); sendMove._t = setTimeout(() => sendMove(true), 420); return; }
-    lastMove = now;
+    const now = Date.now(), k = my.x + "," + my.y;
+    if (!force && k === lastSent) return;
+    if (!force && now - lastMove < 900) { clearTimeout(sendMove._t); sendMove._t = setTimeout(() => sendMove(false), 920 - (now - lastMove)); return; }
+    clearTimeout(sendMove._t); lastMove = now; lastSent = k;
     ch.send({ type: "broadcast", event: "mv", payload: { id: myId, x: my.x, y: my.y } });
   }
   function say(kind, i) {
@@ -216,7 +262,7 @@ window.AE_NET = (function () {
       const { data, error } = await q; return error ? null : data;
     } catch (e) { return null; }
   }
-  function leave() { if (ch) { try { ch.unsubscribe(); } catch (e) { } } ch = null; peers = {}; heard = {}; }
+  function leave(keepLobby) { if (ch) { try { ch.unsubscribe(); } catch (e) { } } clearTimeout(sendMove._t); ch = null; peers = {}; heard = {}; lastSent = ""; if (!keepLobby && lobMine && lobMine.c) { lobMine.c = ""; lobMine.n = 0; if (lob) { try { lob.track(lobMine); } catch (e) { } } } }
 
-  return { configured, setOutfit, gift, party, groupDone, setState, peerPos, lobby, takenLives, peers: () => peers, myId: () => myId, submitScore, topScores, enabled, join, move, say, sendText, check, mute, report, leave, PHRASES, EMOTES, nick: () => nickOf(myNick()), heardFrom: id => heard[id] || [] };
+  return { rooms, room: () => ({ city, n: roomN, cap: CAP }), switchRoom, configured, setOutfit, gift, party, groupDone, setState, peerPos, lobby, takenLives, peers: () => peers, myId: () => myId, submitScore, topScores, enabled, join, move, say, sendText, check, mute, report, leave: () => leave(false), PHRASES, EMOTES, nick: () => nickOf(myNick()), heardFrom: id => heard[id] || [] };
 })();

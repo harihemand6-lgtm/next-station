@@ -296,10 +296,11 @@
     return `<main class="play2" style="--h:${here.hue}">
       <div id="world-slot"></div>
       ${hud2(g)}
-      <div class="dock">
+      <div class="dock ${g.vehicle && !g.shift ? "four" : ""}">
         <button class="dk" data-act="phone" aria-label="Phone"><span>📱</span>Phone</button>
         <button class="dk fxn" data-act="fxnopen" aria-label="FXN app"><span>👗</span>FXN</button>
         <button class="dk" data-act="talk" ${g.shift ? "disabled" : ""} aria-label="Talk"><span>💬</span>Talk</button>
+        ${g.vehicle && !g.shift ? `<button class="dk ride ${g.riding ? "on" : ""}" data-act="ridetoggle" aria-label="${g.riding ? "Walk" : "Ride"}"><span>${g.riding ? "🚶" : CS.vehicleById(g.vehicle.id).icon}</span>${g.riding ? "Walk" : "Ride"}</button>` : ""}
       </div>
       ${card ? `<div class="cardwrap"><div class="cardsheet">${card}</div></div>` : ui.welcome ? welcomeCard() : ""}
       ${ui.talk ? talkSheet() : ""}${ui.muteTarget ? muteSheet() : ""}${ui.ageGate ? ageSheet() : ""}${ui.fxn ? fxnSheet() : ""}${ui.travel ? travelSheet() : ""}${ui.sheet ? citySheet() : ""}</main>`;
@@ -316,7 +317,7 @@
         ${LF.canPlanBaby(g) ? `<button class="btn primary" data-act="planbaby">👶 Plan a baby</button>` : ""}</div>
       ${sp && !LF.canPlanBaby(g) && !g.babyDue && kids.length < 3 && g.house.lvl < 1 ? `<p class="hint">Move out of the rented room first (upgrade your house) before planning a baby.</p>` : ""}
       ${g.babyDue ? `<p class="note">A baby is on the way! ${g.babyReady ? "Go to City Hospital now." : "Due on day " + g.babyDue + "."}</p>` : ""}
-      <p class="hint">Children grow a year every two days. Little ones cost a bit each payday, and make home happier.</p>`);
+      <p class="hint">Children grow a year every day. Little ones cost a bit each payday, and make home happier.</p>`);
   }
   function babySheet() {
     const g = game, sug = LF.NAMES.filter(n => !(g.kids || []).some(k => k.name === n)).slice((g.day * 3) % 8, (g.day * 3) % 8 + 6);
@@ -382,7 +383,8 @@
     // No shortcuts: in 3D every place must be reached on foot. Buttons only appear if the device can't run 3D.
     const walk = !WORLD.available(), go = k => walk ? [["goto:" + k, "Go there"]] : [];
     const hints = sideHints(g), loc = g.loc || g.stateId;
-    if (ui.courier) return { text: ui.courier + " from FXN is on the way", sub: "Stay where you are", key: null };
+    if (ui.courier) return { text: "🛵 " + ui.courier + " from FXN is on the way", sub: "Bringing your outfit from the dark store", key: "courier" };
+    if (ui.guideTo === "garage") return { text: "Walk to " + (loc === "KL" ? "Vyttila Motors" : "City Motors"), sub: "Buy a bicycle, scooter, bike or car", key: "garage" };
     if (g.shift) return { text: "FXN delivery: take the parcel to " + g.shift.cust, sub: g.shift.left + " of " + CITY.rider.drops + " left" + (g.shift.ratings.length ? " · rating " + avgOf(g.shift.ratings) + "★" : ""), key: "gig", actions: go("gig") };
     if (g.odd) { const J = CITY.oddJobs.find(j => j.id === g.odd.id); return { text: "Odd job: " + J.t, sub: "Walk to the glowing door · " + inr(CS.oddPay(g, J)), key: "odd", actions: go("odd") }; }
     if (g.group) {
@@ -412,6 +414,7 @@
 
   function onArrive(k) {
     const g = game; if (!g || g.done || ui.outcome || ui.mscene || ui.cityEv || ui.sheet) return;
+    if (k === "garage" && ui.guideTo === "garage") { ui.guideTo = null; openSheet("garage"); return; }
     if (g.shift) { if (k === "gig") riderDrop(); return; }
     if (k === "odd" && g.odd) { WORLD.setExtraSpot("odd", null); const r = CS.finishOdd(g); WORLD.note(r.text); WORLD.react("odd"); g.min = Math.min(g.min + 60, 23 * 60 + 50); save(); render(); return; }
     const mg = AE.missionGuide(g);
@@ -449,6 +452,7 @@
     if (k === "house") return away(g) ? null : g.romance && g.romance.stage === "family" ? "Introduce your families" : "🏠 Home: sleep, eat, family";
     if (k === "s") return g.spouse ? "💑 " + g.spouse.name : null;
     if (k === "board") return "Notice Board: jobs and group tasks";
+    if (k === "garage") return "🛵 " + (isKL() ? "Vyttila Motors" : "City Motors") + ": buy a ride";
     return null;
   }
   function onSpot(k) {
@@ -467,6 +471,46 @@
     if (k === "house") return game.romance && game.romance.stage === "family" ? openSheet("family") : openSheet("house");
     if (k === "s") return openSheet("kin");
     if (k === "board") return openSheet("board");
+    if (k === "garage") { ui.guideTo = null; return openSheet("garage", { atShop: true }); }
+  }
+  const isKL = () => (game.loc || game.stateId) === "KL";
+
+  // ── vehicles ──
+  const VCOLS = () => WORLD.VCOL || ["#c0392b"];
+  function rideSpec(g) {
+    if (g.shift) return { type: "scooter", color: "#ff4f9a", box: true };
+    if (g.vehicle && g.riding) { const V = CS.vehicleById(g.vehicle.id); return V ? { type: V.type, color: VCOLS()[g.vehicle.color || 0] } : null; }
+    return null;
+  }
+  function applyRide() {
+    const g = game; if (!g || g.done || !WORLD.setVehicle) return;
+    const sp = rideSpec(g), V = g.vehicle && CS.vehicleById(g.vehicle.id), isBase = (g.loc || g.stateId) === g.stateId;
+    WORLD.setVehicle(sp);
+    WORLD.setParked(V && isBase && (!g.riding || g.shift) ? { type: V.type, color: VCOLS()[g.vehicle.color || 0] } : null);
+    if (NET.setState) { const vh = g.shift ? "fxn" : sp ? sp.type : ""; if (applyRide._vh !== vh + (g.vehicle ? g.vehicle.color : "")) { applyRide._vh = vh + (g.vehicle ? g.vehicle.color : ""); NET.setState({ vh, vc: g.vehicle ? g.vehicle.color || 0 : 0 }); } }
+  }
+  const remoteSpec = d => d.vh === "fxn" ? { type: "scooter", color: "#ff4f9a", box: true } : d.vh && WORLD.VEH && WORLD.VEH[d.vh] ? { type: d.vh, color: VCOLS()[d.vc || 0] } : null;
+  function garageSheet() {
+    const g = game, cur = g.vehicle && CS.vehicleById(g.vehicle.id), atShop = ui.atShop, shop = isKL() ? "Vyttila Motors" : "City Motors";
+    const pick = ui.vcolor != null ? ui.vcolor : (g.vehicle ? g.vehicle.color || 0 : 0), ti = CS.tradeIn(g);
+    const mine = cur ? `<div class="vcard own"><span class="vi">${cur.icon}</span><div><b>Your ${esc(cur.name)}</b><span class="hint">${cur.fuel ? "Petrol & service " + inr(CS.money(g, cur.fuel)) + " each payday" : "No running costs"} · ${g.riding ? "you're riding it" : "parked at home"}</span></div>
+      <div class="acts"><button class="btn small primary" data-act="ridetoggle">${g.riding ? "🚶 Get off and walk" : cur.icon + " Ride it"}</button></div></div>` : `<p class="hint">Riding is ${"2–3"}× faster than walking. Kochi traffic not included.</p>`;
+    const colours = `<div class="swatches"><span class="hint">Colour:</span>${CITY.vehicleColors.map(c => `<button class="sw ${pick === c[1] ? "on" : ""}" style="background:${VCOLS()[c[1]]}" data-act="vcolor" data-arg="${c[1]}" title="${c[0]}" aria-label="${c[0]}"></button>`).join("")}</div>`;
+    const list = CITY.vehicles.map(V => {
+      if (cur && cur.id === V.id) return "";
+      const cost = CS.vehicleCost(g, V.id), down = Math.round(cost * 0.2), loanOk = CS.loanOk(g, "vehicle") && cost - down <= CS.loanAmount(g, "vehicle");
+      const acts = atShop ? `<button class="btn small primary" data-act="vbuy" data-arg="${V.id}" ${g.cash >= cost ? "" : "disabled"}>Pay ${inr(cost)}</button>${V.price >= 20000 ? `<button class="btn small" data-act="vloan" data-arg="${V.id}" ${loanOk && g.cash >= down ? "" : "disabled"}>EMI: ${inr(down)} down</button>` : ""}`
+        : `<button class="btn small" data-act="vgo">Walk to ${shop}</button>`;
+      return `<div class="vcard"><span class="vi">${V.icon}</span><div><b>${esc(V.name)} · ${inr(CS.money(g, V.price))}</b><span class="hint">${esc(V.blurb)}${V.fuel ? " · fuel " + inr(CS.money(g, V.fuel)) + "/payday" : ""}</span></div><div class="acts">${acts}</div></div>`;
+    }).join("");
+    const loanNote = atShop && !CS.hasPaper(g, "id") ? `<p class="hint">EMI needs an address proof from the Government Office.</p>` : atShop && (g.loans || []).some(l => l.id === "vehicle" && l.left > 0) ? `<p class="hint">You're still paying a vehicle loan, so EMI isn't available.</p>` : "";
+    return sheetBox(atShop ? shop : "Garage", `${mine}${atShop ? colours : ""}${ti ? `<p class="hint">Trade-in for your ${esc(cur.name)}: ${inr(ti)} off (prices below include it).</p>` : ""}<div class="list">${list}</div>${loanNote}${atShop ? "" : `<p class="hint">Vehicles are sold at ${shop} (🛵 on the map). Walk there to buy.</p>`}`);
+  }
+  function roomsSheet() {
+    const R = NET.room ? NET.room() : null, list = NET.rooms ? NET.rooms(R && R.city) : [];
+    const rows = list.map(r => item((r.mine ? "📍 " : "") + "Room " + r.n, r.count + " of " + r.cap + " players" + (r.mine ? " · you're here" : r.n === list.length && !r.count ? " · empty" : ""),
+      r.mine ? "" : `<button class="btn small primary" data-act="roomjoin" data-arg="${r.n}" ${r.count >= r.cap ? "disabled" : ""}>${r.count >= r.cap ? "Full" : "Join"}</button>`)).join("");
+    return sheetBox("Rooms in " + locState(game).city, `<p class="hint">Each city is split into rooms of ${R ? R.cap : 8} so the game stays smooth. Playing with friends? Everyone joins the same room number.</p><div class="list rooms">${rows}</div>`);
   }
   function doEat(where) {
     const r = LF.eat(game, where);
@@ -488,7 +532,7 @@
     const st = locState(g), name = FX.courierNames[g.loc || g.stateId] || "Rider";
     ui.courier = name; ui.fxn = false; render();
     WORLD.spawnCourier(name, { skin: 4, height: 172, weight: 64, hair: "short", hairColor: 0, acc: "cap" }, { top: "#ff4f9a", bottom: "#1b1830", style: "tee", trim: "#1b1830" }, () => {
-      g.outfit = id; ui.courier = null; g.rented = (g.rented || 0) + 1; save(); setTimeout(() => { WORLD.react("rent"); afterAction(); }, 1600);
+      g.outfit = id; ui.courier = null; g.rented = (g.rented || 0) + 1; save(); setTimeout(() => { WORLD.react("delivery"); afterAction(); }, 2600);
       WORLD.setLook(char || g.player, it.look);
       WORLD.courierSay(FX.courierLines[Math.floor(AE.rnd(g) * FX.courierLines.length)]);
       WORLD.note("Delivered: " + it.name + ". Looking sharp!");
@@ -585,7 +629,7 @@
 
   function phoneSheet() {
     const g = game, P = myParty(), mates = partyHere();
-    const apps = [["goals", "🎯 Life goals", (LF.nextGoal(g) || { t: "All done!" }).t], ["fxnopen", "👗 FXN", "Rent outfits"], ["kin", "👨‍👩‍👧 Family", g.spouse ? g.spouse.name + ((g.kids || []).length ? " + " + g.kids.length : "") : "Single"], ["site:mangalya", "💍 MangalyaMatch", "Matrimony"], ["site:chaidate", "☕ ChaiDate", "Dating"], ["board", "📋 Odd jobs & teams", "Quick money, team tasks"], ["career", "💼 Career", "Switch job"], ["status", "🗂️ My papers", "Papers, loans, house"], ["retire", "🌅 Retire", "End this life"]];
+    const apps = [["goals", "🎯 Life goals", (LF.nextGoal(g) || { t: "All done!" }).t], ["fxnopen", "👗 FXN", "Rent outfits"], ["kin", "👨‍👩‍👧 Family", g.spouse ? g.spouse.name + ((g.kids || []).length ? " + " + g.kids.length : "") : "Single"], ["site:mangalya", "💍 MangalyaMatch", "Matrimony"], ["site:chaidate", "☕ ChaiDate", "Dating"], ["board", "📋 Odd jobs & teams", "Quick money, team tasks"], ["garage", "🛵 Garage", g.vehicle ? (g.riding ? "Riding your " : "Your ") + CS.vehicleById(g.vehicle.id).name.toLowerCase() : "Buy a bicycle, scooter or car"], ["career", "💼 Career", "Switch job"], ["status", "🗂️ My papers", "Papers, loans, house"], ["retire", "🌅 Retire", "End this life"]];
     const party = P ? `<p>Your group: you${mates.length ? ", " + mates.map(m => esc(m.nick)).join(", ") : " (waiting for players to join)"}.</p><button class="btn small ghost" data-act="partyleave">Leave group</button>` : `<p class="hint">Tap a player in the city to invite them to your group (up to 6).</p>`;
     return sheetBox("Phone", `<div class="apps">${apps.map(a => `<button class="app" data-act="${a[0].indexOf("site:") === 0 ? "site" : a[0]}" ${a[0].indexOf("site:") === 0 ? `data-arg="${a[0].slice(5)}"` : ""}><b>${esc(a[1])}</b><span>${esc(a[2])}</span></button>`).join("")}</div><h3 class="sec">Group</h3>${party}`);
   }
@@ -679,6 +723,8 @@
     if (k === "wedding") return weddingSheet();
     if (k === "career") return careerSheet();
     if (k === "board") return boardSheet();
+    if (k === "garage") return garageSheet();
+    if (k === "rooms") return roomsSheet();
     if (k === "group") return groupSheet();
     if (k === "player") return playerSheet();
     if (k === "invite") return inviteSheet();
@@ -704,7 +750,7 @@
   function riderNext(g) {
     const t = WORLD.randomDoor(AE.rnd(g)); g.shift.target = t; g.shift.t0 = Date.now();
     const me = WORLD.position(), d = Math.hypot(t.x + 0.5 - me.x, t.y + 0.5 - me.y);
-    g.shift.ideal = Math.max(8, d * 1.45 / 3.6 + 3); g.shift.cust = CITY.customers[Math.floor(AE.rnd(g) * CITY.customers.length)];
+    g.shift.ideal = Math.max(6, d * 1.45 / 7 + 3); g.shift.cust = CITY.customers[Math.floor(AE.rnd(g) * CITY.customers.length)];
     WORLD.setExtraSpot("gig", t);
   }
   function startShift() {
@@ -712,8 +758,8 @@
     g.shift = { left: CITY.rider.drops, ratings: [], tips: 0 }; riderNext(g);
     profile.rider = profile.rider || { shifts: 0, avg: 0 };
     NET.setState && NET.setState({ rd: profile.rider.avg || 5 });
-    ui.fxn = false; save(); render();
-    WORLD.note("Shift started! " + CITY.rider.drops + " parcels. Finish all of them to end the shift.");
+    ui.fxn = false; save(); render(); applyRide();
+    WORLD.note("🛵 Here's your FXN scooter. Shift started! " + CITY.rider.drops + " parcels. Finish all of them to end the shift.");
   }
   function riderDrop() {
     const g = game, S = g.shift; if (!S) return;
@@ -728,7 +774,7 @@
     if (res.avg >= 5) g.rider5 = true;
     setTimeout(() => WORLD.react(res.paid ? "rider5" : "riderLow"), 600);
     NET.setState && NET.setState({ rd: 0 });
-    save(); openSheet("shift", { shiftEnd: res });
+    save(); openSheet("shift", { shiftEnd: res }); applyRide();
   }
 
   function talkSheet() {
@@ -789,6 +835,7 @@
       <button class="btn primary" data-act="home">Back to the game</button></section></main>${footer()}`;
   }
 
+  let roomsT = 0;
   function mountWorld() {
     const slot = document.getElementById("world-slot");
     if (!game || game.done) { NET.leave(); netKey = null; return; }
@@ -814,8 +861,10 @@
       onSay: (k, i) => { const t = NET.say(k, i); if (t) WORLD.meSay(t); },
       onChatOpen: () => { if (prefs.adult === true) return true; if (prefs.adult === false) { WORLD.note("Typed chat is for 18+. Use Say… phrases instead."); return false; } ui.ageGate = true; render(); return false; },
       onType: v => { const r = NET.sendText(v); if (r.ok) { WORLD.meSay(r.text, true); return true; } WORLD.note(r.reason); return false; },
-      onRemoteTap: (id, nick) => { const p = NET.peers()[id]; openSheet("player", { target: { id, nick: p ? p.nick : nick } }); }
+      onRemoteTap: (id, nick) => { const p = NET.peers()[id]; openSheet("player", { target: { id, nick: p ? p.nick : nick } }); },
+      onRoomTap: () => openSheet("rooms")
     });
+    applyRide();
     WORLD.setExtraSpot("gig", g.shift ? g.shift.target : null);
     WORLD.setExtraSpot("odd", g.odd ? g.odd.target : null);
     WORLD.setExtraSpot("grp", g.group && g.group.key === "grp" ? g.group.target : null);
@@ -829,8 +878,8 @@
       WORLD.clearRemotes();
       const tag = d => d.nick + (d.rd ? " · ★" + d.rd + " rider" : d.l && lifeById(d.l) ? " · " + lifeById(d.l).title : "") + (ui.party && d.pt === ui.party.pid ? " · team" : "");
       NET.join(loc, char || g.player, WORLD.position(), {
-        onJoin: (id, d) => WORLD.upsertRemote(id, Object.assign({}, d, { outfit: d.o && fxItem(d.o) ? fxItem(d.o).look : null, outfitKey: d.o || "", nick: tag(d) })),
-        onUpdate: (id, d) => WORLD.upsertRemote(id, Object.assign({}, d, { outfit: d.o && fxItem(d.o) ? fxItem(d.o).look : null, outfitKey: d.o || "", nick: tag(d) })),
+        onJoin: (id, d) => { WORLD.upsertRemote(id, Object.assign({}, d, { outfit: d.o && fxItem(d.o) ? fxItem(d.o).look : null, outfitKey: d.o || "", nick: tag(d) })); WORLD.vehicleRemote(id, remoteSpec(d)); },
+        onUpdate: (id, d) => { WORLD.upsertRemote(id, Object.assign({}, d, { outfit: d.o && fxItem(d.o) ? fxItem(d.o).look : null, outfitKey: d.o || "", nick: tag(d) })); WORLD.vehicleRemote(id, remoteSpec(d)); },
         onGift: (id, amt, tip) => { if (!game || game.done) return; game.cash += amt; save(); const p = NET.peers()[id]; WORLD.note((p ? p.nick : "A player") + (tip ? " tipped you " : " sent you ") + inr(amt) + "!"); WORLD.react("giftGot"); updateHud(); },
         onParty: (id, m) => {
           const p = NET.peers()[id], nick = p ? p.nick : "A player";
@@ -842,8 +891,9 @@
         onMove: (id, x, y) => WORLD.moveRemote(id, x, y),
         onSay: (id, t, typed) => WORLD.sayRemote(id, t, typed),
         onLeave: id => WORLD.removeRemote(id),
-        onCount: n => WORLD.setOnline(n, NET.PHRASES, NET.EMOTES, true)
-      }, { o: g.outfit || "", hs: g.stateId, l: g.lifeId, rd: g.shift ? ((profile.rider && profile.rider.avg) || 5) : 0, pt: ui.party ? ui.party.pid : "" }).catch(() => { netKey = null; });
+        onCount: (n, room) => { WORLD.setOnline(n, NET.PHRASES, NET.EMOTES, true, room); if (ui.sheet === "rooms") { clearTimeout(roomsT); roomsT = setTimeout(() => { if (ui.sheet === "rooms") render(); }, 300); } },
+        onRooms: () => { if (ui.sheet === "rooms") { clearTimeout(roomsT); roomsT = setTimeout(() => { if (ui.sheet === "rooms") render(); }, 300); } }
+      }, { o: g.outfit || "", hs: g.stateId, l: g.lifeId, rd: g.shift ? ((profile.rider && profile.rider.avg) || 5) : 0, pt: ui.party ? ui.party.pid : "", vh: g.shift ? "fxn" : (rideSpec(g) || {}).type || "", vc: g.vehicle ? g.vehicle.color || 0 : 0 }, ui.roomPick && ui.roomPick.city === loc ? ui.roomPick.n : 0).catch(() => { netKey = null; });
     }
   }
 
@@ -1009,7 +1059,7 @@
   }
   const alertNote = t => { ui.pickNote = t; render(); };
   window.NS_DEBUG = { game: () => game, ui: () => ui, LF: () => LF, render: () => render(), save: () => save() };
-  // ── the clock: one real second = three game minutes, paused while a card or sheet is open ──
+  // ── the clock: one real second = 1.5 game minutes, paused while a card or sheet is open ──
   let tickN = 0;
   setInterval(() => {
     if (ui.view !== "play" || !game || game.done || document.hidden) return;
@@ -1127,8 +1177,28 @@
       case "next": { const o = ui.outcome; ui.outcome = null; ui.eventOpen = false; if (o && o.summary) { ui.payday = game.summary; save(); render(); } else { render(); } break; }
       case "aftersummary": game._showSummary = false; save(); go("play"); break;
       case "talk": if (game.shift) break; ui.talk = true; ui.talkRole = null; ui.talkAnswer = null; render(); break;
-      case "closesheet": ui.sheet = null; ui.msg = null; ui.venture = false; ui.dateText = null; render(); refreshGuide(); break;
+      case "closesheet": ui.sheet = null; ui.msg = null; ui.venture = false; ui.dateText = null; ui.atShop = false; ui.vcolor = null; render(); refreshGuide(); break;
       case "phone": openSheet("phone"); break;
+      case "garage": openSheet("garage", { atShop: false }); break;
+      case "rooms": openSheet("rooms"); break;
+      case "vcolor": ui.vcolor = +arg; if (game.vehicle && !ui.atShop) break; render(); break;
+      case "vgo": ui.guideTo = "garage"; ui.sheet = null; render(); refreshGuide(); break;
+      case "vbuy": case "vloan": {
+        const g = game, V = CS.vehicleById(arg), color = ui.vcolor != null ? ui.vcolor : 0;
+        if (!CS.buyVehicle(g, arg, color, act === "vloan")) { ui.msg = "Not enough cash for that one yet."; render(); break; }
+        ui.msg = (act === "vloan" ? "Loan approved! " : "") + "Your " + V.name.toLowerCase() + " is ready. Tap 🚶/" + V.icon + " to switch between riding and walking.";
+        save(); WORLD.react("vehicle"); applyRide(); setTimeout(afterAction, 50); render(); break;
+      }
+      case "ridetoggle": {
+        const g = game; if (!g.vehicle || g.shift) break;
+        if (WORLD.riding && WORLD.riding()) { WORLD.note("Wait till the ferry docks."); break; }
+        g.riding = !g.riding; save(); applyRide(); if (g.riding) WORLD.react("rideOn"); render(); break;
+      }
+      case "roomjoin": {
+        const n = +arg, R = NET.room ? NET.room() : null;
+        NET.switchRoom(n).then(ok => { if (ok) { ui.roomPick = { city: R.city, n }; WORLD.clearRemotes(); WORLD.note("You moved to Room " + n + "."); ui.sheet = null; } else ui.msg = "That room just filled up."; render(); });
+        break;
+      }
       case "status": openSheet("status"); break;
       case "career": openSheet("career"); break;
       case "site": openSheet("site", { site: arg }); break;

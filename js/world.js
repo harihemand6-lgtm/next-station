@@ -8,7 +8,7 @@ window.AE_WORLD = (function () {
   const ROAD = 0, SIDE = 1, PLAZA = 2, GRASS = 3, BLD = 4, WATER = 5, TREE = 6, JETTY = 7, SAND = 8, BRIDGE = 9;
   const WALKABLE = [true, true, true, true, false, false, false, true, true, true];
   const LANDMARK = { street: "{stall}", job: "Infopark", govt: "Coaching Centre", creator: "Creator Café", startup: "Co-working Space", craft: "Weavers' Workshop", film: "Film Studio", cricket: "Kaloor Stadium", reality: "Spotlight House", trader: "Wi-Fi Café", nurse: "City Hospital", cab: "Auto Stand", teacher: "Tuition Centre", kitchen: "Your Kitchen", homestay: "Your Homestay", stylist: "Style Studio", band: "Rehearsal Room", planner: "Events Office", seafood: "Fishing Harbour", gulf: "Your Shop" };
-  const BIGCOL = { life: "#f4a52b", rival: "#ef6a5f", home: "#c9b6ff", station: "#22b5a6", hall: "#f3efe6", fxn: "#ff4f9a", office: "#9fd3ff", bank: "#7fe0a8", cafe: "#ffcf7a", mall: "#d6c8f0", lm: "#e8dcc0" };
+  const BIGCOL = { garage: "#ff8a5c", life: "#f4a52b", rival: "#ef6a5f", home: "#c9b6ff", station: "#22b5a6", hall: "#f3efe6", fxn: "#ff4f9a", office: "#9fd3ff", bank: "#7fe0a8", cafe: "#ffcf7a", mall: "#d6c8f0", lm: "#e8dcc0" };
   const SKIN = AV.SKIN, HAIRC = AV.HAIR;
 
   // ── Kochi, on its real layout (1 tile ≈ 3 m, squeezed) ──
@@ -41,10 +41,11 @@ window.AE_WORLD = (function () {
       HARBOUR: { r: [4, 23, 8, 27], door: [6, 28], name: "Fishing Harbour", kind: "warehouse" },
       church: { r: [11, 23, 14, 28], door: [12, 29], name: "Old Church", kind: "church" },
       FK: { r: [11, 34, 14, 38], door: [12, 33], name: "Fort Kochi Heritage House", kind: "colonial" },
-      WILL: { r: [27, 26, 31, 29], door: [28, 30], name: "Cochin Port Warehouse", kind: "warehouse" }
+      WILL: { r: [27, 26, 31, 29], door: [28, 30], name: "Cochin Port Warehouse", kind: "warehouse" },
+      SHOW: { r: [61, 38, 63, 44], door: [60, 41], name: "Vyttila Motors", kind: "showroom" }
     },
     blocks: [
-      { r: [55, 23, 58, 28], style: "res" }, { r: [61, 23, 63, 35], style: "res" }, { r: [55, 38, 58, 44], style: "shop" }, { r: [61, 38, 63, 44], style: "shop" },
+      { r: [55, 23, 58, 28], style: "res" }, { r: [61, 23, 63, 35], style: "res" }, { r: [55, 38, 58, 44], style: "shop" },
       { r: [41, 47, 63, 47], style: "shop", low: true },
       { r: [4, 33, 8, 38], style: "colonial" }, { r: [4, 42, 8, 47], style: "colonial" }, { r: [11, 42, 14, 47], style: "colonial" }, { r: [17, 34, 17, 47], style: "colonial" },
       { r: [21, 26, 25, 29], style: "warehouse" }, { r: [21, 34, 25, 38], style: "warehouse" }, { r: [27, 34, 31, 38], style: "warehouse" },
@@ -55,12 +56,19 @@ window.AE_WORLD = (function () {
     board: [37, 23], park: [50, 18], start: [37, 26], ferry: { MD: [36, 19], FK: [17, 24] },
     areas: [["Arabian Sea", 0.6, 30], ["Vypeen", 4.5, 4], ["Fort Kochi", 6, 30], ["Mattancherry", 12, 45], ["Willingdon Island", 26, 36.5], ["Bolgatty", 26, 9.5], ["Marine Drive", 37.5, 9], ["MG Road", 46.5, 28], ["Kaloor", 56.5, 8.6], ["Edappally", 61.5, 8.6], ["Kadavanthra", 57, 25], ["Vyttila", 60, 41], ["Ernakulam South", 50, 46.4], ["Backwaters", 32.5, 22]],
     palms: [[2, 22, 3, 36, 0.5], [1, 0, 1, 17, 0.5], [36, 0, 38, 47, 0.18], [23, 7, 29, 14, 0.2], [21, 25, 31, 38, 0.05], [2, 22, 17, 47, 0.06], [55, 23, 63, 35, 0.06]],
+    // real Ernakulam / Fort Kochi street names: [name, x, y, vertical]
+    roadNames: [["Shanmugham Road", 40, 27, 1], ["MG Road", 47, 17, 1], ["Chittoor Road", 54, 30, 1], ["Kaloor–Kadavanthra Road", 60, 29, 1], ["Banerji Road", 51, 9, 0], ["Park Avenue", 57, 22, 0], ["Sahodaran Ayyappan Road", 50, 37, 0], ["Thevara Road", 52, 46, 0],
+      ["Princess Street", 10, 36, 1], ["Bazaar Road", 16, 27, 1], ["Calvathy Road", 7, 32, 0], ["Jew Town Road", 12.5, 41, 0], ["Bristow Road", 26.5, 35, 1], ["Goshree Bridge", 16, 12, 0], ["Goshree Bridge", 32.5, 12, 0], ["BOT Bridge", 19.5, 32, 0], ["Venduruthy Bridge", 33.5, 32, 0], ["Vypeen Beach Road", 5, 6, 1]],
+    major: [[39, 0, 40, 47], [46, 0, 47, 47], [39, 36, 63, 37], [39, 8, 63, 9]],
+    signs: [[38.75, 30.5, "Shanmugham Rd", 1], [45.7, 15.5, "MG Road", 1], [52.7, 15.5, "Chittoor Rd", 1], [58.7, 7.5, "Kaloor–Kadavanthra Rd", 1], [41.6, 7.7, "Banerji Rd", 0], [38.6, 20.7, "Park Avenue", 0], [38.6, 35.7, "Sahodaran Ayyappan Rd", 0], [38.6, 44.7, "Thevara Rd", 0], [11.3, 30.6, "Princess St", 1], [14.7, 30.6, "Bazaar Rd", 1], [11.3, 39.4, "Jew Town Rd", 0]],
+    metro: { x: 47, stations: [[3.5, "Kaloor"], [30.5, "MG Road"], [42.5, "Ernakulam South"]] },
+    busStops: [[38.3, 12.5], [38.3, 33.5]],
     routes: [[[40, -2], [40, 50]], [[47, -2], [47, 50]], [[54, -2], [54, 50]], [[60, -2], [60, 50]], [[39, 9], [66, 9]], [[39, 22], [66, 22]], [[39, 37], [66, 37]], [[39, 46], [66, 46]], [[10, 22], [10, 50]], [[16, 22], [16, 50]], [[4, 32], [36, 32]], [[2, 12], [36, 12]], [[5, -2], [5, 17]]]
   };
   const CITY_MONUMENT = { KA: "Vidhana Soudha", TG: "Charminar", MH: "Gateway of India", DL: "India Gate" };
 
   let THREE, el, renderer, scene, camera, ray, groundMesh, grid, blds, trees, labels, spots, doors, figs = {}, me, raf = 0, last = 0, opts = {}, yaw = 0, lastDrag = 0, keys = {}, joy = { x: 0, y: 0, on: false }, nearKey = null, sceneMarker = null, guide = null, beacon, beaconRing, bang, labelLayer, banner, actBtn, logEl, ok3d = false, lastMoveSent = 0, extraSpots = {}, inside = {}, pitch = 0.42, dist = 2.9, follow = true, spin = 0, mini, miniCtx, mapEl, mapCv, mapBase, miniT = 0, pointers = {};
-  let sun, hemi, sky, skyU, stars, water, waterTex, facadeMats = [], lampMat, vehicles = [], boats = [], ferry, ride = null, areaLabels = [], ambientT = 0, lastAmb = 0, isKochi = false, palmsList = [];
+  let spinners = [], metroTrain = null, cine = null, sun, hemi, sky, skyU, stars, water, waterTex, facadeMats = [], lampMat, vehicles = [], boats = [], ferry, ride = null, areaLabels = [], ambientT = 0, lastAmb = 0, isKochi = false, palmsList = [];
 
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   function hashNum(s) { let h = 7; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; }
@@ -105,15 +113,15 @@ window.AE_WORLD = (function () {
     const lifeLot = K.lifeLot[o.lifeId] || "BW";
     Object.keys(K.lots).forEach(id => {
       const L = K.lots[id], [x0, y0, x1, y1] = L.r;
-      let big = { hall: "hall", bank: "bank", cafe: "cafe", fxn: "fxn", rival: "rival", office: "office", home: "home", station: "station", mall: "mall" }[id] || (id === lifeLot ? "life" : "lm");
+      let big = { hall: "hall", bank: "bank", cafe: "cafe", fxn: "fxn", rival: "rival", office: "office", home: "home", station: "station", mall: "mall", SHOW: "garage" }[id] || (id === lifeLot ? "life" : "lm");
       let name = big === "life" ? (LANDMARK[o.lifeId] || "Market").replace("{stall}", o.words.stall) : lotName(o, id, L.name || "");
       const kind = big === "home" ? "home" : big === "rival" ? "shop" : L.kind || "shop";
-      const floors = { hall: 2, hospital: 6, mall: 4, bank: 3, cafe: 1, fxn: 3, stadium: 2, tower: 8, market: 1, office: 3, station: 2, warehouse: 2, church: 2, colonial: 2, home: [2, 3, 4, 2, 2][(o.house && o.house.lvl) || 0], shop: 3 }[kind] || 2;
+      const floors = { showroom: 2, hall: 2, hospital: 6, mall: 4, bank: 3, cafe: 1, fxn: 3, stadium: 2, tower: 8, market: 1, office: 3, station: 2, warehouse: 2, church: 2, colonial: 2, home: [2, 3, 4, 2, 2][(o.house && o.house.lvl) || 0], shop: 3 }[kind] || 2;
       addBuilding({ x: x0, y: y0, w: x1 - x0 + 1, d: y1 - y0 + 1, h: floors, floors, style: kind, big, kind, name, door: L.door, tint: R(), roof: ["church", "colonial", "office", "hall"].indexOf(kind) >= 0 || (kind === "home" && (o.house && o.house.lvl >= 3)) });
       if (name) labels.push({ x: (x0 + x1 + 1) / 2, y: (y0 + y1 + 1) / 2, t: name, c: BIGCOL[big] || "#e8dcc0", h: floors + 0.6 });
       const d = { x: L.door[0], y: L.door[1], label: name };
       if (big === "life") spots.m = d; if (big === "rival") spots.v = d; if (big === "home") { spots.p = d; spots.house = { x: L.door[0] + 2, y: L.door[1], label: name }; }
-      if (["station", "hall", "fxn", "office", "bank", "cafe", "mall"].indexOf(big) >= 0) spots[big] = d;
+      if (["station", "hall", "fxn", "office", "bank", "cafe", "mall", "garage"].indexOf(big) >= 0) spots[big] = d;
       if (big === "lm") doors.push({ x: L.door[0], y: L.door[1] });
       if (id === "HOSP") spots.hospital = { x: L.door[0], y: L.door[1], label: "City Hospital" };
     });
@@ -147,10 +155,10 @@ window.AE_WORLD = (function () {
         return;
       }
       if (bx === 0 && waterWest) { for (let y = y0; y <= y1; y++) for (let x = 0; x <= 3; x++) setT(x, y, WATER); if (by === 1) for (let x = 1; x <= 3; x++) setT(x, 11, JETTY); return; }
-      const big = { "1,1": "life", "3,1": "rival", "1,2": "home", "2,2": "station", "1,0": "hall", "2,0": "fxn", "3,0": "office", "1,3": "bank", "2,3": "cafe" }[key];
+      const big = { "1,1": "life", "3,1": "rival", "1,2": "home", "2,2": "station", "1,0": "hall", "2,0": "fxn", "3,0": "office", "1,3": "bank", "2,3": "cafe", "3,3": "garage" }[key];
       if (big) {
-        const name = big === "life" ? (LANDMARK[o.lifeId] || "Market").replace("{stall}", o.words.stall) : lotName(o, big, { hall: "Town Hall", fxn: "FXN Rentals", office: "Government Office", bank: "Bank", cafe: "Café Monsoon" }[big]);
-        const kind = { life: "shop", rival: "shop", home: "home", station: "station", hall: "hall", fxn: "fxn", office: "office", bank: "bank", cafe: "cafe" }[big];
+        const name = big === "life" ? (LANDMARK[o.lifeId] || "Market").replace("{stall}", o.words.stall) : lotName(o, big, { hall: "Town Hall", fxn: "FXN Rentals", office: "Government Office", bank: "Bank", cafe: "Café Monsoon", garage: "City Motors" }[big]);
+        const kind = { life: "shop", rival: "shop", home: "home", station: "station", hall: "hall", fxn: "fxn", office: "office", bank: "bank", cafe: "cafe", garage: "showroom" }[big];
         const floors = kind === "home" ? [2, 3, 4, 2, 2][(o.house && o.house.lvl) || 0] : kind === "cafe" ? 1 : 3;
         addBuilding({ x: ix0, y: iy0, w: ix1 - ix0 + 1, d: iy1 - iy0, h: floors, floors, style: kind, kind, big, name, door: [cx, y1], tint: R(), roof: kind === "office" || kind === "hall" || (kind === "home" && o.house && o.house.lvl >= 3) });
         labels.push({ x: cx + 0.5, y: iy0 + (iy1 - iy0) / 2, t: name, c: BIGCOL[big], h: floors + 0.6 });
@@ -367,7 +375,7 @@ window.AE_WORLD = (function () {
     const headMesh = mk(head); headMesh.userData.pivotY = hy; g.add(headMesh);
     const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.12 * wf * (H / 0.6), 16), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false }));
     shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.012; g.add(shadow);
-    return { group: g, legs, knees, arms, elbows, torso, head: headMesh, H: hy + headR * 1.2 };
+    return { group: g, legs, knees, arms, elbows, torso, head: headMesh, H: hy + headR * 1.2, legL, shadow };
   }
 
   function addFig(id, kind, av, outfit, name, x, z) {
@@ -378,16 +386,87 @@ window.AE_WORLD = (function () {
     if (ok3d) { f.mesh = person(personLook(av, outfit)); f.mesh.group.userData.figId = id; f.H = f.mesh.H; scene.add(f.mesh.group); place(f); }
     figs[id] = f; return f;
   }
-  function removeFig(id) { const f = figs[id]; if (!f) return; if (f.mesh) scene.remove(f.mesh.group); f.lab.remove(); delete figs[id]; }
+  function removeFig(id) { const f = figs[id]; if (!f) return; if (f.mesh && f.mesh.group.parent) f.mesh.group.parent.remove(f.mesh.group); if (f.veh) scene.remove(f.veh.group); if (f.parked) scene.remove(f.parked.group); if (f.box && f.box.parent) f.box.parent.remove(f.box); f.lab.remove(); delete figs[id]; }
   function setLookFig(id, av, outfit) {
     const f = figs[id]; if (!f) return;
     f.av = av || f.av; f.outfit = outfit;
     if (!ok3d) return;
-    scene.remove(f.mesh.group);
+    const parent = f.mesh.group.parent || scene; parent.remove(f.mesh.group);
     f.mesh = person(personLook(f.av, outfit)); f.mesh.group.userData.figId = id; f.H = f.mesh.H;
-    scene.add(f.mesh.group); place(f);
+    parent.add(f.mesh.group); if (f.veh) seatPerson(f); f.H = figH(f); place(f);
   }
-  function place(f) { if (f.mesh) { f.mesh.group.position.set(f.x, f.y || 0, f.z); f.mesh.group.rotation.y = f.heading; } }
+  function place(f) {
+    if (!f.mesh) return;
+    if (f.veh) { const g = f.veh.group; g.position.set(f.x, f.ride || 0, f.z); g.rotation.y = f.heading; g.rotation.z = f.lean || 0; }
+    else { f.mesh.group.position.set(f.x, f.y || 0, f.z); f.mesh.group.rotation.y = f.heading + (f.twirl || 0); }
+  }
+
+  // ═══ Vehicles you can own (and the FXN scooter) ═══
+  // Speeds are multiples of walking speed. Two-wheelers carry the rider; in cars the label floats above the roof.
+  const VEH = { cycle: { mult: 1.6, two: true, seat: 0.3, seatZ: -0.07, label: "Bicycle" }, scooter: { mult: 2.2, two: true, seat: 0.31, seatZ: -0.1, label: "Scooter" }, bike: { mult: 2.6, two: true, seat: 0.33, seatZ: -0.1, label: "Motorbike" }, car: { mult: 2.8, car: true, label: "Car" }, suv: { mult: 3.0, car: true, label: "SUV" } };
+  const VCOL = ["#c0392b", "#2f73b8", "#f2f2f2", "#1b1b1b", "#f4a52b", "#2d8a55", "#8e44ad", "#ff4f9a"];
+  const vehMult = t => (t && VEH[t] ? VEH[t].mult : 1);
+  let wheelGeo = null, wheelMat = null, boxTexMat = null;
+  function fxnBoxMesh() {
+    if (!boxTexMat) {
+      const c = document.createElement("canvas"); c.width = 128; c.height = 96; const x = c.getContext("2d");
+      x.fillStyle = "#ff4f9a"; x.fillRect(0, 0, 128, 96); x.fillStyle = "#ffffff"; x.fillRect(0, 40, 128, 8);
+      x.font = "900 34px Mukta, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillStyle = "#ffffff"; x.fillText("FXN", 64, 24); x.font = "800 14px Mukta, sans-serif"; x.fillText("fashion in minutes", 64, 72);
+      const t = srgbTex(c); boxTexMat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.6 });
+    }
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.145, 0.17), boxTexMat); m.castShadow = true; return m;
+  }
+  function vehRig(type, color, box) {
+    const V = VEH[type] || VEH.scooter, c = col(color || "#c0392b"), dark = col("#1e1e22"), chrome = col("#c9ccd2"), parts = [], grp = new THREE.Group(), wheels = [];
+    grp.rotation.order = "YXZ";
+    if (!wheelGeo) { wheelGeo = mergeGeos([P(new THREE.CylinderGeometry(1, 1, 0.5, 14), col("#151515"), 0, 0, 0, 0, 0, Math.PI / 2), P(new THREE.CylinderGeometry(0.55, 0.55, 0.52, 10), col("#8d9096"), 0, 0, 0, 0, 0, Math.PI / 2)]); wheelMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6 }); }
+    const wheel = (x, z, r, w) => { const m = new THREE.Mesh(wheelGeo, wheelMat); m.scale.set(w / 0.5, r, r); m.position.set(x, r, z); m.castShadow = true; grp.add(m); wheels.push(m); };
+    if (type === "cycle") {
+      wheel(0, 0.23, 0.12, 0.03); wheel(0, -0.23, 0.12, 0.03);
+      parts.push(P(new THREE.CylinderGeometry(0.012, 0.012, 0.36, 6), c, 0, 0.2, 0.02, 1.2, 0, 0), P(new THREE.CylinderGeometry(0.012, 0.012, 0.28, 6), c, 0, 0.27, -0.03, 0, 0, 0), P(new THREE.CylinderGeometry(0.012, 0.012, 0.3, 6), c, 0, 0.18, -0.13, -0.9, 0, 0), P(new THREE.CylinderGeometry(0.012, 0.012, 0.3, 6), c, 0, 0.24, 0.19, 0.25, 0, 0));
+      parts.push(P(new THREE.BoxGeometry(0.07, 0.025, 0.12), dark, 0, 0.3, -0.07), P(new THREE.CylinderGeometry(0.01, 0.01, 0.3, 6), dark, 0, 0.37, 0.21, 0, 0, Math.PI / 2), P(new THREE.CylinderGeometry(0.035, 0.035, 0.02, 10), dark, 0, 0.11, 0, 0, 0, Math.PI / 2));
+    } else if (type === "scooter") {
+      wheel(0, 0.24, 0.085, 0.06); wheel(0, -0.22, 0.085, 0.06);
+      parts.push(P(new THREE.BoxGeometry(0.16, 0.05, 0.3), dark, 0, 0.12, 0.02), P(new THREE.BoxGeometry(0.21, 0.19, 0.3), c, 0, 0.21, -0.15), P(new THREE.CapsuleGeometry(0.105, 0.12, 4, 10), c, 0, 0.2, -0.17, Math.PI / 2, 0, 0, 1, 1, 0.9));
+      parts.push(P(new THREE.BoxGeometry(0.19, 0.045, 0.27), dark, 0, 0.31, -0.13), P(new THREE.BoxGeometry(0.2, 0.3, 0.05), c, 0, 0.26, 0.2, -0.22, 0, 0), P(new THREE.CylinderGeometry(0.018, 0.018, 0.22, 6), dark, 0, 0.37, 0.23, -0.2, 0, 0));
+      parts.push(P(new THREE.BoxGeometry(0.32, 0.03, 0.04), dark, 0, 0.46, 0.25), P(new THREE.CylinderGeometry(0.035, 0.035, 0.03, 12), col("#fff6d6"), 0, 0.42, 0.28, Math.PI / 2, 0, 0), P(new THREE.BoxGeometry(0.12, 0.04, 0.08), c, 0, 0.1, 0.26));
+    } else if (type === "bike") {
+      wheel(0, 0.28, 0.115, 0.06); wheel(0, -0.27, 0.115, 0.07);
+      parts.push(P(new THREE.SphereGeometry(0.1, 12, 8), c, 0, 0.34, 0.07, 0, 0, 0, 0.8, 0.6, 1.3), P(new THREE.BoxGeometry(0.14, 0.13, 0.2), dark, 0, 0.2, 0.0), P(new THREE.BoxGeometry(0.15, 0.05, 0.24), col("#3a2a1e"), 0, 0.33, -0.12));
+      parts.push(P(new THREE.CylinderGeometry(0.02, 0.025, 0.42, 6), chrome, 0.09, 0.14, -0.15, Math.PI / 2 - 0.15, 0, 0), P(new THREE.CylinderGeometry(0.016, 0.016, 0.28, 6), chrome, 0, 0.3, 0.24, -0.35, 0, 0), P(new THREE.BoxGeometry(0.34, 0.025, 0.03), dark, 0, 0.44, 0.22));
+      parts.push(P(new THREE.CylinderGeometry(0.045, 0.045, 0.04, 14), chrome, 0, 0.38, 0.3, Math.PI / 2, 0, 0), P(new THREE.CylinderGeometry(0.04, 0.04, 0.042, 14), col("#fff6d6"), 0, 0.38, 0.31, Math.PI / 2, 0, 0), P(new THREE.BoxGeometry(0.16, 0.03, 0.18), c, 0, 0.25, -0.3));
+    } else {
+      const S = type === "suv" ? 1.12 : 1, W = 0.62 * S, L = 1.32 * S, r = 0.11 * S;
+      [[1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(([sx, sz]) => wheel(sx * (W / 2 - 0.02), sz * L * 0.32, r, 0.08));
+      parts.push(P(new THREE.BoxGeometry(W, 0.26 * S, L), c, 0, r + 0.12 * S, 0), P(new THREE.BoxGeometry(W - 0.02, 0.06, L * 0.3), c, 0, r + 0.27 * S, L * 0.33, -0.08, 0, 0));
+      parts.push(P(new THREE.BoxGeometry(W - 0.06, 0.24 * S, L * (type === "suv" ? 0.66 : 0.55)), col("#26323b"), 0, r + 0.37 * S, type === "suv" ? -0.08 : -0.06), P(new THREE.BoxGeometry(W - 0.04, 0.04, L * (type === "suv" ? 0.62 : 0.5)), c, 0, r + 0.5 * S, type === "suv" ? -0.09 : -0.07));
+      [-1, 1].forEach(sx => { parts.push(P(new THREE.BoxGeometry(0.12, 0.05, 0.02), col("#fff6d6"), sx * W * 0.32, r + 0.15 * S, L / 2 + 0.005), P(new THREE.BoxGeometry(0.1, 0.05, 0.02), col("#d0302a"), sx * W * 0.34, r + 0.17 * S, -L / 2 - 0.005), P(new THREE.BoxGeometry(0.03, 0.03, 0.06), dark, sx * (W / 2 + 0.02), r + 0.32 * S, L * 0.12)); });
+      parts.push(P(new THREE.BoxGeometry(W * 0.5, 0.05, 0.02), dark, 0, r + 0.08, L / 2 + 0.006), P(new THREE.BoxGeometry(W + 0.02, 0.05, 0.05), dark, 0, r + 0.02, L / 2), P(new THREE.BoxGeometry(W + 0.02, 0.05, 0.05), dark, 0, r + 0.02, -L / 2));
+      if (type === "suv") parts.push(P(new THREE.BoxGeometry(0.03, 0.03, L * 0.55), dark, W * 0.38, r + 0.54 * S, -0.09), P(new THREE.BoxGeometry(0.03, 0.03, L * 0.55), dark, -W * 0.38, r + 0.54 * S, -0.09));
+    }
+    const body = new THREE.Mesh(mergeGeos(parts), vcMat); body.castShadow = true; grp.add(body);
+    const sh = new THREE.Mesh(new THREE.PlaneGeometry(V.car ? 0.7 : 0.26, V.car ? 1.4 : 0.6), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.position.y = 0.012; grp.add(sh);
+    let bx = null; if (box) { bx = fxnBoxMesh(); bx.position.set(0, (type === "scooter" ? 0.43 : 0.42), -0.32); grp.add(bx); }
+    return { group: grp, wheels, type, spec: V, box: bx, roll: 0 };
+  }
+  function seatPerson(f) {
+    if (!f.veh || !f.mesh) return;
+    const V = f.veh.spec, M = f.mesh;
+    M.group.position.set(0, V.car ? 0 : V.seat - M.legL, V.car ? 0 : V.seatZ); M.group.rotation.set(0, 0, 0);
+    M.group.visible = !V.car; if (M.shadow) M.shadow.visible = false;
+  }
+  function setFigVehicle(f, spec) {
+    const key = spec ? spec.type + (spec.color || "") + (spec.box ? "b" : "") : "";
+    if ((f.vehKey || "") === key) return;
+    f.vehKey = key; f.vehType = spec && VEH[spec.type] ? spec.type : null;
+    if (f.veh) { scene.remove(f.veh.group); f.veh = null; }
+    if (!ok3d || !f.mesh) return;
+    if (f.mesh.group.parent && f.mesh.group.parent !== scene) f.mesh.group.parent.remove(f.mesh.group);
+    if (!f.vehType) { scene.add(f.mesh.group); f.mesh.group.visible = true; if (f.mesh.shadow) f.mesh.shadow.visible = true; f.lean = 0; place(f); return; }
+    f.veh = vehRig(spec.type, spec.color, spec.box); f.veh.group.add(f.mesh.group); seatPerson(f); scene.add(f.veh.group);
+    f.H = f.veh.spec.car ? 0.72 : f.mesh.H + f.veh.spec.seat - f.mesh.legL; place(f);
+  }
+  function figH(f) { return f.veh ? (f.veh.spec.car ? 0.72 : f.mesh.H + f.veh.spec.seat - f.mesh.legL) : f.mesh ? f.mesh.H : 0.7; }
 
   // ═══ Scene ═══
   function makeSky() {
@@ -463,8 +542,8 @@ window.AE_WORLD = (function () {
     const face = door[1] >= b.y + b.d ? "s" : door[1] < b.y ? "n" : door[0] < b.x ? "w" : "e";
     const fp = { s: [cx, cz + d / 2 + 0.02, 0], n: [cx, cz - d / 2 - 0.02, Math.PI], w: [cx - w / 2 - 0.02, cz, -Math.PI / 2], e: [cx + w / 2 + 0.02, cz, Math.PI / 2] }[face];
     const fw = face === "s" || face === "n" ? w : d;
-    const wallC = { hall: "#f4f1ea", hospital: "#f2f4f5", mall: "#d9e4ea", bank: "#e9e3d6", cafe: "#f3e3c8", fxn: "#2a1730", stadium: "#e9e6df", tower: "#cfd8df", market: "#e8d6b5", office: "#efe0b8", station: "#efe3c7", warehouse: "#c9c2b4", church: "#f7f5ef", colonial: "#f4e6c4", home: o.wallColor || "#efe4cf", shop: "#e7dccb" }[kind] || "#e7dccb";
-    const fstyle = kind === "tower" || kind === "mall" || kind === "hospital" ? "tower" : kind === "warehouse" ? "warehouse" : kind === "colonial" || kind === "church" ? "colonial" : kind === "home" ? (b.floors >= 3 ? "res" : "kerala") : "shop";
+    const wallC = { showroom: "#e6edf2", hall: "#f4f1ea", hospital: "#f2f4f5", mall: "#d9e4ea", bank: "#e9e3d6", cafe: "#f3e3c8", fxn: "#2a1730", stadium: "#e9e6df", tower: "#cfd8df", market: "#e8d6b5", office: "#efe0b8", station: "#efe3c7", warehouse: "#c9c2b4", church: "#f7f5ef", colonial: "#f4e6c4", home: o.wallColor || "#efe4cf", shop: "#e7dccb" }[kind] || "#e7dccb";
+    const fstyle = kind === "tower" || kind === "mall" || kind === "hospital" || kind === "showroom" ? "tower" : kind === "warehouse" ? "warehouse" : kind === "colonial" || kind === "church" ? "colonial" : kind === "home" ? (b.floors >= 3 ? "res" : "kerala") : "shop";
     const fm = facade(fstyle); fm.color = col(wallC); fm.vertexColors = false;
     if (kind === "stadium") {
       const bowl = add(new THREE.CylinderGeometry(Math.min(w, d) * 0.5, Math.min(w, d) * 0.42, 1.6, 28, 1, true), null, cx, 0.8, cz, new THREE.MeshStandardMaterial({ color: 0xe9e6df, roughness: 0.8, side: THREE.DoubleSide })); bowl.scale.set(w / Math.min(w, d), 1, d / Math.min(w, d));
@@ -478,12 +557,13 @@ window.AE_WORLD = (function () {
       if (kind === "church") { const gable = add(new THREE.ConeGeometry(fw * 0.4, 1.4, 3), "#f7f5ef", fp[0], h + 0.7, fp[1]); gable.rotation.y = fp[2]; add(new THREE.BoxGeometry(0.08, 0.6, 0.08), "#444", fp[0], h + 1.7, fp[1]); add(new THREE.BoxGeometry(0.35, 0.08, 0.08), "#444", fp[0], h + 1.75, fp[1]); }
       if (kind === "cafe") { const aw = add(new THREE.BoxGeometry(fw * 0.95, 0.06, 0.7), null, 0, 0, 0, new THREE.MeshStandardMaterial({ map: stripes("#e05a47", "#f7efe2"), roughness: 0.9 })); aw.position.set(fp[0] + (face === "w" ? -0.35 : face === "e" ? 0.35 : 0), 1.0, fp[1] + (face === "s" ? 0.35 : face === "n" ? -0.35 : 0)); aw.rotation.y = fp[2]; aw.rotation.x = 0.25 * (face === "s" ? 1 : -1); }
       if (kind === "station") { const back = face === "n" ? 1 : -1; add(new THREE.BoxGeometry(w * 1.6, 0.08, 1.6), "#8a2d2d", cx, 1.5, cz + back * (d / 2 + 0.8)); for (let i = -3; i <= 3; i++) add(new THREE.CylinderGeometry(0.04, 0.04, 1.5, 6), "#666", cx + i * w * 0.24, 0.75, cz + back * (d / 2 + 1.5)); add(new THREE.BoxGeometry(fw * 0.7, 0.25, 0.15), "#8a2d2d", fp[0], 0.9, fp[1] + (face === "n" ? -0.1 : 0.1)); }
+      if (kind === "showroom") { const show = vehRig("car", "#d0302a"); show.group.position.set(cx, h + 0.14, cz); show.group.scale.setScalar(1.3); scene.add(show.group); spinners.push(show.group); const sc = vehRig("scooter", "#2f73b8"); sc.group.position.set(cx + w * 0.3, h + 0.14, cz + d * 0.3); sc.group.scale.setScalar(1.4); scene.add(sc.group); spinners.push(sc.group); add(new THREE.CylinderGeometry(0.75, 0.75, 0.08, 24), "#cfd6dc", cx, h + 0.1, cz); }
       if (kind === "fxn") { const gl = add(new THREE.PlaneGeometry(fw * 0.8, 0.9), null, 0, 0, 0, new THREE.MeshStandardMaterial({ color: 0xffd1e6, emissive: 0xff4f9a, emissiveIntensity: 0.35, roughness: 0.2 })); gl.position.set(fp[0] + (face === "w" ? -0.01 : face === "e" ? 0.01 : 0), 0.55, fp[1] + (face === "s" ? 0.01 : face === "n" ? -0.01 : 0)); gl.rotation.y = fp[2]; }
       if (kind === "home" && o.base && o.house && o.house.lvl >= 3) { for (let i = 0; i < 3; i++) add(new THREE.CylinderGeometry(0.06, 0.06, 1, 8), "#fbf9f4", fp[0] + (i - 1) * fw * 0.3 * (face === "s" || face === "n" ? 1 : 0), 0.5, fp[1] + (face === "s" ? 0.4 : -0.4)); add(new THREE.BoxGeometry(fw * 0.9, 0.08, 0.8), "#a8472a", fp[0], 1.05, fp[1] + (face === "s" ? 0.35 : -0.35)); }
     }
     const signText = b.name || "", sgW = Math.min(fw * 0.85, 3.4), sgH = 0.42;
     if (signText && kind !== "stadium") {
-      const scheme = { fxn: ["#ff4f9a", "#ffffff"], bank: ["#1f4e8c", "#ffffff"], hospital: ["#ffffff", "#1f7a4d"], station: ["#f1c40f", "#1b1b1b"], cafe: ["#4b2e1e", "#ffd88a"], mall: ["#2b2140", "#ffffff"], office: ["#1f5f4a", "#ffffff"], hall: ["#7a2f2f", "#fff5e0"] }[kind] || ["#1b1830", "#f4c542"];
+      const scheme = { showroom: ["#c0392b", "#ffffff"], fxn: ["#ff4f9a", "#ffffff"], bank: ["#1f4e8c", "#ffffff"], hospital: ["#ffffff", "#1f7a4d"], station: ["#f1c40f", "#1b1b1b"], cafe: ["#4b2e1e", "#ffd88a"], mall: ["#2b2140", "#ffffff"], office: ["#1f5f4a", "#ffffff"], hall: ["#7a2f2f", "#fff5e0"] }[kind] || ["#1b1830", "#f4c542"];
       const sg = signPlane(signText.toUpperCase(), scheme[0], scheme[1], sgW, sgH);
       const hy2 = Math.min(h, 2) - 0.3 + (kind === "cafe" ? -0.1 : 0.2);
       sg.position.set(fp[0] + (face === "w" ? -0.03 : face === "e" ? 0.03 : 0), hy2, fp[1] + (face === "s" ? 0.03 : face === "n" ? -0.03 : 0)); sg.rotation.y = fp[2]; grp.add(sg);
@@ -615,14 +695,14 @@ window.AE_WORLD = (function () {
         <div class="w3-view"><div class="w-labels"></div><div class="joy" aria-label="Joystick: drag to walk"><i></i></div>
           <canvas class="minimap" width="150" height="112" aria-label="City map. Tap to open."></canvas>
           <div class="cam-btns"><button class="w-btn small cam-spin" title="Look all around" aria-label="Look all around">⟳</button><button class="w-btn small cam-zoom" title="Zoom" aria-label="Zoom out">⤢</button></div>
-          <div class="map-full" hidden><div class="map-top"><b>${isKochi ? "Kochi" : esc(o.words.city)}</b><span>Tap a place to walk there</span><button class="w-btn small map-close">Close</button></div><canvas></canvas><div class="map-legend"></div></div>
+          <div class="map-full" hidden><div class="map-top"><div><b>${isKochi ? "Kochi" : esc(o.words.city)}</b><span></span></div><button class="w-btn small map-close">Close</button></div><div class="map-area"><canvas></canvas><div class="map-zoom"><button class="mz-in" aria-label="Zoom in">+</button><button class="mz-out" aria-label="Zoom out">−</button><button class="mz-me" aria-label="Centre on me">◎</button></div></div><p class="map-hint">Tap a pin or any street to walk there · drag to move · pinch to zoom</p></div>
           <div class="w-ui"><button class="w-btn act" hidden></button><button class="w-btn say" hidden>Say…</button><button class="w-btn chat" hidden>Chat</button><span class="w-online" hidden></span></div>
           <div class="say-panel" hidden></div>
           <div class="ride-cap" hidden>On the ferry…</div>
           <div class="chat-log" aria-live="polite"></div></div>
         <form class="chat-row" hidden><input maxlength="80" placeholder="Type a message (no numbers, links or handles)" aria-label="Chat message"><button class="w-btn">Send</button></form>`;
       labelLayer = el.querySelector(".w-labels"); banner = el.querySelector(".w-banner"); actBtn = el.querySelector(".act"); logEl = el.querySelector(".chat-log");
-      figs = {}; extraSpots = {}; inside = {}; guide = null; sceneMarker = null; nearKey = null; yaw = Math.PI; pitch = 0.42; dist = 2.9; follow = true; spin = 0; vehicles = []; boats = []; facadeMats = []; ride = null; ferry = null;
+      figs = {}; spinners = []; metroTrain = null; extraSpots = {}; inside = {}; guide = null; sceneMarker = null; nearKey = null; yaw = Math.PI; pitch = 0.42; dist = 2.9; follow = true; spin = 0; vehicles = []; boats = []; facadeMats = []; ride = null; ferry = null;
       ok3d = false;
       try { if (THREE) { renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" }); ok3d = !!renderer.getContext(); } } catch (e) { ok3d = false; }
       const view = el.querySelector(".w3-view");
@@ -646,7 +726,7 @@ window.AE_WORLD = (function () {
         groundMesh = new THREE.Mesh(new THREE.PlaneGeometry(COLS, ROWS), new THREE.MeshStandardMaterial({ map: groundTexture(), roughness: 0.95, alphaTest: 0.5 }));
         groundMesh.rotation.x = -Math.PI / 2; groundMesh.position.set(COLS / 2, 0, ROWS / 2); groundMesh.receiveShadow = true; scene.add(groundMesh);
         renderCity(o); plantTrees(); streetLamps(); spawnTraffic();
-        if (isKochi) { fishingNets(); bridgesRails(); chayaStall(36.45, 29.35); }
+        if (isKochi) { fishingNets(); bridgesRails(); chayaStall(36.45, 29.35); metro(); streetSigns(); busStops(); roadPalms(); }
         labels.forEach(l => { const s = textSprite(l.t, l.c, 0.42); s.position.set(l.x, l.h + 0.7, l.y); scene.add(s); });
         const bd = spots.board;
         const kiosk = mergeGeos([P(new THREE.BoxGeometry(1.1, 0.7, 0.08), col("#6b4a2f"), 0, 1.0, 0), P(new THREE.BoxGeometry(0.9, 0.5, 0.09), col("#f3efe6"), 0, 1.0, 0.01), P(new THREE.BoxGeometry(0.06, 1.0, 0.06), col("#4a3424"), -0.5, 0.5, 0), P(new THREE.BoxGeometry(0.06, 1.0, 0.06), col("#4a3424"), 0.5, 0.5, 0), P(new THREE.BoxGeometry(0.2, 0.12, 0.1), col("#e05a47"), -0.2, 1.15, 0.06), P(new THREE.BoxGeometry(0.18, 0.14, 0.1), col("#2f73b8"), 0.22, 0.9, 0.06)]);
@@ -669,7 +749,7 @@ window.AE_WORLD = (function () {
       townsfolk(o);
       bindInput();
       mapBase = mapImage(); mini = el.querySelector(".minimap"); miniCtx = mini.getContext("2d");
-      mapEl = el.querySelector(".map-full"); mapCv = mapEl.querySelector("canvas");
+      mapEl = el.querySelector(".map-full"); mapCv = mapEl.querySelector("canvas"); bindMap();
       window.addEventListener("resize", resize); window.addEventListener("keydown", kd); window.addEventListener("keyup", ku);
       last = performance.now(); cancelAnimationFrame(raf); raf = requestAnimationFrame(tick);
     } else if (JSON.stringify(o.outfit || null) !== JSON.stringify(figs.me.outfit || null)) setLookFig("me", o.avatar, o.outfit);
@@ -692,6 +772,83 @@ window.AE_WORLD = (function () {
       else [x0, x1 + 1].forEach((xx, i) => parts.push(P(new THREE.BoxGeometry(0.08, 0.25, len), col("#d9d4c8"), xx + (i ? -0.04 : 0.04), 0.12, y0 + len / 2)));
     });
     const m = new THREE.Mesh(mergeGeos(parts), vcMat); m.castShadow = true; scene.add(m);
+  }
+  // ── Kochi Metro: an elevated line over MG Road with three stations and a train that shuttles along it ──
+  function metro() {
+    const M = K.metro, X = M.x, deckY = 2.3, parts = [], conc = col("#d9d5cc"), conc2 = col("#c4bfb4");
+    parts.push(P(new THREE.BoxGeometry(0.95, 0.2, ROWS + 8), conc, X, deckY - 0.1, ROWS / 2));
+    [-1, 1].forEach(sd => parts.push(P(new THREE.BoxGeometry(0.06, 0.18, ROWS + 8), conc2, X + sd * 0.45, deckY + 0.09, ROWS / 2)));
+    const junction = z => [[8, 10], [21, 23], [36, 38], [45, 47]].some(([a, b]) => z >= a && z <= b);
+    for (let z = -2.5; z < ROWS + 4; z += 3) if (!junction(z)) { parts.push(P(new THREE.CylinderGeometry(0.11, 0.13, deckY - 0.2, 10), conc2, X, (deckY - 0.2) / 2, z)); parts.push(P(new THREE.BoxGeometry(0.75, 0.16, 0.3), conc2, X, deckY - 0.27, z)); }
+    M.stations.forEach(([z]) => {
+      parts.push(P(new THREE.BoxGeometry(1.9, 0.14, 3.4), conc, X, deckY - 0.08, z));
+      parts.push(P(new THREE.CylinderGeometry(1.05, 1.05, 3.4, 16, 1, true, -Math.PI / 2, Math.PI), col("#9fd8d2"), X, deckY + 0.45, z, Math.PI / 2, 0, 0, 1, 0.42, 1));
+      [-1, 1].forEach(sd => { parts.push(P(new THREE.CylinderGeometry(0.05, 0.05, 0.85, 6), col("#7a8288"), X + sd * 0.9, deckY + 0.42, z - 1.4)); parts.push(P(new THREE.CylinderGeometry(0.05, 0.05, 0.85, 6), col("#7a8288"), X + sd * 0.9, deckY + 0.42, z + 1.4)); parts.push(P(new THREE.BoxGeometry(0.06, 0.2, 3.2), col("#2a9d8f"), X + sd * 0.92, deckY + 0.05, z)); });
+    });
+    const m = new THREE.Mesh(mergeGeos(parts), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, side: THREE.DoubleSide })); m.castShadow = true; m.receiveShadow = true; scene.add(m);
+    M.stations.forEach(([z, name]) => [-1, 1].forEach(sd => { const sg = signPlane(name.toUpperCase() + " METRO", "#2a9d8f", "#ffffff", 1.7, 0.22); sg.position.set(X + sd * 0.96, deckY + 0.05, z); sg.rotation.y = sd * Math.PI / 2; scene.add(sg); }));
+    const car = [];
+    for (let i = 0; i < 3; i++) {
+      const cp = [P(new THREE.BoxGeometry(0.62, 0.56, 1.75), col("#f4f6f7"), 0, 0.3, 0), P(new THREE.BoxGeometry(0.635, 0.16, 1.6), col("#27323a"), 0, 0.38, 0), P(new THREE.BoxGeometry(0.64, 0.06, 1.76), col("#22b5a6"), 0, 0.18, 0), P(new THREE.BoxGeometry(0.64, 0.03, 1.76), col("#22b5a6"), 0, 0.53, 0)];
+      if (i === 0 || i === 2) cp.push(P(new THREE.BoxGeometry(0.5, 0.2, 0.03), col("#27323a"), 0, 0.4, (i === 0 ? 1 : -1) * 0.88));
+      car.push(P(mergeGeos(cp), col("#ffffff"), 0, 0, (i - 1) * 1.82));
+    }
+    const train = new THREE.Mesh(mergeGeos(car), vcMat); train.castShadow = true; scene.add(train);
+    metroTrain = { m: train, z: 10, dir: 1, wait: 0, y: deckY };
+    train.position.set(X, deckY, 10);
+  }
+  function stepMetro(dt) {
+    const T = metroTrain, st = K.metro.stations.map(s => s[0]);
+    if (T.wait > 0) { T.wait -= dt; return; }
+    const nz = T.z + T.dir * dt * 3.2;
+    const hit = st.find(z => (T.z - z) * (nz - z) <= 0 && T.last !== z);
+    if (hit !== undefined) { T.z = hit; T.wait = 3; T.last = hit; } else T.z = nz;
+    if (T.z > ROWS + 6) { T.dir = -1; T.last = null; } if (T.z < -6) { T.dir = 1; T.last = null; }
+    T.m.position.z = T.z;
+  }
+  function streetSigns() {
+    const poles = [];
+    K.signs.forEach(([x, z, name, vert]) => {
+      poles.push(P(new THREE.CylinderGeometry(0.02, 0.025, 1.25, 6), col("#5b6168"), x, 0.62, z));
+      [-1, 1].forEach(sd => { const sg = signPlane(name, "#1f7a4d", "#ffffff", Math.min(1.3, 0.24 + name.length * 0.055), 0.17); sg.position.set(x + (vert ? sd * 0.012 : 0), 1.2, z + (vert ? 0 : sd * 0.012)); sg.rotation.y = vert ? (sd > 0 ? Math.PI / 2 : -Math.PI / 2) : (sd > 0 ? 0 : Math.PI); scene.add(sg); });
+    });
+    const m = new THREE.Mesh(mergeGeos(poles), vcMat); scene.add(m);
+  }
+  // Bus shelters on Marine Drive, with FXN posters (the game is FXN's playground)
+  function busStops() {
+    K.busStops.forEach(([x, z]) => {
+      const parts = [P(new THREE.BoxGeometry(0.5, 0.04, 1.3), col("#2f73b8"), 0, 0.95, 0), P(new THREE.BoxGeometry(0.03, 0.9, 1.2), col("#d9dde1"), -0.22, 0.47, 0), P(new THREE.BoxGeometry(0.2, 0.05, 1.0), col("#6b4a2f"), -0.1, 0.3, 0)];
+      [-0.6, 0.6].forEach(dz => parts.push(P(new THREE.CylinderGeometry(0.02, 0.02, 0.95, 6), col("#7a8288"), 0.2, 0.47, dz)));
+      const m = new THREE.Mesh(mergeGeos(parts), vcMat); m.position.set(x, 0, z); m.castShadow = true; scene.add(m);
+      const ad = fxnPoster(0.8, 0.62); ad.position.set(x - 0.2, 0.55, z); ad.rotation.y = Math.PI / 2; scene.add(ad);
+      const st = signPlane("BUS STOP", "#2f73b8", "#ffffff", 0.6, 0.12); st.position.set(x + 0.02, 1.05, z); st.rotation.y = Math.PI / 2; scene.add(st);
+    });
+    const hb = fxnPoster(3.2, 1.25); hb.position.set(41.0, 3.9, 17.5); hb.rotation.y = -Math.PI / 2; scene.add(hb);
+    const legs = new THREE.Mesh(mergeGeos([P(new THREE.CylinderGeometry(0.05, 0.05, 2.3, 6), col("#5b6168"), 41.1, 2.15, 16.6), P(new THREE.CylinderGeometry(0.05, 0.05, 2.3, 6), col("#5b6168"), 41.1, 2.15, 18.4)]), vcMat); scene.add(legs);
+  }
+  function fxnPoster(w, h) {
+    const c = document.createElement("canvas"); c.width = 512; c.height = Math.round(512 * h / w); const x = c.getContext("2d"), H = c.height;
+    const g = x.createLinearGradient(0, 0, 512, H); g.addColorStop(0, "#ff4f9a"); g.addColorStop(1, "#7a2a8f"); x.fillStyle = g; x.fillRect(0, 0, 512, H);
+    x.fillStyle = "rgba(255,255,255,.16)"; x.beginPath(); x.arc(420, H * 0.3, H * 0.55, 0, 7); x.fill();
+    x.fillStyle = "#fff"; x.textBaseline = "middle"; x.font = `900 ${Math.round(H * 0.34)}px Mukta, sans-serif`; x.fillText("FXN", 28, H * 0.3);
+    x.font = `800 ${Math.round(H * 0.13)}px Mukta, sans-serif`; x.fillText("Rent the look. Delivered in 30 min.", 28, H * 0.64);
+    x.font = `700 ${Math.round(H * 0.1)}px Mukta, sans-serif`; x.fillStyle = "#ffd27a"; x.fillText("Weddings · parties · office · Kochi", 28, H * 0.85);
+    const t = srgbTex(c), m = new THREE.MeshStandardMaterial({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.2, roughness: 0.5, side: THREE.DoubleSide });
+    m.userData.sign = true; facadeMats.push(m);
+    return new THREE.Mesh(new THREE.PlaneGeometry(w, h), m);
+  }
+  // coconut palms along the mainland's pavements
+  function roadPalms() {
+    const R = rng(404), list = [];
+    for (let y = 0; y < ROWS; y++) for (let x = 39; x < COLS; x++) {
+      if (at(x, y) !== SIDE || (x + y * 3) % 5 || nearSpot(x, y) || doors.some(d => Math.abs(d.x - x) <= 1 && d.y === y)) continue;
+      if (![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => at(x + dx, y + dy) === ROAD)) continue;
+      list.push({ x: x + 0.5, z: y + 0.5, s: 0.85 + R() * 0.3, r: R() * 6.3 });
+    }
+    if (!list.length) return;
+    const im = new THREE.InstancedMesh(palmGeometry(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, side: THREE.DoubleSide }), list.length), m4 = new THREE.Matrix4();
+    list.forEach((p, i) => { m4.compose(new THREE.Vector3(p.x, 0, p.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, p.r, 0)), new THREE.Vector3(p.s * 0.75, p.s * 0.75, p.s * 0.75)); im.setMatrixAt(i, m4); });
+    im.castShadow = true; scene.add(im);
   }
   const TOWN = {
     KL: [["Chaya chettan", "chaya", 1], ["Auto chettan", "auto"], ["Ammachi", "ammachi"], ["Lottery seller", "lottery", 1], ["Fisherman", "fisher"], ["College student", "student"], ["Techie", "techie"], ["Tourist", "tourist"], ["Uncle", "uncle"], ["Aunty", "aunty"], ["Fish seller", "fishseller", 1], ["FXN rider", "delivery"], ["Jogger", "jogger"], ["Tourist", "tourist"], ["Student", "student"], ["Ammachi", "ammachi"]],
@@ -718,6 +875,7 @@ window.AE_WORLD = (function () {
     if (!el || !el.isConnected || !ok3d) return;
     const view = el.querySelector(".w3-view"), w = view.clientWidth || 360, h = view.clientHeight || 380;
     renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+    if (mapEl && !mapEl.hidden) { sizeMap(); clampMap(); drawFull(performance.now()); }
   }
 
   // ═══ input ═══
@@ -749,17 +907,11 @@ window.AE_WORLD = (function () {
     el.querySelector(".cam-zoom").addEventListener("click", () => { if (dist < 6) { dist = 9; pitch = 0.95; } else { dist = 2.9; pitch = 0.42; } });
     el.querySelector(".minimap").addEventListener("click", openMap);
     el.querySelector(".map-close").addEventListener("click", () => { mapEl.hidden = true; });
-    el.querySelector(".map-full canvas").addEventListener("click", e => {
-      if (ride) return;
-      const r = mapCv.getBoundingClientRect(), tx = Math.floor((e.clientX - r.left) / r.width * COLS), ty = Math.floor((e.clientY - r.top) / r.height * ROWS);
-      me.path = toPts(path(tileOf(me), { x: tx, y: ty })); mapEl.hidden = true;
-      sendMe(true, me.path.length ? me.path[me.path.length - 1] : null);
-    });
     const joyEl = el.querySelector(".joy"), knob = joyEl.querySelector("i");
     const jmove = e => { const r = joyEl.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2; let dx = (e.clientX - cx) / (r.width / 2), dy = (e.clientY - cy) / (r.height / 2); const n = Math.hypot(dx, dy); if (n > 1) { dx /= n; dy /= n; } joy.x = dx; joy.y = dy; knob.style.transform = `translate(${dx * 28}px, ${dy * 28}px)`; };
     joyEl.addEventListener("pointerdown", e => { e.stopPropagation(); joy.on = true; try { joyEl.setPointerCapture(e.pointerId); } catch (er) { } jmove(e); });
     joyEl.addEventListener("pointermove", e => { if (joy.on) jmove(e); });
-    const jend = () => { if (!joy.on) return; joy.on = false; joy.x = joy.y = 0; knob.style.transform = ""; sendMe(true); };
+    const jend = () => { if (!joy.on) return; joy.on = false; joy.x = joy.y = 0; knob.style.transform = ""; sendMe(true, null, true); };
     joyEl.addEventListener("pointerup", jend); joyEl.addEventListener("pointercancel", jend);
     actBtn.addEventListener("click", () => { if (!nearKey) return; const s = spots[nearKey]; if (s && s.ride && !(opts.spotLabel && opts.spotLabel(nearKey))) return startRide(nearKey); if (opts.onSpot) opts.onSpot(nearKey); });
     const sayPanel = el.querySelector(".say-panel"), chatRow = el.querySelector(".chat-row");
@@ -771,7 +923,7 @@ window.AE_WORLD = (function () {
   }
   const KEYMAP = { ArrowUp: "f", w: "f", W: "f", ArrowDown: "b", s: "b", S: "b", ArrowLeft: "l", a: "l", A: "l", ArrowRight: "r", d: "r", D: "r", q: "tl", Q: "tl", e: "tr", E: "tr" };
   function kd(e) { if (!el || !el.isConnected || /input|textarea|select/i.test((document.activeElement || {}).tagName || "")) return; const k = KEYMAP[e.key]; if (k) { keys[k] = true; e.preventDefault(); } }
-  function ku(e) { const k = KEYMAP[e.key]; if (k) { keys[k] = false; if (!keys.f && !keys.b && !keys.l && !keys.r) sendMe(true); } }
+  function ku(e) { const k = KEYMAP[e.key]; if (k) { keys[k] = false; if (!keys.f && !keys.b && !keys.l && !keys.r) sendMe(true, null, true); } }
 
   function tap(e) {
     if (!ok3d || ride) return;
@@ -792,11 +944,14 @@ window.AE_WORLD = (function () {
     if (!tapFx) { tapFx = new THREE.Mesh(new THREE.RingGeometry(0.15, 0.22, 24), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false })); tapFx.rotation.x = -Math.PI / 2; scene.add(tapFx); }
     tapFx.position.set(x, 0.03, z); tapFx.userData.t = performance.now(); tapFx.visible = true;
   }
-  function sendMe(force, target) {
+  // Tell others where you're heading: the tap target, or (joystick) the walkable point you'll reach in about a second.
+  function sendMe(force, target, exact) {
     const now = performance.now();
-    if (!force && now - lastMoveSent < 500) return;
+    if (!force && now - lastMoveSent < 1000) return;
     lastMoveSent = now;
-    const t = target ? { x: Math.floor(target.x), y: Math.floor(target.z) } : tileOf(me);
+    let t = target ? { x: Math.floor(target.x), y: Math.floor(target.z) } : null;
+    if (!t && !exact && me.free && me.vel) for (let k = 1; k >= 0 && !t; k -= 0.2) { const x = Math.floor(me.x + me.vel.x * k), y = Math.floor(me.z + me.vel.z * k); if (walk(x, y)) t = { x, y }; }
+    t = t || tileOf(me);
     if (opts.onMove) opts.onMove(t.x, t.y);
   }
 
@@ -817,7 +972,8 @@ window.AE_WORLD = (function () {
     if (n < 0.15) return false;
     if (n > 1) { fwd /= n; str /= n; }
     const fx = Math.sin(yaw), fz = Math.cos(yaw), rx = -Math.cos(yaw), rz = Math.sin(yaw);
-    const vx = fx * fwd + rx * str, vz = fz * fwd + rz * str, s = SPEED * dt * Math.min(1, n);
+    const sp = SPEED * vehMult(me.vehType) * Math.min(1, n), vx = fx * fwd + rx * str, vz = fz * fwd + rz * str, s = sp * dt;
+    me.vel = { x: vx * sp, z: vz * sp };
     me.path = [];
     const nx = me.x + vx * s, nz = me.z + vz * s;
     if (walk(Math.floor(nx), Math.floor(me.z))) me.x = nx;
@@ -828,7 +984,22 @@ window.AE_WORLD = (function () {
   }
   function animate(f, dt) {
     if (!f.mesh) return;
-    const M = f.mesh, k = f.moving ? 1 : 0;
+    const M = f.mesh;
+    if (f.veh) {
+      const V = f.veh.spec, d = Math.hypot(f.x - (f.px || f.x), f.z - (f.pz || f.z)); f.px = f.x; f.pz = f.z;
+      f.veh.wheels.forEach(w => { w.rotation.x += d / Math.max(0.05, w.scale.y); });
+      const turn = angDiff(f.ph2 || f.heading, f.heading) / Math.max(dt, 0.001); f.ph2 = f.heading;
+      f.lean = (f.lean || 0) + ((V.two && f.moving ? Math.max(-0.3, Math.min(0.3, -turn * 0.06)) : 0) - (f.lean || 0)) * Math.min(1, dt * 6);
+      if (V.two) {
+        const ped = f.veh.type === "cycle" && f.moving ? Math.sin(f.ph += dt * 9) * 0.35 : 0;
+        M.legs[0].rotation.x = -1.3 + ped; M.legs[1].rotation.x = -1.3 - ped; M.knees[0].rotation.x = 1.25 - ped * 0.6; M.knees[1].rotation.x = 1.25 + ped * 0.6;
+        M.legs[0].rotation.z = -0.12; M.legs[1].rotation.z = 0.12;
+        M.arms[0].rotation.x = M.arms[1].rotation.x = -1.05; M.arms[0].rotation.z = -0.22; M.arms[1].rotation.z = 0.22; M.elbows[0].rotation.x = M.elbows[1].rotation.x = -0.35;
+      }
+      M.head.rotation.y = f.look || 0; f.y = 0; place(f); return;
+    }
+    const k = f.moving ? 1 : 0;
+    M.legs[0].rotation.z = M.legs[1].rotation.z = 0;
     f.ph += dt * (f.moving ? (f.kind === "walker" ? 7 : 10) : 0);
     f.blend = (f.blend || 0) + (k - (f.blend || 0)) * Math.min(1, dt * 8);
     const s = Math.sin(f.ph), b = f.blend;
@@ -837,6 +1008,8 @@ window.AE_WORLD = (function () {
     M.arms[0].rotation.x = s * 0.5 * b; M.arms[1].rotation.x = -s * 0.5 * b;
     M.arms[0].rotation.z = -0.08; M.arms[1].rotation.z = 0.08;
     M.elbows[0].rotation.x = -0.25 - Math.max(0, s) * 0.3 * b; M.elbows[1].rotation.x = -0.25 - Math.max(0, -s) * 0.3 * b;
+    if (f.carry) { M.arms[0].rotation.x = M.arms[1].rotation.x = -0.95; M.arms[0].rotation.z = 0.12; M.arms[1].rotation.z = -0.12; M.elbows[0].rotation.x = M.elbows[1].rotation.x = -0.75; }
+    if (f.wave) { M.arms[1].rotation.z = 2.5; M.arms[1].rotation.x = 0; M.elbows[1].rotation.x = -0.4 + Math.sin(performance.now() / 90) * 0.35; }
     const breathe = Math.sin(performance.now() / 700 + f.ph) * 0.006 * (1 - b);
     f.y = Math.abs(Math.cos(f.ph)) * 0.012 * b + (f.ride || 0);
     M.torso.scale.set(1 + breathe, 1 + breathe, 1 + breathe);
@@ -886,24 +1059,26 @@ window.AE_WORLD = (function () {
   function tick(time) {
     const dt = Math.min(0.05, (time - last) / 1000); last = time;
     me.free = false;
-    if (ride) stepRide(dt); else if (!freeMove(dt)) stepPath(me, dt);
+    if (ride) stepRide(dt);
+    else if (me.lock && time < me.lock) { me.path = []; me.moving = false; }
+    else if (!freeMove(dt)) stepPath(me, dt, SPEED * vehMult(me.vehType));
+    if (me.twirlT) { me.twirlT = Math.max(0, me.twirlT - dt); me.twirl = (1 - me.twirlT / 0.9) * Math.PI * 2; if (!me.twirlT) me.twirl = 0; }
+    stepFx(dt);
     Object.values(figs).forEach(f => {
-      if (f.kind === "remote") stepPath(f, dt);
+      if (f.kind === "remote") { let rem = 0, px = f.x, pz = f.z; f.path.forEach(p => { rem += Math.hypot(p.x - px, p.z - pz); px = p.x; pz = p.z; }); const base = SPEED * vehMult(f.vehType); stepPath(f, dt, Math.min(base * 2.5, Math.max(base, rem / 0.95))); }
       if (f.kind === "walker" && !f.stat) {
         if (f.pause && time < f.pause) { f.moving = false; return; }
         stepPath(f, dt, f.kid ? 1.4 : 1.25);
         if (!f.path.length) { if (Math.random() < dt * 0.5) { const t = f.home ? { x: f.home.x + Math.floor(Math.random() * 3) - 1, y: f.home.y + Math.floor(Math.random() * 2) } : randomDoor(Math.random()); f.path = toPts(path(tileOf(f), t)); } }
       }
-      if (f.kind === "courier") {
-        stepPath(f, dt, 5.5);
-        if (performance.now() - (f.repath || 0) > 800) { f.repath = performance.now(); f.path = toPts(path(tileOf(f), tileOf(me))); }
-        if (f.cb && Math.hypot(f.x - me.x, f.z - me.z) < 1.1) { const cb = f.cb; f.cb = null; cb(); setTimeout(() => removeFig(f.id), 3000); }
-      }
+      if (f.kind === "courier") stepCourier(f, dt, time);
     });
     ambient(time);
     if (ok3d && el && el.isConnected) {
       applyTime(dbgHour != null ? dbgHour : opts.hour ? opts.hour() : 17);
-      if (spin > 0) { const st = Math.min(spin, dt * Math.PI * 0.55); yaw += st; spin -= st; }
+      if (cine && time < cine.until) { yaw += angDiff(yaw, cine.yaw) * Math.min(1, dt * 2.5); dist += (cine.dist - dist) * Math.min(1, dt * 2); pitch += (0.3 - pitch) * Math.min(1, dt * 2); }
+      else if (cine) { dist = cine.back; cine = null; }
+      else if (spin > 0) { const st = Math.min(spin, dt * Math.PI * 0.55); yaw += st; spin -= st; }
       else if (follow && me.moving && !me.free && performance.now() - lastDrag > 1500) yaw += angDiff(yaw, me.heading) * Math.min(1, dt * 2.2);
       else if (follow && me.free && performance.now() - lastDrag > 2500 && joy.on && Math.abs(joy.y) > 0.5 && joy.y < 0) yaw += angDiff(yaw, me.heading) * Math.min(1, dt * 1.2);
       Object.values(figs).forEach(f => animate(f, dt));
@@ -916,9 +1091,11 @@ window.AE_WORLD = (function () {
       });
       boats.forEach(b => { b.t += b.sp * dt * b.dir; if (b.t > 1 || b.t < 0) { b.dir *= -1; b.t = Math.max(0, Math.min(1, b.t)); } b.m.position.set(b.a[0] + (b.b[0] - b.a[0]) * b.t, Math.sin(time / 600 + b.t * 9) * 0.03, b.a[1] + (b.b[1] - b.a[1]) * b.t); b.m.rotation.y = b.dir > 0 ? 0 : Math.PI; });
       if (ferry && !ride) ferry.m.position.y = Math.sin(time / 550) * 0.025;
+      spinners.forEach(g => { g.rotation.y += dt * 0.5; });
+      if (metroTrain) stepMetro(dt);
       waterTex.offset.set(time * 0.000012, time * 0.000008);
       const fx = Math.sin(yaw), fz = Math.cos(yaw), hz = Math.cos(pitch) * dist, vy = Math.sin(pitch) * dist;
-      const ty = 0.42 + (me.y || 0);
+      const ty = 0.42 + (me.y || 0) + (me.veh ? (me.veh.spec.car ? 0.15 : 0.06) : 0);
       camera.position.set(me.x - fx * hz, ty + vy, me.z - fz * hz);
       if (camera.position.y < 0.15) camera.position.y = 0.15;
       camera.lookAt(me.x + fx * 0.35 * Math.cos(pitch), ty, me.z + fz * 0.35 * Math.cos(pitch));
@@ -926,7 +1103,7 @@ window.AE_WORLD = (function () {
       const sd = sun.userData.dir || new THREE.Vector3(-0.4, 0.8, 0.45);
       sun.position.set(me.x + sd.x * 30, sd.y * 30, me.z + sd.z * 30); sun.target.position.set(me.x, 0, me.z); sun.target.updateMatrixWorld();
       if (time - miniT > 120) { miniT = time; drawMini(time); if (!mapEl.hidden) drawFull(time); }
-      const g = guide && spotPos(guide.key);
+      const g = guide && guide.key !== "courier" && spotPos(guide.key);
       beacon.visible = beaconRing.visible = !!g; if (g) { beacon.position.set(g.x, 3, g.z); beaconRing.position.set(g.x, 0.03, g.z); const sc = 1 + Math.sin(time / 300) * 0.12; beaconRing.scale.set(sc, sc, sc); }
       const sm = sceneMarker && spotPos(sceneMarker);
       bang.visible = !!sm; if (sm) bang.position.set(sm.x, 1.5 + Math.sin(time / 200) * 0.1, sm.z);
@@ -984,6 +1161,7 @@ window.AE_WORLD = (function () {
 
   function spotPos(k) {
     if (["m", "f", "v", "p", "s"].indexOf(k) >= 0 && figs["npc_" + k]) return { x: figs["npc_" + k].x, z: figs["npc_" + k].z };
+    if (k === "courier") return figs.courier ? { x: figs.courier.x, z: figs.courier.z } : null;
     const s = spots[k] || extraSpots[k]; return s ? { x: s.x + 0.5, z: s.y + 0.5 } : null;
   }
   function projectLabels() {
@@ -1016,52 +1194,175 @@ window.AE_WORLD = (function () {
     if (cap3d === null) { try { const c = document.createElement("canvas"); cap3d = !!(window.THREE && window.WebGLRenderingContext && (c.getContext("webgl") || c.getContext("experimental-webgl"))); } catch (e) { cap3d = false; } }
     return cap3d;
   }
-  // ═══ maps ═══
+  // ═══ maps: an illustrated city map (roads with names, pins, your route) for the minimap and the full map ═══
+  const BP = 20; // base map pixels per tile
+  const PIN = { m: ["💼", "#f4a52b", 3], house: ["🏠", "#8f6bff", 4], f: ["🌳", "#3f9b4a", 2], board: ["📋", "#16998c", 4], station: ["🚉", "#16998c", 3], hall: ["🏛️", "#8a3b3b", 3], fxn: ["👗", "#ff4f9a", 5], office: ["🏢", "#1f6b52", 3], bank: ["🏦", "#1f4e8c", 3], cafe: ["☕", "#8a5a3a", 2], mall: ["🛍️", "#6b4fa0", 2], hospital: ["🏥", "#d84343", 2], food: ["🍵", "#c98a2b", 2], ferryMD: ["⛴️", "#1f73b8", 2], ferryFK: ["⛴️", "#1f73b8", 2], garage: ["🛵", "#e0602b", 3], v: ["🏪", "#ef6a5f", 1], gig: ["📦", "#ff4f9a", 6], odd: ["🔧", "#e0a530", 6], grp: ["👥", "#16998c", 6] };
+  let mv = { s: 12, cx: 0, cy: 0 }, route = null, routeT = 0;
   function mapImage() {
-    const Pp = 6, c = document.createElement("canvas"); c.width = COLS * Pp; c.height = ROWS * Pp;
-    const x = c.getContext("2d"), cl = { [ROAD]: "#8f8a80", [SIDE]: "#e8e1d2", [PLAZA]: "#efdcb6", [GRASS]: "#9cc77c", [BLD]: "#d3cbbb", [WATER]: "#7fbcd2", [TREE]: "#7fb465", [JETTY]: "#a88a62", [SAND]: "#f2e2b4", [BRIDGE]: "#b7b2a8" };
-    for (let y = 0; y < ROWS; y++) for (let xx = 0; xx < COLS; xx++) { x.fillStyle = cl[at(xx, y)]; x.fillRect(xx * Pp, y * Pp, Pp, Pp); }
-    blds.forEach(b => { x.fillStyle = b.big && b.big !== "lm" ? BIGCOL[b.big] : b.big === "lm" ? "#c2b49a" : "#c9c0ae"; x.fillRect(b.x * Pp + 1, b.y * Pp + 1, b.w * Pp - 2, b.d * Pp - 2); });
+    const c = document.createElement("canvas"); c.width = COLS * BP; c.height = ROWS * BP;
+    const x = c.getContext("2d"), R = rng(17), T = (tx, ty) => [tx * BP, ty * BP];
+    const wg = x.createLinearGradient(0, 0, c.width, c.height); wg.addColorStop(0, "#9fd3e6"); wg.addColorStop(1, "#86c3dc"); x.fillStyle = wg; x.fillRect(0, 0, c.width, c.height);
+    x.strokeStyle = "rgba(255,255,255,.35)"; x.lineWidth = 1.5;
+    for (let i = 0; i < COLS * ROWS / 7; i++) { const tx = R() * COLS, ty = R() * ROWS; if (at(Math.floor(tx), Math.floor(ty)) !== WATER) continue; x.beginPath(); x.arc(tx * BP, ty * BP, 6, Math.PI * 1.15, Math.PI * 1.85); x.stroke(); }
+    const each = (fn) => { for (let y = 0; y < ROWS; y++) for (let xx = 0; xx < COLS; xx++) fn(xx, y, at(xx, y)); };
+    // land with a soft shoreline
+    x.save(); x.shadowColor = "rgba(20,70,90,.45)"; x.shadowBlur = 10; x.fillStyle = "#f2eee4"; x.beginPath();
+    each((xx, y, t) => { if (t !== WATER) x.rect(xx * BP - 0.5, y * BP - 0.5, BP + 1, BP + 1); }); x.fill(); x.restore();
+    const tileFill = { [SAND]: "#f5e3b3", [PLAZA]: "#f4e7cb", [GRASS]: "#bfe0a2", [TREE]: "#bfe0a2", [JETTY]: "#c9a77a" };
+    each((xx, y, t) => { if (tileFill[t]) { x.fillStyle = tileFill[t]; x.fillRect(xx * BP, y * BP, BP, BP); } });
+    x.fillStyle = "#8cc472"; trees.forEach(t => { x.beginPath(); x.arc((t.x + 0.5) * BP, (t.y + 0.5) * BP, BP * 0.38, 0, 7); x.fill(); });
+    x.fillStyle = "rgba(90,150,70,.55)"; palmsList.forEach(p => { if (R() < 0.6) { x.beginPath(); x.arc(p.x * BP, p.z * BP, 3, 0, 7); x.fill(); } });
+    // roads: casing, then fill; major roads in warm yellow; bridges darker casing
+    const isMajor = (xx, y) => isKochi && K.major.some(r => xx >= r[0] && xx <= r[2] && y >= r[1] && y <= r[3]);
+    const road = t => t === ROAD || t === BRIDGE;
+    x.fillStyle = "#cfc6b4"; each((xx, y, t) => { if (road(t)) x.fillRect(xx * BP - 2, y * BP - 2, BP + 4, BP + 4); });
+    x.fillStyle = "#9a9488"; each((xx, y, t) => { if (t === BRIDGE) x.fillRect(xx * BP - 2, y * BP - 2, BP + 4, BP + 4); });
+    each((xx, y, t) => { if (road(t)) { x.fillStyle = isMajor(xx, y) ? "#ffe8a3" : "#ffffff"; x.fillRect(xx * BP, y * BP, BP, BP); } });
+    // buildings
+    const rr = (bx, by, bw, bh, r) => { x.beginPath(); x.moveTo(bx + r, by); x.arcTo(bx + bw, by, bx + bw, by + bh, r); x.arcTo(bx + bw, by + bh, bx, by + bh, r); x.arcTo(bx, by + bh, bx, by, r); x.arcTo(bx, by, bx + bw, by, r); x.closePath(); };
+    blds.forEach(b => {
+      const [px, py] = T(b.x, b.y), lm = b.big && b.big !== "lm";
+      x.save(); x.shadowColor = "rgba(0,0,0,.18)"; x.shadowOffsetY = 2; x.shadowBlur = 3;
+      rr(px + 2, py + 2, b.w * BP - 4, b.d * BP - 4, 4); x.fillStyle = lm ? BIGCOL[b.big] : b.big === "lm" ? "#ddd2bd" : "#e4ddcf"; x.globalAlpha = lm ? 0.55 : 1; x.fill(); x.restore();
+      x.strokeStyle = lm ? BIGCOL[b.big] : "#cbc1ad"; x.lineWidth = 1.2; rr(px + 2, py + 2, b.w * BP - 4, b.d * BP - 4, 4); x.stroke();
+    });
+    // metro line
+    if (isKochi) {
+      const X = K.metro.x * BP; x.strokeStyle = "rgba(34,157,143,.85)"; x.lineWidth = 4; x.setLineDash([10, 6]); x.beginPath(); x.moveTo(X, 0); x.lineTo(X, c.height); x.stroke(); x.setLineDash([]);
+      K.metro.stations.forEach(([z]) => { x.fillStyle = "#fff"; x.strokeStyle = "#229d8f"; x.lineWidth = 3; x.beginPath(); x.arc(X, z * BP, 7, 0, 7); x.fill(); x.stroke(); });
+    }
     return c;
   }
-  function drawDots(ctx, sx, sy, time, big) {
-    const dot = (x, z, c, r) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x * sx, z * sy, r, 0, 6.3); ctx.fill(); };
-    Object.values(figs).forEach(f => { if (f.kind === "remote") dot(f.x, f.z, "#0e8f82", big ? 4.5 : 2.4); if (f.kind === "npc") dot(f.x, f.z, "#3b2f5a", big ? 3.5 : 1.8); if (f.kind === "courier") dot(f.x, f.z, "#ff4f9a", big ? 5 : 2.6); });
-    const g = guide && guide.key && spotPos(guide.key);
-    if (g) { const r = (big ? 9 : 4.5) + Math.sin(time / 200) * (big ? 3 : 1.5); ctx.strokeStyle = "#0e8f82"; ctx.lineWidth = big ? 3 : 2; ctx.beginPath(); ctx.arc(g.x * sx, g.z * sy, r, 0, 6.3); ctx.stroke(); }
-    const sm = sceneMarker && spotPos(sceneMarker); if (sm) dot(sm.x, sm.z, "#e08e1b", big ? 6 : 3);
-    ctx.save(); ctx.translate(me.x * sx, me.z * sy); ctx.rotate(-me.heading + Math.PI);
-    ctx.fillStyle = "#e0451b"; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; const s = big ? 9 : 5;
-    ctx.beginPath(); ctx.moveTo(0, -s); ctx.lineTo(s * 0.7, s * 0.8); ctx.lineTo(-s * 0.7, s * 0.8); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+  const pinList = () => {
+    const out = [];
+    Object.keys(Object.assign({}, spots, extraSpots)).forEach(k => { const P2 = PIN[k]; if (!P2) return; const p = spotPos(k); if (!p) return; const s0 = spots[k] || extraSpots[k]; out.push({ k, x: p.x, z: p.z, icon: P2[0], c: P2[1], pr: P2[2], name: k === "gig" ? "Drop-off" : k === "odd" ? "Odd job" : k === "grp" ? "Team task" : k === "house" ? "Home" : k === "f" && isKochi ? "Subhash Park" : (s0 && s0.label) || "" }); });
+    return out.sort((a, b) => b.pr - a.pr);
+  };
+  function updateRoute(time) {
+    const k = guide && guide.key; if (!k) { route = null; return; }
+    if (route && route.k === k && time - routeT < 900) return;
+    routeT = time; const p = spotPos(k); if (!p) { route = null; return; }
+    const pts = path(tileOf(me), { x: Math.floor(p.x), y: Math.floor(p.z) });
+    route = { k, pts: [{ x: me.x, z: me.z }].concat(toPts(pts)) };
+  }
+  function drawRoute(ctx, tx, ty, w) {
+    if (!route || route.pts.length < 2) return;
+    ctx.save(); ctx.lineCap = ctx.lineJoin = "round";
+    [["rgba(255,255,255,.95)", w + 3], ["#16998c", w]].forEach(([c, lw], i) => { ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.setLineDash(i ? [lw * 1.6, lw * 1.2] : []); ctx.beginPath(); route.pts.forEach((p, j) => (j ? ctx.lineTo : ctx.moveTo).call(ctx, tx(p.x), ty(p.z))); ctx.stroke(); });
+    ctx.restore();
+  }
+  function drawMe(ctx, X, Y, s) {
+    ctx.save(); ctx.translate(X, Y);
+    ctx.fillStyle = "rgba(66,133,244,.18)"; ctx.beginPath(); ctx.arc(0, 0, s * 2.2, 0, 7); ctx.fill();
+    ctx.rotate(-me.heading + Math.PI); ctx.fillStyle = "#e0451b"; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, -s * 1.2); ctx.lineTo(s * 0.85, s * 0.9); ctx.lineTo(0, s * 0.45); ctx.lineTo(-s * 0.85, s * 0.9); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+  }
+  function drawPin(ctx, X, Y, p, r, pulse) {
+    ctx.save(); ctx.translate(X, Y);
+    if (pulse) { ctx.strokeStyle = p.c; ctx.globalAlpha = 0.6; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, -r * 1.25, r * (1.5 + pulse * 0.5), 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
+    ctx.fillStyle = p.c; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, -r * 1.25, r, Math.PI * 0.8, Math.PI * 2.2); ctx.lineTo(0, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.font = `${Math.round(r * 1.15)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(p.icon, 0, -r * 1.22);
+    ctx.restore();
+  }
+  function drawOthers(ctx, tx, ty, r) {
+    Object.values(figs).forEach(f => {
+      const c = f.kind === "remote" ? "#16998c" : f.kind === "courier" ? "#ff4f9a" : f.kind === "npc" ? "#3b2f5a" : null; if (!c) return;
+      ctx.fillStyle = c; ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(tx(f.x), ty(f.z), f.kind === "npc" ? r * 0.7 : r, 0, 7); ctx.fill(); ctx.stroke();
+    });
   }
   function drawMini(time) {
     if (!miniCtx) return;
-    const w = mini.width, h = mini.height, Z = isKochi ? 22 : 20, sx = mapBase.width / COLS;
-    const cx = Math.max(Z / 2, Math.min(COLS - Z / 2, me.x)), cz = Math.max(Z * 0.375, Math.min(ROWS - Z * 0.375, me.z));
-    miniCtx.clearRect(0, 0, w, h);
-    miniCtx.drawImage(mapBase, (cx - Z / 2) * sx, (cz - Z * 0.375) * sx, Z * sx, Z * 0.75 * sx, 0, 0, w, h);
-    miniCtx.save(); miniCtx.translate(-(cx - Z / 2) * w / Z, -(cz - Z * 0.375) * h / (Z * 0.75));
-    drawDots(miniCtx, w / Z, h / (Z * 0.75), time, false); miniCtx.restore();
+    const dpr = Math.min(2, window.devicePixelRatio || 1), cw = mini.clientWidth || 112, ch = mini.clientHeight || 84;
+    if (mini.width !== Math.round(cw * dpr)) { mini.width = Math.round(cw * dpr); mini.height = Math.round(ch * dpr); }
+    const s = 6.5 * dpr, w = mini.width, h = mini.height, c = miniCtx;
+    const ox = me.x - w / 2 / s, oy = me.z - h / 2 / s, tx = X => (X - ox) * s, ty = Y => (Y - oy) * s;
+    c.fillStyle = "#86c3dc"; c.fillRect(0, 0, w, h); outerLand(c, tx, w, h);
+    c.drawImage(mapBase, ox * BP, oy * BP, w / s * BP, h / s * BP, 0, 0, w, h);
+    updateRoute(time); drawRoute(c, tx, ty, 2.2 * dpr);
+    pinList().forEach(p => { if (p.pr >= 3 || (guide && guide.key === p.k)) drawPin(c, tx(p.x), ty(p.z), p, 6 * dpr, guide && guide.key === p.k ? (Math.sin(time / 200) + 1) / 2 : 0); });
+    drawOthers(c, tx, ty, 2.6 * dpr);
+    drawMe(c, w / 2, h / 2, 5 * dpr);
   }
+  // the city carries on past the edge of the playable map
+  function outerLand(c, tx, W, H) { const x0 = isKochi ? tx(36) : ({ MH: 1, TG: 1 }[opts.stateId] ? tx(4) : -1); c.fillStyle = "#ebe5d8"; c.fillRect(Math.max(0, x0), 0, W, H); }
+  function areaName() { let best = null, bd = 1e9; areaLabels.forEach(([t, x, y]) => { const d = Math.hypot(x - me.x, y - me.z); if (d < bd && !/Sea|Backwaters/.test(t)) { bd = d; best = t; } }); return best; }
   function openMap() {
     mapEl.hidden = false;
-    const aw = Math.min(900, window.innerWidth - 20), ah = window.innerHeight - 130;
-    mapCv.width = Math.round(Math.max(220, Math.min(aw, ah * COLS / ROWS))); mapCv.height = Math.round(mapCv.width * ROWS / COLS);
-    mapEl.querySelector(".map-legend").innerHTML = [["#e0451b", "You"], ["#0e8f82", "Goal, players"], ["#ff4f9a", "FXN Rentals"], ["#9fd3ff", "Govt Office"], ["#7fe0a8", "Bank"], ["#ffcf7a", "Café"], ["#c9b6ff", "Home"], ["#22b5a6", "Station"]].map(l => `<span><i style="background:${l[0]}"></i>${l[1]}</span>`).join("");
+    const a = areaName(); mapEl.querySelector(".map-top span").textContent = a ? "You're in " + a : "Tap a pin to walk there";
+    sizeMap(); mv.s = Math.max(mv.min, Math.min(16, mv.min * 1.9)); mv.cx = me.x; mv.cy = me.z; clampMap();
     drawFull(performance.now());
   }
+  function sizeMap() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1), box = mapCv.parentNode.getBoundingClientRect();
+    mapCv.style.width = box.width + "px"; mapCv.style.height = box.height + "px";
+    mapCv.width = Math.round(box.width * dpr); mapCv.height = Math.round(box.height * dpr); mv.dpr = dpr;
+    mv.min = Math.min(box.width / COLS, box.height / ROWS) * 0.98;
+  }
+  function clampMap() {
+    mv.s = Math.max(mv.min, Math.min(40, mv.s));
+    const w = mapCv.width / mv.dpr / mv.s, h = mapCv.height / mv.dpr / mv.s;
+    mv.cx = w >= COLS ? COLS / 2 : Math.max(w / 2, Math.min(COLS - w / 2, mv.cx)); mv.cy = h >= ROWS ? ROWS / 2 : Math.max(h / 2, Math.min(ROWS - h / 2, mv.cy));
+  }
+  const mapToScreen = () => { const d = mv.dpr, W = mapCv.width / d, H = mapCv.height / d; return { tx: X => (X - mv.cx) * mv.s + W / 2, ty: Y => (Y - mv.cy) * mv.s + H / 2, W, H }; };
   function drawFull(time) {
-    const c = mapCv.getContext("2d");
-    c.clearRect(0, 0, mapCv.width, mapCv.height); c.drawImage(mapBase, 0, 0, mapCv.width, mapCv.height);
-    const sx = mapCv.width / COLS, sy = mapCv.height / ROWS, fs = mapCv.width > 500 ? 13 : 10;
-    c.textAlign = "center";
-    c.font = `italic 700 ${fs + 1}px Mukta, sans-serif`;
-    areaLabels.forEach(([t, x, y]) => { c.fillStyle = "rgba(40,52,70,.55)"; c.fillText(t, x * sx, y * sy); });
-    c.font = `700 ${fs}px Mukta, sans-serif`;
-    labels.forEach(l => { const tw = c.measureText(l.t).width + 8; c.fillStyle = "rgba(255,255,255,.9)"; c.fillRect(l.x * sx - tw / 2, l.y * sy - fs + 1, tw, fs + 4); c.fillStyle = "#1b1830"; c.fillText(l.t, l.x * sx, l.y * sy + 2); });
-    if (spots.board) { c.fillStyle = "#0e8f82"; c.fillText("Notice Board", spots.board.x * sx, spots.board.y * sy - 4); }
-    if (spots.ferryMD) { c.fillStyle = "#1f4e8c"; c.fillText("⛴ Ferry", spots.ferryMD.x * sx - 14, spots.ferryMD.y * sy - 4); c.fillText("⛴ Ferry", spots.ferryFK.x * sx + 14, spots.ferryFK.y * sy - 4); }
-    drawDots(c, sx, sy, time, true);
+    const c = mapCv.getContext("2d"), d = mv.dpr, { tx, ty, W, H } = mapToScreen(), s = mv.s;
+    c.setTransform(d, 0, 0, d, 0, 0); c.fillStyle = "#86c3dc"; c.fillRect(0, 0, W, H); outerLand(c, tx, W, H);
+    c.imageSmoothingQuality = "high"; c.drawImage(mapBase, tx(0), ty(0), COLS * s, ROWS * s);
+    c.textAlign = "center"; c.textBaseline = "middle";
+    // area names
+    c.font = `italic 800 ${Math.round(Math.max(11, Math.min(18, s * 1.05)))}px Mukta, sans-serif`;
+    areaLabels.forEach(([t, x, y]) => { c.lineWidth = 3; c.strokeStyle = "rgba(255,255,255,.7)"; c.strokeText(t.toUpperCase(), tx(x), ty(y)); c.fillStyle = /Sea|Backwaters/.test(t) ? "rgba(30,90,120,.75)" : "rgba(70,62,84,.7)"; c.fillText(t.toUpperCase(), tx(x), ty(y)); });
+    // road names along the road
+    if (isKochi && s >= 9) {
+      c.font = `700 ${Math.round(Math.min(12, s * 0.62))}px Mukta, sans-serif`;
+      K.roadNames.forEach(([t, x, y, v]) => { c.save(); c.translate(tx(x), ty(y)); if (v) c.rotate(-Math.PI / 2); c.lineWidth = 3; c.strokeStyle = "#fff"; c.strokeText(t, 0, 0); c.fillStyle = "#5c5547"; c.fillText(t, 0, 0); c.restore(); });
+      c.font = `800 ${Math.round(Math.min(11, s * 0.6))}px Mukta, sans-serif`; K.metro.stations.forEach(([z, n]) => { c.lineWidth = 3; c.strokeStyle = "#fff"; c.strokeText("Ⓜ " + n, tx(K.metro.x) + 6 + s * 1.2, ty(z)); c.fillStyle = "#1c7f74"; c.fillText("Ⓜ " + n, tx(K.metro.x) + 6 + s * 1.2, ty(z)); });
+    }
+    updateRoute(time); drawRoute(c, tx, ty, 4);
+    drawOthers(c, tx, ty, 5);
+    // pins with names; names skip if they would overlap a higher-priority one
+    const placed = [], r = Math.max(10, Math.min(15, s * 0.8));
+    mv.pins = [];
+    pinList().reverse().forEach(p => { const X = tx(p.x), Y = ty(p.z); drawPin(c, X, Y, p, r, guide && guide.key === p.k ? (Math.sin(time / 200) + 1) / 2 : 0); mv.pins.push({ p, X, Y: Y - r * 1.25, r: r + 4 }); });
+    c.font = `800 ${Math.round(Math.max(10, Math.min(13, s * 0.7)))}px Mukta, sans-serif`;
+    mv.pins.slice().reverse().forEach(({ p, X, Y }) => {
+      if (!p.name) return; const tw = c.measureText(p.name).width + 10, box = [X - tw / 2, Y + r * 1.35, tw, 17];
+      if (placed.some(b => box[0] < b[0] + b[2] && box[0] + box[2] > b[0] && box[1] < b[1] + b[3] && box[1] + box[3] > b[1])) return; placed.push(box);
+      c.fillStyle = "rgba(255,255,255,.92)"; c.strokeStyle = p.c; c.lineWidth = 1.5; c.beginPath(); c.roundRect ? c.roundRect(box[0], box[1], box[2], box[3], 8) : c.rect(box[0], box[1], box[2], box[3]); c.fill(); c.stroke();
+      c.fillStyle = "#1b1830"; c.fillText(p.name, X, box[1] + 9);
+    });
+    drawMe(c, tx(me.x), ty(me.z), 9);
+  }
+  function walkTo(tile) {
+    if (ride || !tile) return;
+    me.path = toPts(path(tileOf(me), tile)); mapEl.hidden = true;
+    sendMe(true, me.path.length ? me.path[me.path.length - 1] : null);
+  }
+  function bindMap() {
+    const cv = mapCv, pts = {}; let drag = null, pinch = 0;
+    const local = e => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+    const zoomAt = (k, at) => { const { W, H } = mapToScreen(), wx = mv.cx + (at.x - W / 2) / mv.s, wy = mv.cy + (at.y - H / 2) / mv.s; mv.s *= k; clampMap(); mv.cx = wx - (at.x - W / 2) / mv.s; mv.cy = wy - (at.y - H / 2) / mv.s; clampMap(); drawFull(performance.now()); };
+    cv.addEventListener("pointerdown", e => { pts[e.pointerId] = local(e); try { cv.setPointerCapture(e.pointerId); } catch (er) { } const P2 = Object.values(pts); if (P2.length === 2) { pinch = Math.hypot(P2[0].x - P2[1].x, P2[0].y - P2[1].y); drag = null; } else drag = { x: pts[e.pointerId].x, y: pts[e.pointerId].y, moved: false }; });
+    cv.addEventListener("pointermove", e => {
+      if (!pts[e.pointerId]) return; const p = local(e), prev = pts[e.pointerId]; pts[e.pointerId] = p; const P2 = Object.values(pts);
+      if (P2.length === 2 && pinch) { const dd = Math.hypot(P2[0].x - P2[1].x, P2[0].y - P2[1].y); zoomAt(dd / pinch, { x: (P2[0].x + P2[1].x) / 2, y: (P2[0].y + P2[1].y) / 2 }); pinch = dd; return; }
+      if (!drag) return; if (Math.hypot(p.x - drag.x, p.y - drag.y) > 6) drag.moved = true;
+      if (drag.moved) { mv.cx -= (p.x - prev.x) / mv.s; mv.cy -= (p.y - prev.y) / mv.s; clampMap(); drawFull(performance.now()); }
+    });
+    const up = e => {
+      const p = pts[e.pointerId]; delete pts[e.pointerId]; if (Object.keys(pts).length < 2) pinch = 0;
+      if (e.type !== "pointerup" || !drag || drag.moved || !p) { if (!Object.keys(pts).length) drag = null; return; }
+      drag = null;
+      const hit = (mv.pins || []).filter(q => Math.hypot(q.X - p.x, q.Y - p.y) < q.r).sort((a, b) => b.p.pr - a.p.pr)[0];
+      if (hit) { const s0 = spots[hit.p.k] || extraSpots[hit.p.k]; return walkTo({ x: s0.x, y: s0.y }); }
+      const { W, H } = mapToScreen(); walkTo({ x: Math.floor(mv.cx + (p.x - W / 2) / mv.s), y: Math.floor(mv.cy + (p.y - H / 2) / mv.s) });
+    };
+    cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
+    cv.addEventListener("wheel", e => { e.preventDefault(); zoomAt(e.deltaY > 0 ? 0.88 : 1.14, local(e)); }, { passive: false });
+    mapEl.querySelector(".mz-in").addEventListener("click", () => { const { W, H } = mapToScreen(); zoomAt(1.35, { x: W / 2, y: H / 2 }); });
+    mapEl.querySelector(".mz-out").addEventListener("click", () => { const { W, H } = mapToScreen(); zoomAt(1 / 1.35, { x: W / 2, y: H / 2 }); });
+    mapEl.querySelector(".mz-me").addEventListener("click", () => { mv.cx = me.x; mv.cy = me.z; clampMap(); drawFull(performance.now()); });
   }
 
   // ═══ character preview (creator screen) ═══
@@ -1133,32 +1434,140 @@ window.AE_WORLD = (function () {
   function sayRemote(id, t, typed) { const f = figs["r_" + id]; if (!f || Math.hypot(f.x - me.x, f.z - me.z) > 14) return false; bubble(f, t, null, typed); log(f.name, t); return true; }
   function removeRemote(id) { removeFig("r_" + id); }
   function clearRemotes() { Object.keys(figs).filter(k => k.indexOf("r_") === 0).forEach(removeFig); }
-  function setOnline(n, phrases, emotes, canType) {
+  function setOnline(n, phrases, emotes, canType, room) {
     if (!el) return;
     const on = el.querySelector(".w-online");
     if (n == null) { on.hidden = true; el.querySelector(".say").hidden = true; el.querySelector(".chat").hidden = true; return; }
-    on.hidden = false; on.textContent = n === 1 ? "Only you here" : n + " players here";
+    on.hidden = false; on.textContent = (room ? "Room " + room + " · " : "") + (n === 1 ? "only you" : n + " players") + (room ? " ▾" : "");
+    on.classList.toggle("room", !!room);
+    if (!on._b) { on._b = 1; on.addEventListener("click", () => { if (opts.onRoomTap) opts.onRoomTap(); }); }
     el.querySelector(".say").hidden = false; el.querySelector(".chat").hidden = !canType;
     el.querySelector(".say-panel").innerHTML = phrases.map((p, i) => `<button data-kind="p" data-say="${i}">${esc(p)}</button>`).join("") + `<div class="emo">${emotes.map((p, i) => `<button data-kind="e" data-say="${i}">${esc(p)}</button>`).join("")}</div>`;
   }
+  // ── FXN delivery: the rider scoots over from the FXN store, parks, walks up with the pink box and hands it to you.
+  // You open it, there's a sparkle and a twirl, and you're wearing the outfit. Then the rider waves and rides off.
   function spawnCourier(name, av, outfit, onArrive) {
     const s = spots.fxn || { x: 20, y: 4 };
     removeFig("courier");
-    const f = addFig("courier", "courier", av, outfit, name + " · FXN", s.x + 0.5, s.y + 0.5);
-    f.cb = onArrive; f.path = toPts(path({ x: s.x, y: s.y }, tileOf(me)));
-    if (!ok3d) setTimeout(() => { if (f.cb) { const cb = f.cb; f.cb = null; cb(); removeFig("courier"); } }, 1500);
+    const st = nearestWalk({ x: s.x, y: s.y }) || s;
+    const f = addFig("courier", "courier", av, outfit, name + " · FXN", st.x + 0.5, st.y + 0.5);
+    f.cb = onArrive; f.rider = name;
+    if (!ok3d) { setTimeout(() => { if (f.cb) { const cb = f.cb; f.cb = null; cb(); removeFig("courier"); } }, 1500); return f; }
+    f.dl = { st: "ride", t: 0, t0: performance.now() };
+    setFigVehicle(f, { type: "scooter", color: "#ff4f9a", box: true });
+    f.path = toPts(path(tileOf(f), tileOf(me))); tracker(f);
     return f;
   }
+  function tracker(f) {
+    const t = el && el.querySelector(".deliv"); if (!t) return;
+    if (!f) { t.hidden = true; return; }
+    const d = Math.hypot(f.x - me.x, f.z - me.z), st = f.dl.st;
+    t.hidden = false;
+    t.innerHTML = st === "ride" ? `<b>🛵 ${esc(f.rider)} is on the way</b><span>FXN dark store · ${Math.max(5, Math.round(d * 3 / 5) * 5)} m away</span>` : st === "walk" ? `<b>📦 ${esc(f.rider)} parked nearby</b><span>Bringing your box over</span>` : `<b>✨ Delivered</b><span>Rate ${esc(f.rider)} ★★★★★</span>`;
+  }
+  function stepCourier(f, dt, time) {
+    const D = f.dl; if (!D) return;
+    D.t += dt;
+    const dMe = Math.hypot(f.x - me.x, f.z - me.z), face = (a, b) => Math.atan2(b.x - a.x, b.z - a.z);
+    if (D.st === "ride") {
+      stepPath(f, dt, SPEED * 2.3);
+      if (time - (f.repath || 0) > 700) { f.repath = time; f.path = toPts(path(tileOf(f), tileOf(me))); }
+      if (dMe < 1.7 || (D.t > 40)) {
+        // park the scooter, take the box off the back and walk over
+        D.st = "walk"; D.t = 0; f.path = []; f.moving = false;
+        const rig = f.veh; f.veh = null; f.vehKey = ""; f.vehType = null; rig.group.remove(f.mesh.group); f.parked = rig; rig.group.rotation.z = 0;
+        scene.add(f.mesh.group); f.mesh.group.visible = true; if (f.mesh.shadow) f.mesh.shadow.visible = true;
+        const side = f.heading + Math.PI / 2; f.x += Math.sin(side) * 0.3; f.z += Math.cos(side) * 0.3; f.H = f.mesh.H;
+        if (rig.box) { rig.group.remove(rig.box); f.box = rig.box; f.mesh.group.add(f.box); f.box.position.set(0, f.mesh.legL + 0.1, 0.2); f.box.rotation.set(0, 0, 0); }
+        f.carry = true; place(f);
+      }
+    } else if (D.st === "walk") {
+      if (time - (f.repath || 0) > 500) { f.repath = time; f.path = toPts(path(tileOf(f), tileOf(me))); if (f.path.length) f.path[f.path.length - 1] = { x: me.x + Math.sin(me.heading) * 0.55, z: me.z + Math.cos(me.heading) * 0.55 }; }
+      stepPath(f, dt, 1.9);
+      if (dMe < 0.8 || D.t > 12) {
+        D.st = "give"; D.t = 0; f.path = []; f.moving = false;
+        f.heading = face(f, me); me.heading = face(me, f); me.lock = time + 3600; me.path = [];
+        cine = { yaw: me.heading + Math.PI / 2, dist: 2.2, back: dist, until: time + 3600 };
+      }
+    } else if (D.st === "give") {
+      f.heading = face(f, me);
+      if (D.t > 0.6 && f.box && f.box.parent === f.mesh.group) { f.carry = false; me.carry = true; f.mesh.group.remove(f.box); me.mesh.group.add(f.box); f.box.position.set(0, me.mesh.legL + 0.1, 0.2); }
+      if (D.t > 1.3 && f.box) { const k = Math.min(1, (D.t - 1.3) / 0.35); f.box.position.y = me.mesh.legL + 0.1 + k * 0.35; f.box.rotation.y = k * 5; f.box.scale.setScalar(1 + k * 0.4); }
+      if (D.t > 1.65 && f.box) {
+        me.mesh.group.remove(f.box); f.box = null; me.carry = false;
+        burst(me.x, (me.mesh.H || 0.7) * 0.6, me.z); me.twirlT = 0.9;
+        if (f.cb) { const cb = f.cb; f.cb = null; cb(); }
+        f.wave = true; D.st = "bye"; D.t = 0; tracker(f);
+      }
+    } else if (D.st === "bye") {
+      f.heading = face(f, me);
+      if (D.t > 2.2) { f.wave = false; D.st = "back"; D.t = 0; tracker(null); }
+    } else if (D.st === "back") {
+      const P = f.parked.group.position;
+      if (!f.path.length) f.path = [{ x: P.x, z: P.z }];
+      stepPath(f, dt, 1.9);
+      if (Math.hypot(f.x - P.x, f.z - P.z) < 0.15 || D.t > 6) {
+        const rig = f.parked; f.parked = null; f.x = P.x; f.z = P.z; f.heading = rig.group.rotation.y;
+        scene.remove(f.mesh.group); rig.group.add(f.mesh.group); f.veh = rig; f.vehKey = "fxn"; f.vehType = "scooter"; seatPerson(f); f.H = figH(f);
+        const s = spots.fxn || { x: 2, y: 2 }; f.path = toPts(path(tileOf(f), { x: s.x, y: s.y })); D.st = "leave"; D.t = 0;
+      }
+    } else if (D.st === "leave") {
+      stepPath(f, dt, SPEED * 2.3);
+      if (!f.path.length || D.t > 9 || dMe > 16) removeFig(f.id);
+    }
+    if (D.st === "ride" && time - (D.tt || 0) > 400) { D.tt = time; tracker(f); }
+  }
+  // sparkles for the unboxing
+  let fx = [];
+  function burst(x, y, z) {
+    if (!ok3d) return;
+    const n = 90, pos = new Float32Array(n * 3), colr = new Float32Array(n * 3), vel = [], pal = [col("#ff4f9a"), col("#ffd27a"), col("#ffffff"), col("#c9b6ff")];
+    for (let i = 0; i < n; i++) { pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z; const a = Math.random() * 6.28, u = Math.random() * 2 - 1, sp = 0.6 + Math.random() * 1.4, r = Math.sqrt(1 - u * u); vel.push([Math.cos(a) * r * sp, Math.abs(u) * sp + 0.6, Math.sin(a) * r * sp]); const c = pal[i % 4]; colr.set([c.r, c.g, c.b], i * 3); }
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.BufferAttribute(colr, 3));
+    if (!burst.tex) { const c = document.createElement("canvas"); c.width = c.height = 32; const x = c.getContext("2d"), gr = x.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(0.35, "rgba(255,255,255,.8)"); gr.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = gr; x.fillRect(0, 0, 32, 32); burst.tex = new THREE.CanvasTexture(c); }
+    const m = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.09, map: burst.tex, vertexColors: true, transparent: true, opacity: 1, depthWrite: false, blending: THREE.AdditiveBlending }));
+    scene.add(m); fx.push({ m, vel, t: 0 });
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.28, 32), new THREE.MeshBasicMaterial({ color: 0xff4f9a, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide }));
+    ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.04, z); scene.add(ring); fx.push({ m: ring, ring: true, t: 0 });
+  }
+  function stepFx(dt) {
+    fx = fx.filter(e => {
+      e.t += dt;
+      if (e.ring) { const k = e.t / 0.8; e.m.scale.setScalar(1 + k * 4); e.m.material.opacity = Math.max(0, 0.9 - k); }
+      else { const p = e.m.geometry.attributes.position; e.vel.forEach((v, i) => { v[1] -= dt * 1.6; p.array[i * 3] += v[0] * dt; p.array[i * 3 + 1] = Math.max(0.02, p.array[i * 3 + 1] + v[1] * dt); p.array[i * 3 + 2] += v[2] * dt; }); p.needsUpdate = true; e.m.material.opacity = Math.max(0, 1 - e.t / 1.4); }
+      if (e.t > 1.4) { scene.remove(e.m); e.m.geometry.dispose(); return false; }
+      return true;
+    });
+  }
+  // the vehicle you ride (null = walk), and the one parked at home while you walk
+  let parkedHome = null;
+  function setVehicle(spec) {
+    if (!me || (ride && spec)) return;
+    const before = me.vehKey || ""; setFigVehicle(me, spec);
+    if ((me.vehKey || "") !== before) { dist = spec ? (VEH[spec.type] && VEH[spec.type].car ? 4 : 3.4) : 2.9; if (cine) cine.back = dist; }
+    me.H = figH(me);
+  }
+  let parkedKey = "";
+  function setParked(spec) {
+    const key = spec ? spec.type + spec.color : ""; if (key === parkedKey && (parkedHome || !spec)) return; parkedKey = key;
+    if (parkedHome) { scene.remove(parkedHome.group); parkedHome = null; }
+    if (!spec || !ok3d || !spots.house) return;
+    parkedHome = vehRig(spec.type, spec.color); const h = spots.house;
+    parkedHome.group.position.set(h.x + 1.4, 0, h.y + 0.55); parkedHome.group.rotation.y = Math.PI / 2; scene.add(parkedHome.group);
+  }
   function courierSay(t, s) { bubble(figs.courier, t, s); }
+  function vehicleRemote(id, spec) { const f = figs["r_" + id]; if (f) { setFigVehicle(f, spec); f.H = figH(f); } }
   function teleport(k) { inside[k] = true; const p = spotPos(k); if (!p) return; const t = nearestWalk({ x: Math.floor(p.x), y: Math.floor(p.z) + 1 }) || { x: Math.floor(p.x), y: Math.floor(p.z) }; me.x = t.x + 0.5; me.z = t.y + 0.5; me.path = []; sendMe(true); }
   function position() { return me ? tileOf(me) : { x: 8, y: 18 }; }
   function destroy() {
     cancelAnimationFrame(raf); window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku); window.removeEventListener("resize", resize);
     if (renderer) { try { renderer.dispose(); if (renderer.forceContextLoss) renderer.forceContextLoss(); } catch (e) { } }
-    if (el) el.remove(); el = null; figs = {}; extraSpots = {}; guide = null; sceneMarker = null; renderer = null; vehicles = []; boats = []; facadeMats = []; tapFx = null;
+    if (el) el.remove(); el = null; fx = []; burst.tex = null; parkedHome = null; parkedKey = ""; cine = null; boxTexMat = null; wheelGeo = null; figs = {}; extraSpots = {}; guide = null; sceneMarker = null; renderer = null; vehicles = []; boats = []; facadeMats = []; tapFx = null;
   }
   // test hook: place camera and clock
   let dbgHour = null;
   function __dbg(x, z, y, p, d, h) { me.x = x + 0.5; me.z = z + 0.5; yaw = y; pitch = p; dist = d; dbgHour = h; me.path = []; }
-  return { __dbg, mount, setGuide, setMarker, setExtraSpot, randomDoor, npcSay, meSay, note, react, upsertRemote, moveRemote, sayRemote, removeRemote, clearRemotes, setOnline, spawnCourier, courierSay, setLook: (av, outfit) => setLookFig("me", av, outfit), teleport, position, destroy, available: can3d, preview, spotAt: k => { const p = spotPos(k); return p ? { x: p.x, z: p.z } : null; }, guideKey: () => guide && guide.key, mapOpen: () => !!(mapEl && !mapEl.hidden), cols: () => COLS, rows: () => ROWS, riding: () => !!ride };
+  // test hook: pan the open map to a point and return where it is on screen
+  function mapPoint(x, z) { if (!mapEl || mapEl.hidden) return null; mv.cx = x; mv.cy = z; clampMap(); drawFull(performance.now()); const { tx, ty } = mapToScreen(), r = mapCv.getBoundingClientRect(); return { x: r.left + tx(x), y: r.top + ty(z) }; }
+  return { __figs: () => Object.values(figs).filter(f => f.kind === "remote" || f.kind === "me").map(f => ({ id: f.id, x: +f.x.toFixed(1), z: +f.z.toFixed(1), veh: f.vehType || "" })), mapPoint, setVehicle, setParked, vehicleRemote, VEH, VCOL, __dbg, mount, setGuide, setMarker, setExtraSpot, randomDoor, npcSay, meSay, note, react, upsertRemote, moveRemote, sayRemote, removeRemote, clearRemotes, setOnline, spawnCourier, courierSay, setLook: (av, outfit) => setLookFig("me", av, outfit), teleport, position, destroy, available: can3d, preview, spotAt: k => { const p = spotPos(k); return p ? { x: p.x, z: p.z } : null; }, guideKey: () => guide && guide.key, mapOpen: () => !!(mapEl && !mapEl.hidden), cols: () => COLS, rows: () => ROWS, riding: () => !!ride };
 })();

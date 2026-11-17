@@ -1,7 +1,7 @@
-// Second-life layer: a real-time clock (1 real second = 3 game minutes, so a day lasts about 8 minutes),
+// Second-life layer: a real-time clock (1 real second = 1.5 game minutes, so a day lasts about 16 minutes),
 // energy and hunger, sleeping, eating, relaxing, family, children and life goals. Saves inside the game state.
 window.AE_LIFE = (function () {
-  const MIN_PER_SEC = 3;
+  const MIN_PER_SEC = 1.5; // was 3: days now last ~16 real minutes instead of 8
   const has = (g, f) => g.flags.indexOf(f) >= 0;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const r10 = n => Math.round(n / 10) * 10;
@@ -68,10 +68,10 @@ window.AE_LIFE = (function () {
 
   // ── family ──
   const NAMES = ["Aadhi", "Nila", "Ivan", "Diya", "Aryan", "Meera", "Ishaan", "Gauri", "Zara", "Kiran", "Anu", "Rohan", "Theertha", "Fida", "Joel", "Amaya"];
-  const kidAge = (g, k) => Math.floor((g.day - k.born) / 2);
+  const kidAge = (g, k) => Math.floor(g.day - k.born); // one year per game day
   function ageKids(g) { return (g.kids || []).filter(k => { const a = kidAge(g, k); const grew = a !== k.age; k.age = a; return grew && [3, 6, 13, 18].indexOf(a) >= 0; }).map(k => k.name); }
   function canPlanBaby(g) { return g.spouse && (g.kids || []).length < 3 && !g.babyDue && (g.house && g.house.lvl >= 1); }
-  function planBaby(g) { if (!canPlanBaby(g)) return false; g.babyDue = g.day + 2; return true; }
+  function planBaby(g) { if (!canPlanBaby(g)) return false; g.babyDue = g.day + 1; return true; }
   function nameBaby(g, name) {
     name = String(name || "").replace(/[^A-Za-z .'-]/g, "").trim().slice(0, 16) || NAMES[(g.day + g.kids.length) % NAMES.length];
     g.kids.push({ name, born: g.day, age: 0 }); g.babyDue = 0; g.babyReady = false; g.h = clamp(g.h + 12, 0, 100);
@@ -96,6 +96,7 @@ window.AE_LIFE = (function () {
     { id: "eat", t: "Eat at a chayakkada", hint: "Find the Chaya chettan on Marine Drive", ok: g => (g.ate || 0) >= 1, reward: 300 },
     { id: "rent", t: "Rent an outfit on FXN", hint: "Open the FXN app and rent something", ok: g => (g.rented || 0) >= 1, reward: 500 },
     { id: "paper", t: "Get your address proof", hint: "Apply at the Government Office", ok: g => (g.papers || []).indexOf("id") >= 0, reward: 500 },
+    { id: "ride", t: "Buy your first vehicle", hint: "Walk to Vyttila Motors (south-east, 🛵 on the map)", ok: g => !!g.vehicle, reward: 500 },
     { id: "home", t: "Move out of your rented room", hint: "Upgrade your house from Home", ok: g => g.house && g.house.lvl >= 1, reward: 1000 },
     { id: "match", t: "Find someone special", hint: "Use MangalyaMatch or ChaiDate on your phone", ok: g => !!(g.romance || g.spouse), reward: 500 },
     { id: "wed", t: "Get married", hint: "Date, meet the families, then the wedding", ok: g => !!g.spouse, reward: 2000 },

@@ -129,7 +129,7 @@ window.AE = (function () {
     const cash = Math.round(Math.max(0, g.cash) / (L.raw ? 100 : 100 * ci(g)));
     const done = (g.missions || []).filter(m => m.done).length + (g.missionsDone || 0);
     const debt = (g.loans || []).reduce((n, l) => n + l.left, 0);
-    const extra = (g.house ? g.house.lvl * 150 + g.house.items.length * 15 : 0) + (g.spouse ? 200 : 0) + (g.kids || []).length * 200 + (g.goalsDone || []).length * 40 + (g.groupsDone || 0) * 60 + (g.oddDone || 0) * 10;
+    const extra = (g.house ? g.house.lvl * 150 + g.house.items.length * 15 : 0) + (g.spouse ? 200 : 0) + (g.kids || []).length * 200 + (g.goalsDone || []).length * 40 + (g.vehicle ? 1 + ["cycle", "scooter", "bike", "car", "suv"].indexOf(g.vehicle.id) : 0) * 60 + (g.groupsDone || 0) * 60 + (g.oddDone || 0) * 10;
     const raw = cash - Math.round(debt / (L.raw ? 100 : 100 * ci(g))) + g.r * 10 + g.x * 5 + bonus + done * 150 + extra - g.shady * 100;
     return Math.max(0, Math.min(20000, Math.round(raw)));
   }
@@ -357,7 +357,7 @@ window.AE = (function () {
     const Lo = C().loans.find(l => l.id === id); amount = Math.min(amount || loanAmount(g, id), loanAmount(g, id));
     const total = Math.round(amount * (1 + Lo.rate)), chaptersLeft = g.sandbox ? 6 : Math.max(2, CHAPTERS - g.chapter + 1);
     const loan = { id, name: Lo.name, principal: amount, left: total, emi: Math.ceil(total / chaptersLeft / 10) * 10 };
-    g.loans.push(loan); if (!Lo.house) g.cash += amount;
+    g.loans.push(loan); if (!Lo.house && !Lo.vehicle) g.cash += amount;
     return loan;
   }
   // House
@@ -368,6 +368,18 @@ window.AE = (function () {
     if (withLoan) { const lo = takeLoan(g, "home", cost); if (!lo) return false; }
     else { if (g.cash < cost) return false; g.cash -= cost; }
     g.house.lvl++; g.h = clamp(g.h + 5, 0, 100); return true;
+  }
+  // Vehicles: buy with cash, or 20% down + vehicle loan. Your old vehicle is traded in at half price.
+  function vehicleById(id) { return C().vehicles.find(v => v.id === id); }
+  function tradeIn(g) { const V = g.vehicle && vehicleById(g.vehicle.id); return V ? Math.round(money(g, V.price) * 0.5) : 0; }
+  function vehicleCost(g, id) { const V = vehicleById(id); return V ? Math.max(0, money(g, V.price) - tradeIn(g)) : 0; }
+  function buyVehicle(g, id, color, withLoan) {
+    const V = vehicleById(id); if (!V || (g.vehicle && g.vehicle.id === id)) return false;
+    const cost = vehicleCost(g, id);
+    if (withLoan) { const down = Math.round(cost * 0.2); if (g.cash < down || !loanOk(g, "vehicle") || cost - down > loanAmount(g, "vehicle")) return false; if (!takeLoan(g, "vehicle", cost - down)) return false; g.cash -= down; }
+    else { if (g.cash < cost) return false; g.cash -= cost; }
+    g.vehicle = { id, color: color || 0 }; g.riding = true; g.h = clamp(g.h + 4, 0, 100); g.vehiclesBought = (g.vehiclesBought || 0) + 1;
+    return true;
   }
   function buyDecor(g, id) {
     const it = C().decor.find(d => d.id === id); if (!it || g.house.items.indexOf(id) >= 0) return false;
@@ -465,6 +477,7 @@ window.AE = (function () {
     (g.loans || []).forEach(l => { if (l.left > 0) { const emi = Math.min(l.emi, l.left); l.left -= emi; out.push({ label: l.name + " EMI", amount: -emi, kind: "money" }); } });
     const H = C().houseLevels[g.house ? g.house.lvl : 0];
     if (H && H.upkeep) { out.push({ label: H.name + " upkeep", amount: -money(g, H.upkeep), kind: "money" }); g.h = clamp(g.h + H.h, 0, 100); }
+    const VH = g.vehicle && vehicleById(g.vehicle.id); if (VH && VH.fuel) out.push({ label: VH.name + ": petrol & service", amount: -money(g, VH.fuel), kind: "money" });
     if (g.spouse) { out.push({ label: g.spouse.name + "'s share of household costs", amount: money(g, 2500), kind: "money" }); g.h = clamp(g.h + 3, 0, 100); }
     if ((g.fake || []).length && rnd(g) < 0.5) {
       const id = g.fake.shift(), P = C().papers.find(p => p.id === id);
@@ -498,6 +511,6 @@ window.AE = (function () {
     trader: "SEBI found over 91% of individual traders lost money in equity derivatives in FY25. Investing through diversified index funds over years is the slower, safer path. This game is not investment advice."
   };
 
-  const CITY = { hasPaper, paperStatus, paperFee, applyPaper, collectPaper, loanOk, loanAmount, takeLoan, houseNext, upgradeHouse, buyDecor, paint, profilesFor, sendInterest, dateScene, dateChoose, familyMeet, wed, switchLife, oddPay, finishOdd, groupShare, finishGroup, riderPay, rateDrop, endShift, money };
+  const CITY = { vehicleById, tradeIn, vehicleCost, buyVehicle, hasPaper, paperStatus, paperFee, applyPaper, collectPaper, loanOk, loanAmount, takeLoan, houseNext, upgradeHouse, buyDecor, paint, profilesFor, sendInterest, dateScene, dateChoose, familyMeet, wed, switchLife, oddPay, finishOdd, groupShare, finishGroup, riderPay, rateDrop, endShift, money };
   return { CITY, applyEffects: apply, missionGuide, missionScene, missionChoose, activeMission, travel, fare, score, line, langOf, CHAPTERS, STEPS, clamp, has, inr, fill, life, st, ci, kit, newGame, nextEvent, currentEvent, canChoose, needOf, chance, choose, talk, metric, mood, dailyPick, finish, REALITY, rnd };
 })();

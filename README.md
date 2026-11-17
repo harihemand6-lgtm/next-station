@@ -8,6 +8,11 @@ Static web game: no accounts, ₹0 running cost. Optional live players and chat 
 - 20 lives: Street Food Hustle, The 9–5, Government Job, Influencer, Startup Founder, Craft Brand, Film Star, Cricketer, Reality Show, The Trader, Night Shift Nurse, Auto to Cab Fleet, Tuition Master, Cloud Kitchen, Homestay Host, Personal Stylist, Indie Musician, Wedding Planner, Boat to Export, Gulf Returnee
 - 5 cities: Kochi (hub), Bengaluru, Hyderabad, Mumbai, Delhi
 - City systems: Government Office papers, bank loans and venture loans, upgradeable house, matrimony/dating apps and weddings, odd jobs, team tasks for 2/4/6 players (hired helpers fill gaps), FXN rider shifts with ratings and tips, money gifts between players, job locks while another player is online in that life, career switching
+- Vehicles: buy a bicycle, scooter, motorbike, car or SUV at Vyttila Motors (cash or 20% down + vehicle loan), ride 1.6–3× faster than walking, petrol on payday; other players see what you ride
+- FXN delivery: rent an outfit and an FXN rider scoots over from the dark store, parks, hands you the box, and you unbox it with a sparkle and a twirl. FXN rider shifts put you on the pink FXN scooter
+- Map: illustrated Kochi map with real street names (Shanmugham Road, MG Road, Banerji Road, Princess Street…), the Kochi Metro line, pins, your route to the next goal, pinch-zoom and pan; tap a pin to walk there
+- Clock: 1 real second = 1.5 game minutes (a day lasts about 16 minutes); kids grow a year per game day
+- Multiplayer rooms: each city is split into rooms of 8 (ROOM_SIZE in js/config.js). Players fill Room 1, then Room 2… Tap the room pill to see rooms and join friends. Movement sends where you're heading (about 1 message per tap, at most ~1/s while steering), so the free Supabase plan (100 messages/s, 200 connections) holds roughly 100+ live players
 - Character creator (cosmetic only), endings, badges, XP, daily challenge, leaderboard
 - Saves live in the player's own browser (localStorage). Only leaderboard scores and chat reports go to Supabase.
 

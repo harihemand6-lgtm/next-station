@@ -50,6 +50,9 @@ window.AE_MALLU = {
     promo: [["Promotion! Party eppozhaa?", "Promotion! When's the party?"]],
     hungry: [["Vayaru vilikkunnu! Oru chaayakkada nokkaam.", "Stomach's calling! Let's find a tea shop."]],
     tired: [["Ksheenam! Veettil poyi onnu urangaam.", "So tired! Let's go home and sleep."]],
-    job: [["Puthiya joli! Aadyathe divasam nannaayi cheyyanam.", "New job! Make the first day count."]]
+    job: [["Puthiya joli! Aadyathe divasam nannaayi cheyyanam.", "New job! Make the first day count."]],
+    vehicle: [["Puthiya vandi! Chilavu undallo, aadyam ambalathil kondupoyi pooja cheyyikkanam.", "New ride! First take it to the temple for a pooja."], ["Kidu vandi! Ini Vyttila block-il kudungumbol ariyaam.", "Lovely ride! You'll find out what it means in the Vyttila block."], ["Ithu EMI aano? Saaramilla, ellaarum angane thanne.", "Is it on EMI? No worries, that's how everyone does it."], ["Oru round kondupokumo? Marine Drive vare mathi.", "Take me for a spin? Just up to Marine Drive."]],
+    rideOn: [["Helmet vechallo alle? Police check undu Vyttila-yil.", "Wearing a helmet, right? Police check at Vyttila."], ["Pathukke po, mazha peythu road vazhukkunnundu.", "Go slow, the rain's made the road slippery."], ["Horn adichu adichu pokum, athaanu Kochi style.", "Honk all the way, that's Kochi style."]],
+    delivery: [["FXN chettan vannallo! Aaru kalyaanathinu pokunnu?", "The FXN rider's here! Whose wedding is it?"], ["Muppathu minute-il dress ethi, ithu kollaamallo!", "Dress arrived in thirty minutes, that's impressive!"], ["Nalla look aayi, ini photo edukkaam!", "Looking great, now let's take a photo!"]]
   }
 };

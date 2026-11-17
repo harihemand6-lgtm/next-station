@@ -24,11 +24,21 @@ window.AE_CITY = {
     { id: "personal", name: "Personal loan", amount: 30000, rate: 0.14, needs: ["id"], why: "For anything. Highest interest." },
     { id: "business", name: "Business loan", amount: 120000, rate: 0.11, needs: ["id", "trade"], why: "For your shop, vehicle, stock or kitchen." },
     { id: "home", name: "Home loan", amount: 250000, rate: 0.09, needs: ["id"], house: true, why: "Only for upgrading your house. Lowest interest." },
+    { id: "vehicle", name: "Vehicle loan", amount: 300000, rate: 0.1, needs: ["id"], vehicle: true, why: "Only for buying a vehicle at Vyttila Motors. You pay 20% now, the bank pays the rest." },
     { id: "venture", name: "Venture loan: start something new in another city", amount: 100000, rate: 0.11, needs: ["id", "trade"], venture: true, why: "Quit your current life and start a business in Bengaluru, Hyderabad, Mumbai or Delhi." }
   ],
   ventureLives: ["street", "kitchen", "startup", "craft", "stylist", "planner", "cab", "teacher"],
 
   // ── Your house ──
+  // ── Vyttila Motors: vehicles you can own. Price and fuel are scaled by the city's cost index. ──
+  vehicles: [
+    { id: "cycle", name: "Bicycle", icon: "🚲", type: "cycle", price: 4000, fuel: 0, blurb: "No petrol, no EMI. Pure Kochi breeze." },
+    { id: "scooter", name: "Scooter", icon: "🛵", type: "scooter", price: 25000, fuel: 400, blurb: "Kerala's favourite. Fits every gully and every parking spot." },
+    { id: "bike", name: "Classic motorbike", icon: "🏍️", type: "bike", price: 60000, fuel: 700, blurb: "Thump-thump down Marine Drive. Uncles will nod at you." },
+    { id: "car", name: "Hatchback car", icon: "🚗", type: "car", price: 150000, fuel: 1800, blurb: "Rain-proof, family-proof. Parking is your problem now." },
+    { id: "suv", name: "SUV", icon: "🚙", type: "suv", price: 350000, fuel: 3000, blurb: "Big car energy. Relatives will ask to borrow it." }
+  ],
+  vehicleColors: [["Red", 0], ["Blue", 1], ["White", 2], ["Black", 3], ["Yellow", 4], ["Green", 5], ["Purple", 6], ["Pink", 7]],
   houseLevels: [
     { name: "Rented room", cost: 0, upkeep: 0, h: 0, floors: 1 },
     { name: "1BHK flat", cost: 15000, upkeep: 2000, h: 2, floors: 2 },
