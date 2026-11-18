@@ -352,6 +352,7 @@
     const gigDone = g.gig && g.gig.chapter === g.chapter;
     return `<div class="sheet-bg" data-act="fxnclose"></div><section class="sheet fxn" role="dialog" aria-label="FXN app">
       <div class="fxn-head"><b class="fxn-logo">FXN</b><span>Rent it. Wear it. Return it.</span></div>
+      <button class="fxn-arc" data-act="arcade"><span>🎮</span><div><b>FXN Arcade</b><small>Style Match · Pack Rush · Delivery Dash · Drone Drop</small></div><i>Play</i></button>
       ${ui.courier ? `<p class="note">${esc(ui.courier)} is on the way with your outfit. Stay where you are.</p>` : ""}
       <div class="chips">${tabs.map(t => `<button class="chip ${tab === t[0] ? "on" : ""}" data-act="fxntab" data-arg="${t[0]}">${esc(t[1])}</button>`).join("")}</div>
       <div class="fxn-grid">${items.map(it => {
@@ -494,10 +495,37 @@
     if (/^metro/.test(k)) return openSheet("metro", { station: k });
   }
   const isKL = () => (game.loc || game.stateId) === "KL";
+  // ── FXN Arcade: 2 paid plays per game per day, pay scales with score ──
+  function arcState(g) { if (!g.arcade || g.arcade.day !== g.day) g.arcade = { day: g.day, plays: {} }; return g.arcade; }
+  function openArcade() {
+    const g = game; if (!g || !window.AE_ARCADE) return;
+    const picks = FX.catalogue.slice().sort((a, b) => b.buy - a.buy).slice(0, 6).sort(() => Math.random() - 0.5).slice(0, 3).map(it => ({ name: it.name, look: it.look, price: inr(rentPrice(g, it)) }));
+    if (WORLD.pause) WORLD.pause(true);
+    AE_ARCADE.open({
+      money: b => CS.money(g, b), picks,
+      paidLeft: id => Math.max(0, 2 - (arcState(g).plays[id] || 0)),
+      onPay: (id, score, frac) => {
+        if (g.done) return 0; const A = arcState(g); if ((A.plays[id] || 0) >= 2 || frac < 0.15) return 0;
+        const pay = Math.max(10, Math.round(CS.money(g, 250) * frac / 10) * 10);
+        A.plays[id] = (A.plays[id] || 0) + 1; g.cash += pay; g.h = Math.min(100, g.h + 2); save(); updateHud();
+        WORLD.note("🎮 FXN Arcade +" + inr(pay)); return pay;
+      },
+      onRent: () => { if (WORLD.pause) WORLD.pause(false); ui.fxn = true; render(); },
+      onClose: () => { if (WORLD.pause) WORLD.pause(false); updateHud(); }
+    });
+  }
+  function arcadeToast() {
+    const v = document.querySelector(".play2"); if (!v) return;
+    let t = v.querySelector(".btoast"); if (!t) { t = document.createElement("div"); t.className = "btoast"; v.appendChild(t); }
+    t.classList.add("arc-toast");
+    t.innerHTML = `<b>🎮 FXN Arcade</b><span>Four quick games · earn up to ${inr(CS.money(game, 250))} a round</span><div><button class="btn small primary" data-act="arcade">Play</button><button class="btn small" data-act="toastx">Later</button></div>`;
+    t.classList.remove("out"); SND.sfx("notify"); clearTimeout(boardToast._t); boardToast._t = setTimeout(() => t.classList.add("out"), 12000);
+  }
   function boardToast() {
     const g = game, lo = CS.money(g, 250), hi = CS.groupShare(g, CITY.groupTasks.filter(T => T.city === (g.loc || g.stateId)).sort((a, b) => b.reward - a.reward)[0] || CITY.groupTasks[0]);
     const v = document.querySelector(".play2"); if (!v) return;
     let t = v.querySelector(".btoast"); if (!t) { t = document.createElement("div"); t.className = "btoast"; v.appendChild(t); }
+    t.classList.remove("arc-toast");
     t.innerHTML = `<b>📋 Notice Board</b><span>Quick jobs from ${inr(lo)} · team tasks up to ${inr(hi)} each</span><div><button class="btn small primary" data-act="toboard">Show me</button><button class="btn small" data-act="toastx">Later</button></div>`;
     t.classList.remove("out"); SND.sfx("notify"); clearTimeout(boardToast._t); boardToast._t = setTimeout(() => t.classList.add("out"), 12000);
   }
@@ -750,7 +778,7 @@
 
   function phoneSheet() {
     const g = game, P = myParty(), mates = partyHere();
-    const apps = [["duties", (JOB_ICON[g.lifeId] || "🧑‍💼") + " Today's duties", (() => { const D = duties(g); return D ? D.done.length + " of " + D.ids.length + " done" : "None"; })()], ["goals", "🎯 Life goals", (LF.nextGoal(g) || { t: "All done!" }).t], ["fxnopen", "👗 FXN", "Rent outfits"], ["kin", "👨‍👩‍👧 Family", g.spouse ? g.spouse.name + ((g.kids || []).length ? " + " + g.kids.length : "") : "Single"], ["site:mangalya", "💍 MangalyaMatch", "Matrimony"], ["site:kalyanam", "🪔 KalyanaVeedu", "Matrimony"], ["site:nri", "✈️ NRI Rishta", "Matrimony"], ["site:chaidate", "☕ ChaiDate", "Dating"], ["site:sunset", "🌅 SunsetSwipe", "Dating"], ["site:bookclub", "📚 Paperback", "Dating"], ["board", "📋 Odd jobs & teams", "Quick money, team tasks"], ...(isKL() ? [["metroapp", "🚇 Kochi Metro", metroTask(g) ? "Task: " + metroTask(g).T.t : "Rides and metro tasks"]] : []), ["garage", "🛵 Garage", g.vehicle ? (g.riding ? "Riding your " : "Your ") + CS.vehicleById(g.vehicle.id).name.toLowerCase() : "Buy a bicycle, scooter or car"], ["career", "💼 Career", "Switch job"], ["status", "🗂️ My papers", "Papers, loans, house"], ["retire", "🌅 Retire", "End this life"]];
+    const apps = [["duties", (JOB_ICON[g.lifeId] || "🧑‍💼") + " Today's duties", (() => { const D = duties(g); return D ? D.done.length + " of " + D.ids.length + " done" : "None"; })()], ["goals", "🎯 Life goals", (LF.nextGoal(g) || { t: "All done!" }).t], ["fxnopen", "👗 FXN", "Rent outfits"], ["arcade", "🎮 FXN Arcade", "Mini-games · earn up to " + inr(CS.money(g, 250)) + " each"], ["kin", "👨‍👩‍👧 Family", g.spouse ? g.spouse.name + ((g.kids || []).length ? " + " + g.kids.length : "") : "Single"], ["site:mangalya", "💍 MangalyaMatch", "Matrimony"], ["site:kalyanam", "🪔 KalyanaVeedu", "Matrimony"], ["site:nri", "✈️ NRI Rishta", "Matrimony"], ["site:chaidate", "☕ ChaiDate", "Dating"], ["site:sunset", "🌅 SunsetSwipe", "Dating"], ["site:bookclub", "📚 Paperback", "Dating"], ["board", "📋 Odd jobs & teams", "Quick money, team tasks"], ...(isKL() ? [["metroapp", "🚇 Kochi Metro", metroTask(g) ? "Task: " + metroTask(g).T.t : "Rides and metro tasks"]] : []), ["garage", "🛵 Garage", g.vehicle ? (g.riding ? "Riding your " : "Your ") + CS.vehicleById(g.vehicle.id).name.toLowerCase() : "Buy a bicycle, scooter or car"], ["career", "💼 Career", "Switch job"], ["status", "🗂️ My papers", "Papers, loans, house"], ["retire", "🌅 Retire", "End this life"]];
     const party = P ? `<p>Your group: you${mates.length ? ", " + mates.map(m => esc(m.nick)).join(", ") : " (waiting for players to join)"}.</p><button class="btn small ghost" data-act="partyleave">Leave group</button>` : `<p class="hint">Tap a player in the city to invite them to your group (up to 6).</p>`;
     return sheetBox("Phone", `<div class="apps">${apps.map(a => `<button class="app" data-act="${a[0].indexOf("site:") === 0 ? "site" : a[0]}" ${a[0].indexOf("site:") === 0 ? `data-arg="${a[0].slice(5)}"` : ""}><b>${esc(a[1])}</b><span>${esc(a[2])}</span></button>`).join("")}</div><h3 class="sec">Group</h3>${party}`);
   }
@@ -1194,7 +1222,7 @@
     LF.init(game);
     const evs = LF.tick(game, 1); tickN++;
     // every 2 minutes of play: a nudge towards the Notice Board's quick jobs and team tasks
-    if (tickN % 120 === 60 && !game.shift && !game.odd && !game.group && !away(game)) boardToast();
+    if (tickN % 120 === 60 && !game.shift && !game.odd && !game.group && !away(game) && !(window.AE_ARCADE && AE_ARCADE.isOpen())) ((tickN / 120 | 0) % 2 ? arcadeToast : boardToast)();
     updateHud();
     let rer = false;
     evs.forEach(e => {
@@ -1275,6 +1303,7 @@
         ui.outcome = { text: AE.fill(res.r, g), d, passed }; ui.cityEv = null; save(); render(); break;
       }
       case "fxnopen": ui.fxn = true; ui.sheet = null; render(); break;
+      case "arcade": { const t = document.querySelector(".btoast"); if (t) t.classList.add("out"); ui.fxn = false; ui.sheet = null; render(); openArcade(); break; }
       case "fxnclose": ui.fxn = false; ui.atStore = false; render(); break;
       case "fxntab": ui.fxnTab = arg; render(); break;
       case "rent": rent(arg); break;
