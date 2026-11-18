@@ -80,7 +80,7 @@
           <span class="kick2">Presented by FXN India</span>
           <h1>Next Station</h1>
           <p>Your second life in Kochi. Get a job, build a home, fall in love, raise a family.</p>
-          ${cont ? `<button class="btn primary big" data-act="resume">▶ Continue: Day ${game.day || 1} · ${esc(lifeById(game.lifeId).title)}</button>` : ""}
+          ${cont ? `<button class="btn primary big" data-act="resume">▶ Continue: Day ${game.day || 1} · ${esc(lifeById(game.lifeId).title)}</button><button class="btn ghost" data-act="howto">❓ How to play</button>` : ""}
           <button class="btn ${cont ? "glass" : "primary"} big" data-act="newlife">${cont ? "Start a new life" : "▶ Start your second life"}</button>
           <div class="row center"><button class="btn glass small" data-act="leaders">🏆 Leaderboard</button><button class="btn glass small" data-act="profile">👤 ${char ? esc(char.name) : "Profile"} · Lv ${level(profile.xp)}</button></div>
         </div>
@@ -261,6 +261,18 @@
       <p class="hint">${esc(L.xl)}: ${AE.metric(g)} · Reputation ${g.r} · Mood ${Math.round(g.h)}</p>
       <button class="btn primary big" data-act="paydayok">Continue</button>`;
   }
+  // first visit: welcome + optional tour. Later visits: "welcome back" recap and what's new (once per session)
+  let onboarded = false;
+  function onboard() {
+    const T = window.AE_TUTOR, g = game; if (!T || !g || g.done || ui.view !== "play" || T.isOpen() || onboarded) return;
+    if (ui.sheet || ui.outcome || ui.eventOpen || ui.payday || ui.fxn || ui.talk) return;
+    if (!g.welcomed) { onboarded = true; T.intro((char || {}).name, () => { g.welcomed = true; prefs.seenVer = T.VERSION; prefs.lastPlay = Date.now(); save(); }); return; }
+    const away = Date.now() - (prefs.lastPlay || 0) > 3 * 3600 * 1000, news = (prefs.seenVer || 0) < T.VERSION;
+    onboarded = true;
+    if (!away && !news) return;
+    const L = AE.life(g), nx = LF.nextGoal(g);
+    T.welcomeBack({ name: (char || {}).name, seenVer: prefs.seenVer || 0, next: nx ? nx.t : "", recap: [["Day", String(g.day)], ["Cash", inr(g.cash)], ["Job", L.title], ["Home", typeof homeLabel === "function" ? homeLabel(g) : ""]] }, () => { prefs.seenVer = T.VERSION; prefs.lastPlay = Date.now(); save(); });
+  }
   function welcomeCard() {
     return `<div class="cardwrap"><div class="cardsheet welcome"><h2>Welcome to Kochi, ${esc((char || {}).name || "friend")}!</h2>
       <ul class="tips"><li><b>🕹️</b>Drag the joystick (or tap the ground) to walk.</li><li><b>➤</b>Follow the arrow at the top. It always shows your next stop.</li><li><b>!</b>A <b>!</b> means something is happening. Walk to it.</li><li><b>⚡🍛</b>Watch energy and hunger. Eat at the chayakkada, sleep at home.</li><li><b>📱</b>Your phone has FXN, jobs, matrimony and your life goals.</li></ul>
@@ -302,7 +314,7 @@
     }
     ui._marker = null;
     if (!card && !g.shift && !away(g) && !g._moved && LF.canWork(g) && !g.babyReady) { const ev = AE.nextEvent(g); save(); ui._marker = ev.who || "board"; }
-    if (!game.welcomed && !card) ui.welcome = true;
+    if (!card) setTimeout(onboard, 700);
     return `<main class="play2" style="--h:${here.hue}">
       <div id="world-slot"></div>
       ${hud2(g)}
@@ -352,6 +364,7 @@
     const gigDone = g.gig && g.gig.chapter === g.chapter;
     return `<div class="sheet-bg" data-act="fxnclose"></div><section class="sheet fxn" role="dialog" aria-label="FXN app">
       <div class="fxn-head"><b class="fxn-logo">FXN</b><span>Rent it. Wear it. Return it.</span></div>
+      ${(() => { const hp = helpFor("fxn"); return hp.box || `<div class="help-row">${hp.btn}</div>`; })()}
       <button class="fxn-arc" data-act="arcade"><span>🎮</span><div><b>FXN Arcade</b><small>Style Match · Pack Rush · Delivery Dash · Drone Drop</small></div><i>Play</i></button>
       ${ui.courier ? `<p class="note">${esc(ui.courier)} is on the way with your outfit. Stay where you are.</p>` : ""}
       <div class="chips">${tabs.map(t => `<button class="chip ${tab === t[0] ? "on" : ""}" data-act="fxntab" data-arg="${t[0]}">${esc(t[1])}</button>`).join("")}</div>
@@ -857,7 +870,13 @@
   const CITY = window.AE_CITY, CS = AE.CITY;
   const paperName = id => (CITY.papers.find(p => p.id === id) || {}).name || id;
   const unitOf = g => AE.life(g).unit.toLowerCase();
-  const sheetBox = (title, inner, extra) => `<div class="sheet-bg" data-act="closesheet"></div><section class="sheet ${extra || ""}" role="dialog" aria-label="${esc(title)}"><h2>${esc(title)}</h2>${ui.msg ? `<p class="note">${esc(ui.msg)}</p>` : ""}${inner}<button class="btn" data-act="closesheet">Close</button></section>`;
+  // "How it works" note: shown open the first time a feature is opened, then behind the ❓ button
+  function helpFor(key) {
+    const T = window.AE_TUTOR, H = T && key && T.HELP[key]; if (!H) return { btn: "", box: "" };
+    prefs.help = prefs.help || {}; const open = !prefs.help[key] || ui.helpOpen === key;
+    return { btn: `<button class="help-q" data-act="helpshow" data-arg="${key}" aria-label="How it works">❓</button>`, box: open ? `<div class="help-box"><b>💡 How it works: ${esc(H[0])}</b><ol>${H[1].map(x => `<li>${esc(x)}</li>`).join("")}</ol><button class="btn small primary" data-act="helpok" data-arg="${key}">Got it</button></div>` : "" };
+  }
+  const sheetBox = (title, inner, extra) => { const hp = helpFor(ui.sheet === "duty" && ui.dutyS && (ui.dutyS.done || ui.dutyS.fail) ? null : ui.sheet); return `<div class="sheet-bg" data-act="closesheet"></div><section class="sheet ${extra || ""}" role="dialog" aria-label="${esc(title)}"><h2>${esc(title)}${hp.btn}</h2>${hp.box}${ui.msg ? `<p class="note">${esc(ui.msg)}</p>` : ""}${inner}<button class="btn" data-act="closesheet">Close</button></section>`; };
   const item = (title, sub, acts) => `<div class="ri"><div><b>${title}</b>${sub ? `<span class="hint">${sub}</span>` : ""}</div><div class="acts">${acts}</div></div>`;
   const avgOf = a => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length * 10) / 10 : 0;
   const stars = n => "★".repeat(Math.round(n)) + "☆".repeat(5 - Math.round(n));
@@ -1013,7 +1032,7 @@
 
   function phoneSheet() {
     const g = game, P = myParty(), mates = partyHere();
-    const apps = [["duties", (JOB_ICON[g.lifeId] || "🧑‍💼") + " Today's duties", (() => { const D = duties(g); return D ? D.done.length + " of " + D.ids.length + " done" : "None"; })()], ["goals", "🎯 Life goals", (LF.nextGoal(g) || { t: "All done!" }).t], ["fxnopen", "👗 FXN", "Rent outfits"], ["arcade", "🎮 FXN Arcade", "Mini-games · earn up to " + inr(CS.money(g, 250)) + " each"], ["kin", "👨‍👩‍👧 Family", g.spouse ? g.spouse.name + ((g.kids || []).length ? " + " + g.kids.length : "") : "Single"], ["site:mangalya", "💍 MangalyaMatch", "Matrimony"], ["site:kalyanam", "🪔 KalyanaVeedu", "Matrimony"], ["site:nri", "✈️ NRI Rishta", "Matrimony"], ["site:chaidate", "☕ ChaiDate", "Dating"], ["site:sunset", "🌅 SunsetSwipe", "Dating"], ["site:bookclub", "📚 Paperback", "Dating"], ["board", "📋 Odd jobs & teams", "Quick money, team tasks"], ...(g.stateId === "KL" ? [["broker", "🏷️ FXN Homes", homeLabel(g)]] : []), ["squad", "👥 Squad", NET.squad && NET.squad() ? "Code " + fmtCode(NET.squad().code) + " · " + NET.squad().members.length + " in" : "Play with friends by code"], ["politics", "🗳️ Ward politics", g.pol && g.pol.party ? (g.pol.seat ? "Ward Councillor · " : "") + polParty(g).name : "Join a party"], ...(isKL() ? [["metroapp", "🚇 Kochi Metro", metroTask(g) ? "Task: " + metroTask(g).T.t : "Rides and metro tasks"]] : []), ["garage", "🛵 Garage", g.vehicle ? (g.riding ? "Riding your " : "Your ") + CS.vehicleById(g.vehicle.id).name.toLowerCase() : "Buy a bicycle, scooter or car"], ["career", "💼 Career", "Switch job"], ["status", "🗂️ My papers", "Papers, loans, house"], ["retire", "🌅 Retire", "End this life"]];
+    const apps = [["duties", (JOB_ICON[g.lifeId] || "🧑‍💼") + " Today's duties", (() => { const D = duties(g); return D ? D.done.length + " of " + D.ids.length + " done" : "None"; })()], ["goals", "🎯 Life goals", (LF.nextGoal(g) || { t: "All done!" }).t], ["fxnopen", "👗 FXN", "Rent outfits"], ["arcade", "🎮 FXN Arcade", "Mini-games · earn up to " + inr(CS.money(g, 250)) + " each"], ["kin", "👨‍👩‍👧 Family", g.spouse ? g.spouse.name + ((g.kids || []).length ? " + " + g.kids.length : "") : "Single"], ["site:mangalya", "💍 MangalyaMatch", "Matrimony"], ["site:kalyanam", "🪔 KalyanaVeedu", "Matrimony"], ["site:nri", "✈️ NRI Rishta", "Matrimony"], ["site:chaidate", "☕ ChaiDate", "Dating"], ["site:sunset", "🌅 SunsetSwipe", "Dating"], ["site:bookclub", "📚 Paperback", "Dating"], ["board", "📋 Odd jobs & teams", "Quick money, team tasks"], ...(g.stateId === "KL" ? [["broker", "🏷️ FXN Homes", homeLabel(g)]] : []), ["howto", "❓ How to play", "30-second tour of the screen"], ["squad", "👥 Squad", NET.squad && NET.squad() ? "Code " + fmtCode(NET.squad().code) + " · " + NET.squad().members.length + " in" : "Play with friends by code"], ["politics", "🗳️ Ward politics", g.pol && g.pol.party ? (g.pol.seat ? "Ward Councillor · " : "") + polParty(g).name : "Join a party"], ...(isKL() ? [["metroapp", "🚇 Kochi Metro", metroTask(g) ? "Task: " + metroTask(g).T.t : "Rides and metro tasks"]] : []), ["garage", "🛵 Garage", g.vehicle ? (g.riding ? "Riding your " : "Your ") + CS.vehicleById(g.vehicle.id).name.toLowerCase() : "Buy a bicycle, scooter or car"], ["career", "💼 Career", "Switch job"], ["status", "🗂️ My papers", "Papers, loans, house"], ["retire", "🌅 Retire", "End this life"]];
     const party = P ? `<p>Your group: you${mates.length ? ", " + mates.map(m => esc(m.nick)).join(", ") : " (waiting for players to join)"}.</p><button class="btn small ghost" data-act="partyleave">Leave group</button>` : `<p class="hint">Tap a player in the city to invite them to your group (up to 6).</p>`;
     return sheetBox("Phone", `<div class="apps">${apps.map(a => `<button class="app" data-act="${a[0].indexOf("site:") === 0 ? "site" : a[0]}" ${a[0].indexOf("site:") === 0 ? `data-arg="${a[0].slice(5)}"` : ""}><b>${esc(a[1])}</b><span>${esc(a[2])}</span></button>`).join("")}</div><h3 class="sec">Group</h3>${party}`);
   }
@@ -1464,7 +1483,12 @@
   let tickN = 0;
   setInterval(() => {
     if (ui.view !== "play" || !game || game.done || document.hidden) return;
-    if (ui.outcome || ui.eventOpen || ui.mscene || ui.cityEv || ui.payday || ui.sheet || ui.fxn || ui.travel || ui.talk || ui.welcome || (WORLD.riding && WORLD.riding())) return;
+    if (tickN % 60 === 0) prefs.lastPlay = Date.now();
+    if (window.AE_TUTOR && game.welcomed && !AE_TUTOR.isOpen() && !ui.sheet) { // one-time pointers for first encounters
+      prefs.help = prefs.help || {}; const once = (k, sel, t) => { if (!prefs.help[k] && AE_TUTOR.hint(sel, t)) { prefs.help[k] = 1; save(); return true; } return false; };
+      once("h_act", ".world .act:not([hidden])", "Tap this button to go in, talk or start. It appears whenever you're at a place.") || (game.vehicle && once("h_ride", ".dk.ride", "Tap Ride to hop on your vehicle. It's much faster.")) || once("h_ptt", "#ptt", "Hold this button to talk to your squad. Let go to stop.");
+    }
+    if (ui.outcome || ui.eventOpen || ui.mscene || ui.cityEv || ui.payday || ui.sheet || ui.fxn || ui.travel || ui.talk || ui.welcome || (window.AE_TUTOR && AE_TUTOR.isOpen()) || (WORLD.riding && WORLD.riding())) return;
     LF.init(game);
     const evs = LF.tick(game, 1); tickN++;
     // every 2 minutes of play: a nudge towards the Notice Board's quick jobs and team tasks
@@ -1619,6 +1643,9 @@
       case "politics": ui.polProj = false; openSheet("politics"); break;
       case "broker": openSheet("broker", { build: null }); break;
       case "squad": openSheet("squad"); break;
+      case "helpok": prefs.help = prefs.help || {}; prefs.help[arg] = 1; if (ui.helpOpen === arg) ui.helpOpen = null; save(); render(); break;
+      case "helpshow": ui.helpOpen = ui.helpOpen === arg ? null : arg; render(); break;
+      case "howto": { ui.sheet = null; if (ui.view !== "play" && game && !game.done) go("play"); else render(); setTimeout(() => window.AE_TUTOR && AE_TUTOR.tour(), 700); break; }
       case "sqcreate": sqJoin(null, true); break;
       case "sqjoin": { const v = (document.getElementById("sq-code") || {}).value || ""; sqJoin(v, false); break; }
       case "sqleave": sqLeave(); break;
