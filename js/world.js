@@ -705,7 +705,7 @@ window.AE_WORLD = (function () {
       el.innerHTML = `<div class="w-banner" hidden><span class="arrow" aria-hidden="true">➤</span><div class="w-banner-t"><b></b><span></span></div><div class="w-banner-a"></div></div>
         <div class="w3-view"><div class="w-labels"></div><div class="joy" aria-label="Joystick: drag to walk"><i></i></div>
           <canvas class="minimap" width="150" height="112" aria-label="City map. Tap to open."></canvas>
-          <div class="cam-btns"><button class="w-btn small cam-spin" title="Look all around" aria-label="Look all around">⟳</button><button class="w-btn small cam-zoom" title="Zoom" aria-label="Zoom out">⤢</button></div>
+          <div class="cam-btns"><button class="w-btn small cam-spin" title="Look all around" aria-label="Look all around">⟳</button><button class="w-btn small cam-zoom" title="Zoom" aria-label="Zoom out">⤢</button><button class="w-btn small cam-snd" title="Sound: music and effects, effects only, or off" aria-label="Sound">${window.AE_SOUND ? window.AE_SOUND.icon() : "🔊"}</button></div>
           <div class="map-full" hidden><div class="map-top"><div><b>${isKochi ? "Kochi" : esc(o.words.city)}</b><span></span></div><button class="w-btn small map-close">Close</button></div><div class="map-area"><canvas></canvas><div class="map-zoom"><button class="mz-in" aria-label="Zoom in">+</button><button class="mz-out" aria-label="Zoom out">−</button><button class="mz-me" aria-label="Centre on me">◎</button></div></div><p class="map-hint">Tap a pin or any street to walk there · drag to move · pinch to zoom</p></div>
           <div class="w-ui"><button class="w-btn act" hidden></button><button class="w-btn say" hidden>Say…</button><button class="w-btn chat" hidden>Chat</button><span class="w-online" hidden></span></div>
           <div class="say-panel" hidden></div>
@@ -759,6 +759,7 @@ window.AE_WORLD = (function () {
       (o.kids || []).forEach((k, i) => { if (!spots.house) return; const av = PEOPLE.random(k.name + "|kid", { kid: true, set: { height: 140 + Math.min(40, k.age * 3) } }); av.small = k.age < 12; const f = addFig("kid_" + i, "walker", av, null, k.name, spots.house.x + 1.2 + i * 0.5, spots.house.y + 0.9); f.home = { x: spots.house.x, y: spots.house.y }; f.amb = "kid"; f.kid = true; place(f); });
       townsfolk(o);
       bindInput();
+      el.querySelector(".cam-snd").addEventListener("click", e => { e.stopPropagation(); SND.cycle(); e.currentTarget.textContent = SND.icon(); });
       mapBase = mapImage(); mini = el.querySelector(".minimap"); miniCtx = mini.getContext("2d");
       mapEl = el.querySelector(".map-full"); mapCv = mapEl.querySelector("canvas"); bindMap();
       window.addEventListener("resize", resize); window.addEventListener("keydown", kd); window.addEventListener("keyup", ku);
@@ -1083,6 +1084,7 @@ window.AE_WORLD = (function () {
     const A = from === "ferryMD" ? [35.4, 19.5] : [19.4, 24.5], B = from === "ferryMD" ? [19.4, 24.5] : [35.4, 19.5];
     ride = { A, B, t: 0, to, dur: 7 };
     me.path = []; el.querySelector(".ride-cap").hidden = false; actBtn.hidden = true;
+    SND.sfx("ferryHorn");
     if (opts.onRide) opts.onRide(to);
   }
   function stepRide(dt) {
@@ -1098,6 +1100,7 @@ window.AE_WORLD = (function () {
 
   // ── Kochi Metro ride: you board at the station above MG Road and the camera rides along on the viaduct ──
   let mride = null;
+  const SND = window.AE_SOUND || { sfx() { }, ambience() { }, engine() { }, setNight() { }, announce() { }, icon: () => "🔊", cycle() { } };
   function startMetro(fromKey, toKey) {
     if (!metroTrain || mride || ride || !spots[fromKey] || !spots[toKey]) return false;
     const A = spots[fromKey].z, B = spots[toKey].z, D = Math.abs(B - A);
@@ -1105,6 +1108,7 @@ window.AE_WORLD = (function () {
     setVehicle(null); me.path = []; actBtn.hidden = true; if (me.mesh) me.mesh.group.visible = false; me.lab.style.visibility = "hidden";
     const cap = el.querySelector(".ride-cap"); cap.textContent = "🚇 Kochi Metro → " + spots[toKey].label.replace(" Metro", ""); cap.hidden = false;
     metroTrain.wait = 0; metroTrain.m.position.z = A; metroTrain.z = A;
+    SND.sfx("doors"); setTimeout(() => { SND.sfx("metroChime"); SND.announce("Next station, " + spots[toKey].label.replace(" Metro", "")); }, 700);
     return true;
   }
   function stepMetroRide(dt) {
@@ -1115,9 +1119,23 @@ window.AE_WORLD = (function () {
     if (t >= 1) {
       const d = spots[R2.to]; me.x = d.x + 0.5; me.z = d.y + 0.5; me.ride = 0; inside[R2.to] = true; dist = R2.d0; pitch = R2.p0;
       if (me.mesh) me.mesh.group.visible = true; me.lab.style.visibility = ""; el.querySelector(".ride-cap").hidden = true;
-      metroTrain.last = R2.B; metroTrain.wait = 3; mride = null; sendMe(true);
+      metroTrain.last = R2.B; metroTrain.wait = 3; mride = null; sendMe(true); SND.sfx("metroChime"); SND.sfx("doors"); SND.engine(null);
       if (opts.onMetro) opts.onMetro(R2.to);
     }
+  }
+
+  // ── sound: footsteps, engine and the ambient mix follow you around ──
+  let stepAcc = 0, stepK = 0, sndT = 0, lastPos = null;
+  function soundTick(dt, time) {
+    const moved = lastPos ? Math.hypot(me.x - lastPos.x, me.z - lastPos.z) : 0; lastPos = { x: me.x, z: me.z };
+    if (!me.vehType && !ride && !mride && moved > 0.001 && moved < 0.5) { stepAcc += dt; if (stepAcc > 0.29) { stepAcc = 0; stepK = 1 - stepK; SND.sfx("step", stepK ? 1 : 0.7); } } else stepAcc = 0.2;
+    if (time - sndT < 250) return; sndT = time;
+    if (mride) SND.engine("metro", 0.8); else if (me.vehType && !ride) SND.engine(me.vehType, me.moving || me.free ? 1 : 0.1); else SND.engine(null);
+    const tx = Math.floor(me.x), ty = Math.floor(me.z); let w = 0, gr = 0, rd = 0, n = 0;
+    for (let dy = -4; dy <= 4; dy += 2) for (let dx = -4; dx <= 4; dx += 2) { const t = at(tx + dx, ty + dy); n++; if (t === WATER || t === SAND || t === JETTY) w++; else if (t === GRASS || t === TREE) gr++; else if (t === ROAD || t === BRIDGE) rd++; }
+    const h = dbgHour != null ? dbgHour : opts.hour ? opts.hour() : 12, nightK = h < 5.5 || h > 19 ? 1 : 0;
+    SND.ambience({ water: Math.min(1, w / n * 2.5 + (ride ? 1 : 0)), park: Math.min(1, gr / n * 3), city: mride ? 0.2 : Math.min(1, 0.25 + rd / n * 2) * (nightK ? 0.4 : 1), night: nightK });
+    SND.setNight(nightK);
   }
 
   // ── day and night ──
@@ -1151,6 +1169,7 @@ window.AE_WORLD = (function () {
     else if (!freeMove(dt)) stepPath(me, dt, SPEED * vehMult(me.vehType));
     if (me.twirlT) { me.twirlT = Math.max(0, me.twirlT - dt); me.twirl = (1 - me.twirlT / 0.9) * Math.PI * 2; if (!me.twirlT) me.twirl = 0; }
     stepFx(dt);
+    soundTick(dt, time);
     Object.values(figs).forEach(f => {
       if (f.kind === "remote") { let rem = 0, px = f.x, pz = f.z; f.path.forEach(p => { rem += Math.hypot(p.x - px, p.z - pz); px = p.x; pz = p.z; }); const base = SPEED * vehMult(f.vehType); stepPath(f, dt, Math.min(base * 2.5, Math.max(base, rem / 0.95))); }
       if (f.kind === "walker" && !f.stat) {
@@ -1174,7 +1193,7 @@ window.AE_WORLD = (function () {
         const dx = v.b[0] - v.a[0], dz = v.b[1] - v.a[1], L = Math.hypot(dx, dz), nx = dx / L, nz = dz / L, off = 0.45 * v.dir;
         const x = v.a[0] + dx * v.t - nz * off, z = v.a[1] + dz * v.t + nx * off;
         v.m.position.set(x, 0, z); v.m.rotation.y = Math.atan2(nx * v.dir, nz * v.dir);
-        if (Math.hypot(x - me.x, z - me.z) < 1.0 && time > v.honk) { v.honk = time + 9000; ambientLine(null, "honk", x, z); }
+        if (Math.hypot(x - me.x, z - me.z) < 1.0 && time > v.honk) { v.honk = time + 9000; ambientLine(null, "honk", x, z); SND.sfx(v.type === "bus" ? "honkBus" : v.type === "auto" ? "honkAuto" : "honkCar"); }
       });
       boats.forEach(b => { b.t += b.sp * dt * b.dir; if (b.t > 1 || b.t < 0) { b.dir *= -1; b.t = Math.max(0, Math.min(1, b.t)); } b.m.position.set(b.a[0] + (b.b[0] - b.a[0]) * b.t, Math.sin(time / 600 + b.t * 9) * 0.03, b.a[1] + (b.b[1] - b.a[1]) * b.t); b.m.rotation.y = b.dir > 0 ? 0 : Math.PI; });
       if (ferry && !ride) ferry.m.position.y = Math.sin(time / 550) * 0.025;
@@ -1523,7 +1542,7 @@ window.AE_WORLD = (function () {
   }
   function npcSay(role, t, s) { bubble(figs["npc_" + role], t, s); }
   function meSay(t, typed) { bubble(me, t, null, typed); log(me.name, t); }
-  function note(t) { log("", t); }
+  function note(t) { log("", t); SND.sfx(/Goal complete|complete!/.test(t) ? "goal" : "notify"); }
   function upsertRemote(id, d) {
     const k = "r_" + id;
     if (figs[k]) {
@@ -1538,7 +1557,7 @@ window.AE_WORLD = (function () {
     nameEl.addEventListener("click", e => { e.stopPropagation(); if (opts.onRemoteTap) opts.onRemoteTap(f.rid, f.name); });
   }
   function moveRemote(id, x, y) { const f = figs["r_" + id]; if (f) f.path = toPts(path(tileOf(f), { x, y })); }
-  function sayRemote(id, t, typed) { const f = figs["r_" + id]; if (!f || Math.hypot(f.x - me.x, f.z - me.z) > 14) return false; bubble(f, t, null, typed); log(f.name, t); return true; }
+  function sayRemote(id, t, typed) { const f = figs["r_" + id]; if (!f || Math.hypot(f.x - me.x, f.z - me.z) > 14) return false; bubble(f, t, null, typed); log(f.name, t); SND.sfx("chat"); return true; }
   function removeRemote(id) { removeFig("r_" + id); }
   function clearRemotes() { Object.keys(figs).filter(k => k.indexOf("r_") === 0).forEach(removeFig); }
   function setOnline(n, phrases, emotes, canType, room) {
@@ -1562,7 +1581,7 @@ window.AE_WORLD = (function () {
     if (!ok3d) { setTimeout(() => { if (f.cb) { const cb = f.cb; f.cb = null; cb(); removeFig("courier"); } }, 1500); return f; }
     f.dl = { st: "ride", t: 0, t0: performance.now() };
     setFigVehicle(f, { type: "scooter", color: "#ff4f9a", box: true });
-    f.path = toPts(path(tileOf(f), tileOf(me))); tracker(f);
+    f.path = toPts(path(tileOf(f), tileOf(me))); tracker(f); SND.sfx("vroom");
     return f;
   }
   function tracker(f) {
@@ -1594,7 +1613,7 @@ window.AE_WORLD = (function () {
       if (dMe < 0.8 || D.t > 12) {
         D.st = "give"; D.t = 0; f.path = []; f.moving = false;
         f.heading = face(f, me); me.heading = face(me, f); me.lock = time + 3600; me.path = [];
-        cine = { yaw: me.heading + Math.PI / 2, dist: 2.2, back: dist, until: time + 3600 };
+        cine = { yaw: me.heading + Math.PI / 2, dist: 2.2, back: dist, until: time + 3600 }; SND.sfx("doorbell");
       }
     } else if (D.st === "give") {
       f.heading = face(f, me);
@@ -1602,7 +1621,7 @@ window.AE_WORLD = (function () {
       if (D.t > 1.3 && f.box) { const k = Math.min(1, (D.t - 1.3) / 0.35); f.box.position.y = me.mesh.legL + 0.1 + k * 0.35; f.box.rotation.y = k * 5; f.box.scale.setScalar(1 + k * 0.4); }
       if (D.t > 1.65 && f.box) {
         me.mesh.group.remove(f.box); f.box = null; me.carry = false;
-        burst(me.x, (me.mesh.H || 0.7) * 0.6, me.z); me.twirlT = 0.9;
+        burst(me.x, (me.mesh.H || 0.7) * 0.6, me.z); me.twirlT = 0.9; SND.sfx("sparkle");
         if (f.cb) { const cb = f.cb; f.cb = null; cb(); }
         f.wave = true; D.st = "bye"; D.t = 0; tracker(f);
       }
@@ -1668,6 +1687,7 @@ window.AE_WORLD = (function () {
   function position() { return me ? tileOf(me) : { x: 8, y: 18 }; }
   function destroy() {
     cancelAnimationFrame(raf); window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku); window.removeEventListener("resize", resize);
+    SND.engine(null);
     if (renderer) { try { renderer.dispose(); if (renderer.forceContextLoss) renderer.forceContextLoss(); } catch (e) { } }
     if (el) el.remove(); el = null; fx = []; burst.tex = null; mride = null; clouds = []; palmGeoC = null; rainGeoC = null; cloudMat = null; if (pmrem) { pmrem.dispose(); pmrem = null; } if (envRT) { envRT.dispose(); envRT = null; } envScene = null; envHour = -9; lastHour = -1; parkedHome = null; parkedKey = ""; cine = null; boxTexMat = null; wheelGeo = null; figs = {}; extraSpots = {}; guide = null; sceneMarker = null; renderer = null; vehicles = []; boats = []; facadeMats = []; tapFx = null;
   }

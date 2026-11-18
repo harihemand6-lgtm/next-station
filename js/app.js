@@ -228,7 +228,8 @@
   const dressName = tag => ({ festival: "festive wear", onam: "Kasavu", wedding: "wedding wear", formal: "office formals", party: "party wear", premiere: "red-carpet look", sport: "cricket whites" }[tag] || tag);
   const wearing = (g, tag) => { const it = g.outfit && fxItem(g.outfit); return !!(it && it.tags.indexOf(tag) >= 0); };
 
-  const LF = window.AE_LIFE;
+  const LF = window.AE_LIFE, SND = window.AE_SOUND;
+  let hudCash = null;
   const pct = v => Math.max(0, Math.min(100, Math.round(v)));
   function hud2(g) {
     const L = AE.life(g);
@@ -249,6 +250,7 @@
     set("hud-en", g.energy); set("hud-hu", g.hunger); set("hud-mo", g.h);
     const c = document.getElementById("hud-clock"); if (c) { c.textContent = LF.clock(g); c.nextElementSibling.textContent = "Day " + g.day; }
     const m = document.getElementById("hud-cash"); if (m) { m.textContent = inr(g.cash); m.classList.toggle("neg", g.cash < 0); }
+    if (hudCash != null && SND && g.cash !== hudCash) SND.sfx(g.cash > hudCash ? "coin" : "spend"); hudCash = g.cash;
     document.querySelectorAll(".hud2 .meters em").forEach(e => e.classList.toggle("low", parseFloat(e.style.width) < 20));
   }
   function paydayCard() {
@@ -561,6 +563,7 @@
     return sheetBox("Rooms in " + locState(game).city, `<p class="hint">Each city is split into rooms of ${R ? R.cap : 8} so the game stays smooth. Playing with friends? Everyone joins the same room number.</p><div class="list rooms">${rows}</div>`);
   }
   function doEat(where) {
+    SND.sfx("eat");
     const r = LF.eat(game, where);
     if (!r) { WORLD.note("Not enough cash to eat here."); WORLD.react("broke"); return; }
     WORLD.note("😋 " + r.text); WORLD.react("eat"); afterAction(); updateHud();
@@ -1133,6 +1136,7 @@
   $app.addEventListener("click", e => {
     const b = e.target.closest("[data-act]"); if (!b || b.disabled) return;
     const act = b.dataset.act, arg = b.dataset.arg;
+    if (SND) SND.sfx(/^(phone|fxnopen|metroapp|garage|rooms|kin|goals)$/.test(act) ? "open" : "click");
     switch (act) {
       case "home": go("home"); break;
       case "profile": go("profile"); break;
@@ -1150,12 +1154,12 @@
       case "kin": openSheet("kin", { kinLine: null }); break;
       case "kinchat": { const lines = ["Did you eat? I made extra.", "My office is chaos. Tell me something good.", "Should we repaint the kitchen? Don't answer, I've decided.", "Proud of you. Now help me find the TV remote.", "Weekend plan: Fort Kochi, ice cream, no phones. Deal?"]; ui.kinLine = lines[+arg] || lines[0]; game.h = Math.min(100, game.h + 4); game.min = Math.min(game.min + 45, 23 * 60 + 50); save(); render(); break; }
       case "planbaby": if (LF.planBaby(game)) { ui.msg = "Exciting news! A baby is on the way. Due on day " + game.babyDue + "."; WORLD.react("good"); save(); render(); } break;
-      case "babyname": { const v = arg || (document.getElementById("f-baby") || {}).value || ""; const n = LF.nameBaby(game, v); ui.sheet = null; WORLD.react("baby"); WORLD.note("👶 Welcome, " + n + "!"); netKey = netKey; afterAction(true); render(); break; }
+      case "babyname": { const v = arg || (document.getElementById("f-baby") || {}).value || ""; const n = LF.nameBaby(game, v); SND.sfx("baby"); ui.sheet = null; WORLD.react("baby"); WORLD.note("👶 Welcome, " + n + "!"); netKey = netKey; afterAction(true); render(); break; }
       case "goals": openSheet("goals"); break;
       case "board": openSheet("board"); break;
       case "retire": openSheet("retire"); break;
       case "retireyes": { ui.sheet = null; AE.finish(game); save(); render(); window.scrollTo(0, 0); break; }
-      case "sleep": { const r = LF.sleep(game); ui.sheet = null; WORLD.note("😴 " + r.text); WORLD.react("sleep"); (r.grew || []).forEach(n => WORLD.note("🎂 " + n + " is growing up!")); if (game.outfit && !r.nap) { game.outfit = null; WORLD.setLook(char || game.player, null); if (NET.setOutfit) NET.setOutfit(""); } afterAction(true); render(); break; }
+      case "sleep": { const r = LF.sleep(game); SND.sfx("sleep"); ui.sheet = null; WORLD.note("😴 " + r.text); WORLD.react("sleep"); (r.grew || []).forEach(n => WORLD.note("🎂 " + n + " is growing up!")); if (game.outfit && !r.nap) { game.outfit = null; WORLD.setLook(char || game.player, null); if (NET.setOutfit) NET.setOutfit(""); } afterAction(true); render(); break; }
       case "eat": ui.sheet = null; render(); doEat(arg); break;
       case "newlife": if (game && !game.done && ui.view === "home") { ui.confirmNew = true; render(); break; } if (!char) { ui.after = "life"; go("creator", { draft: defaultDraft() }); } else { go("life", { stateId: "KL", daily: null }); if (NET.lobby) NET.lobby("", () => { if (ui.view === "life") render(); }); } break;
       case "editchar": ui.after = "profile"; go("creator", { draft: Object.assign({}, char) }); break;
@@ -1227,7 +1231,7 @@
       case "notadult": prefs.adult = false; save(); ui.ageGate = false; render(); break;
       case "closeage": ui.ageGate = false; render(); break;
       case "rules": e.preventDefault(); go("rules"); break;
-      case "next": { const o = ui.outcome; ui.outcome = null; ui.eventOpen = false; if (o && o.summary) { ui.payday = game.summary; save(); render(); } else { render(); } break; }
+      case "next": { const o = ui.outcome; ui.outcome = null; ui.eventOpen = false; if (o && o.summary) { ui.payday = game.summary; SND.sfx("payday"); save(); render(); } else { render(); } break; }
       case "aftersummary": game._showSummary = false; save(); go("play"); break;
       case "talk": if (game.shift) break; ui.talk = true; ui.talkRole = null; ui.talkAnswer = null; render(); break;
       case "closesheet": ui.sheet = null; ui.msg = null; ui.venture = false; ui.dateText = null; ui.atShop = false; ui.vcolor = null; render(); refreshGuide(); break;
@@ -1295,7 +1299,7 @@
       case "datechoose": { const r = CS.dateChoose(game, +arg); ui.dateText = r.text; ui.dateMore = !!r.more; save(); render(); break; }
       case "datenext": ui.dateText = null; render(); break;
       case "family": { const r = CS.familyMeet(game, +arg); ui.sheet = null; save(); render(); WORLD.note(r.text); break; }
-      case "wed": { const r = CS.wed(game, arg); if (r) { setTimeout(() => WORLD.react("wed"), 1500); LF.checkGoals(game); ui.sheet = null; game.log.push({ c: game.chapter, id: "wedding", t: "Your wedding", l: "Married " + game.spouse.name, r: r.text, d: r.d, alt: [] }); ui.outcome = { text: r.text, d: r.d }; save(); netKey = null; render(); } break; }
+      case "wed": { const r = CS.wed(game, arg); if (r) { SND.sfx("wedding"); setTimeout(() => WORLD.react("wed"), 1500); LF.checkGoals(game); ui.sheet = null; game.log.push({ c: game.chapter, id: "wedding", t: "Your wedding", l: "Married " + game.spouse.name, r: r.text, d: r.d, alt: [] }); ui.outcome = { text: r.text, d: r.d }; save(); netKey = null; render(); } break; }
       case "btab": ui.btab = arg; render(); break;
       case "oddtake": { const g = game; if (g.odd || (g.oddThis || 0) >= 3) break; g.odd = { id: arg, target: WORLD.randomDoor(AE.rnd(g)) }; WORLD.setExtraSpot("odd", g.odd.target); ui.sheet = null; save(); render(); break; }
       case "grouptake": { const g = game, T = groupTask(arg); if (g.group) break; const key = T.where === "door" ? "grp" : T.where; g.group = { id: arg, key, target: key === "grp" ? WORLD.randomDoor(AE.rnd(g)) : null }; ui.sheet = null; save(); render(); if (key === "grp" && T.city === (g.loc || g.stateId)) WORLD.setExtraSpot("grp", g.group.target); break; }
