@@ -397,6 +397,7 @@
     if (ui.courier) return { text: "🛵 " + ui.courier + " from FXN is on the way", sub: "Bringing your outfit from the dark store", key: "courier" };
     const MT = metroTask(g);
     if (MT && loc === "KL") { const st = MT.T.steps[MT.step], key = st.visit || st.arrive || nearestStation(); return { text: "🚇 " + MT.T.t + ": " + st.txt, sub: st.arrive || st.ride ? "Walk to a 🚇 station on MG Road and take the metro" : "Walk to the marked spot", key }; }
+    if (ui.guideTo === "board") return { text: "📋 Walk to the Notice Board", sub: "Quick jobs and team tasks for extra money", key: "board" };
     if (ui.guideTo === "garage") return { text: "Walk to " + (loc === "KL" ? "Vyttila Motors" : "City Motors"), sub: "Buy a bicycle, scooter, bike or car", key: "garage" };
     if (g.shift) return { text: "FXN delivery: take the parcel to " + g.shift.cust, sub: g.shift.left + " of " + CITY.rider.drops + " left" + (g.shift.ratings.length ? " · rating " + avgOf(g.shift.ratings) + "★" : ""), key: "gig", actions: go("gig") };
     if (g.odd) { const J = CITY.oddJobs.find(j => j.id === g.odd.id); return { text: "Odd job: " + J.t, sub: "Walk to the glowing door · " + inr(CS.oddPay(g, J)), key: "odd", actions: go("odd") }; }
@@ -488,11 +489,18 @@
     if (k === "f" && !away(game)) { const r = LF.relax(game, "park"); WORLD.note(r.text); if (!r.none) WORLD.react("fun"); save(); updateHud(); return; }
     if (k === "house") return game.romance && game.romance.stage === "family" ? openSheet("family") : openSheet("house");
     if (k === "s") return openSheet("kin");
-    if (k === "board") return openSheet("board");
+    if (k === "board") { if (ui.guideTo === "board") ui.guideTo = null; return openSheet("board"); }
     if (k === "garage") { ui.guideTo = null; return openSheet("garage", { atShop: true }); }
     if (/^metro/.test(k)) return openSheet("metro", { station: k });
   }
   const isKL = () => (game.loc || game.stateId) === "KL";
+  function boardToast() {
+    const g = game, lo = CS.money(g, 250), hi = CS.groupShare(g, CITY.groupTasks.filter(T => T.city === (g.loc || g.stateId)).sort((a, b) => b.reward - a.reward)[0] || CITY.groupTasks[0]);
+    const v = document.querySelector(".play2"); if (!v) return;
+    let t = v.querySelector(".btoast"); if (!t) { t = document.createElement("div"); t.className = "btoast"; v.appendChild(t); }
+    t.innerHTML = `<b>📋 Notice Board</b><span>Quick jobs from ${inr(lo)} · team tasks up to ${inr(hi)} each</span><div><button class="btn small primary" data-act="toboard">Show me</button><button class="btn small" data-act="toastx">Later</button></div>`;
+    t.classList.remove("out"); SND.sfx("notify"); clearTimeout(boardToast._t); boardToast._t = setTimeout(() => t.classList.add("out"), 12000);
+  }
   function famState(g) { if (!g.famWalk || away(g) || (!g.spouse && !(g.kids || []).length)) return null; return { s: g.spouse ? g.spouse.name : "", sf: g.spouse && ((CITY.profiles.find(p => p.id === g.spouse.pid) || {}).g || "w") === "w" ? 1 : 0, k: (g.kids || []).slice(0, 3).map(k => [k.name, LF.kidAge(g, k)]) }; }
   function syncFam() { if (NET.setState) { const f = famState(game), k = JSON.stringify(f); if (syncFam._k !== k) { syncFam._k = k; NET.setState({ fam: f }); } } }
 
@@ -1185,6 +1193,8 @@
     if (ui.outcome || ui.eventOpen || ui.mscene || ui.cityEv || ui.payday || ui.sheet || ui.fxn || ui.travel || ui.talk || ui.welcome || (WORLD.riding && WORLD.riding())) return;
     LF.init(game);
     const evs = LF.tick(game, 1); tickN++;
+    // every 2 minutes of play: a nudge towards the Notice Board's quick jobs and team tasks
+    if (tickN % 120 === 60 && !game.shift && !game.odd && !game.group && !away(game)) boardToast();
     updateHud();
     let rer = false;
     evs.forEach(e => {
@@ -1303,6 +1313,8 @@
       case "phone": openSheet("phone"); break;
       case "garage": openSheet("garage", { atShop: false }); break;
       case "duties": openSheet("duties"); break;
+      case "toastx": { const t = document.querySelector(".btoast"); if (t) t.classList.add("out"); break; }
+      case "toboard": { const t = document.querySelector(".btoast"); if (t) t.classList.add("out"); ui.guideTo = "board"; refreshGuide(); break; }
       case "famwalk": { const g = game; g.famWalk = arg === "1"; save(); WORLD.setFamilyWalk(g.famWalk && !away(g)); syncFam(); WORLD.note(g.famWalk ? "👨‍👩‍👧 Your family is coming along." : "🏠 Your family is heading home."); render(); break; }
       case "dretry": { const S = ui.dutyS; S.fail = false; S.count = 0; S.t0 = 0; S.step = 0; S.round = 0; render(); break; }
       case "dtap": {

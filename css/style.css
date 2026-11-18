@@ -511,3 +511,7 @@ body:has(.play2) { overflow: hidden; }
 .duty-bad { font-weight: 800; color: #ffb4a8; }
 .shake { animation: shake .35s; }
 @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+.btoast { position: absolute; z-index: 30; left: 12px; right: 12px; bottom: calc(96px + env(safe-area-inset-bottom)); margin: 0 auto; max-width: 420px; background: linear-gradient(135deg, #1f6b62, #16998c); color: #fff; border-radius: 18px; padding: 12px 14px; box-shadow: 0 12px 30px rgba(0,0,0,.4); display: flex; flex-direction: column; gap: 4px; animation: slideup .35s; transition: opacity .4s, transform .4s; }
+.btoast span { font-size: .85rem; opacity: .92; }
+.btoast div { display: flex; gap: 8px; margin-top: 4px; }
+.btoast.out { opacity: 0; transform: translateY(20px); pointer-events: none; }

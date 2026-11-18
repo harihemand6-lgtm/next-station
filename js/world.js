@@ -1189,10 +1189,21 @@ window.AE_WORLD = (function () {
       else if (follow && me.moving && !me.free && performance.now() - lastDrag > 1500) yaw += angDiff(yaw, me.heading) * Math.min(1, dt * 2.2);
       else if (follow && me.free && performance.now() - lastDrag > 2500 && joy.on && Math.abs(joy.y) > 0.5 && joy.y < 0) yaw += angDiff(yaw, me.heading) * Math.min(1, dt * 1.2);
       Object.values(figs).forEach(f => animate(f, dt));
+      // traffic gives way: brake for anyone in front, and edge sideways if there's room in the lane
+      const people = Object.values(figs).filter(f => f.mesh && (f.mesh.group.visible || f.veh));
       vehicles.forEach(v => {
-        v.t += v.sp * dt * v.dir; if (v.t > 1) { v.t = 1; v.dir = -1; } if (v.t < 0) { v.t = 0; v.dir = 1; }
-        const dx = v.b[0] - v.a[0], dz = v.b[1] - v.a[1], L = Math.hypot(dx, dz), nx = dx / L, nz = dz / L, off = 0.45 * v.dir;
-        const x = v.a[0] + dx * v.t - nz * off, z = v.a[1] + dz * v.t + nx * off;
+        const dx = v.b[0] - v.a[0], dz = v.b[1] - v.a[1], L = Math.hypot(dx, dz), nx = dx / L, nz = dz / L;
+        const fx0 = nx * v.dir, fz0 = nz * v.dir, look = v.type === "bus" ? 2.4 : 1.8, halfW = v.type === "bus" ? 0.5 : 0.38;
+        const cx0 = v.a[0] + dx * v.t - nz * 0.45 * v.dir + (-fz0) * (v.side || 0), cz0 = v.a[1] + dz * v.t + nx * 0.45 * v.dir + fx0 * (v.side || 0);
+        let block = null;
+        people.forEach(p => { const rx = p.x - cx0, rz = p.z - cz0, along = rx * fx0 + rz * fz0, lat = -rx * fz0 + rz * fx0; if (along > 0.1 && along < look && Math.abs(lat) < halfW + 0.22 && (!block || along < block.along)) block = { along, lat }; });
+        const wantSide = block ? Math.max(-0.3, Math.min(0.3, (block.lat > 0 ? -1 : 1) * 0.3)) : 0;
+        v.side = (v.side || 0) + (wantSide - (v.side || 0)) * Math.min(1, dt * 2.5);
+        const stillBlocked = block && Math.abs(block.lat - (v.side || 0)) < halfW + 0.12;
+        v.k = (v.k == null ? 1 : v.k) + ((stillBlocked ? (block.along < 0.9 ? 0 : 0.25) : 1) - (v.k == null ? 1 : v.k)) * Math.min(1, dt * (stillBlocked ? 6 : 1.5));
+        v.t += v.sp * dt * v.dir * v.k; if (v.t > 1) { v.t = 1; v.dir = -1; } if (v.t < 0) { v.t = 0; v.dir = 1; }
+        const off = 0.45 * v.dir, x = v.a[0] + dx * v.t - nz * off - fz0 * (v.side || 0), z = v.a[1] + dz * v.t + nx * off + fx0 * (v.side || 0);
+        if (stillBlocked && block.along < 1.2 && time > (v.honk || 0) - 6000 && Math.hypot(x - me.x, z - me.z) < 6 && time > (v.beep || 0)) { v.beep = time + 4000; SND.sfx(v.type === "bus" ? "honkBus" : v.type === "auto" ? "honkAuto" : "honkCar"); }
         v.m.position.set(x, 0, z); v.m.rotation.y = Math.atan2(nx * v.dir, nz * v.dir);
         if (Math.hypot(x - me.x, z - me.z) < 1.0 && time > v.honk) { v.honk = time + 9000; ambientLine(null, "honk", x, z); SND.sfx(v.type === "bus" ? "honkBus" : v.type === "auto" ? "honkAuto" : "honkCar"); }
       });
@@ -1729,5 +1740,6 @@ window.AE_WORLD = (function () {
   function mapPoint(x, z) { if (!mapEl || mapEl.hidden) return null; mv.cx = x; mv.cy = z; clampMap(); drawFull(performance.now()); const { tx, ty } = mapToScreen(), r = mapCv.getBoundingClientRect(); return { x: r.left + tx(x), y: r.top + ty(z) }; }
   const metroSpots = () => METRO_KEYS.filter(k => spots[k]).map(k => ({ key: k, name: spots[k].label.replace(" Metro", ""), z: spots[k].z }));
   const __stats = () => renderer ? { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures } : null;
-  return { setFamilyWalk, remoteFamily, __stats, startMetro, metroSpots, metroRiding: () => !!mride, __figs: () => Object.values(figs).filter(f => f.kind === "remote" || f.kind === "me" || f.kind === "rfam" || f.lead).map(f => ({ id: f.id, x: +f.x.toFixed(1), z: +f.z.toFixed(1), veh: f.vehType || "" })), mapPoint, setVehicle, setParked, vehicleRemote, VEH, VCOL, __dbg, mount, setGuide, setMarker, setExtraSpot, randomDoor, npcSay, meSay, note, react, upsertRemote, moveRemote, sayRemote, removeRemote, clearRemotes, setOnline, spawnCourier, courierSay, setLook: (av, outfit) => setLookFig("me", av, outfit), teleport, position, destroy, available: can3d, preview, spotAt: k => { const p = spotPos(k); return p ? { x: p.x, z: p.z } : null; }, guideKey: () => guide && guide.key, mapOpen: () => !!(mapEl && !mapEl.hidden), cols: () => COLS, rows: () => ROWS, riding: () => !!ride };
+  const __traffic = () => vehicles.map(v => ({ k: +(v.k == null ? 1 : v.k).toFixed(2), side: +(v.side || 0).toFixed(2), x: +v.m.position.x.toFixed(1), z: +v.m.position.z.toFixed(1), type: v.type }));
+  return { __traffic, setFamilyWalk, remoteFamily, __stats, startMetro, metroSpots, metroRiding: () => !!mride, __figs: () => Object.values(figs).filter(f => f.kind === "remote" || f.kind === "me" || f.kind === "rfam" || f.lead).map(f => ({ id: f.id, x: +f.x.toFixed(1), z: +f.z.toFixed(1), veh: f.vehType || "" })), mapPoint, setVehicle, setParked, vehicleRemote, VEH, VCOL, __dbg, mount, setGuide, setMarker, setExtraSpot, randomDoor, npcSay, meSay, note, react, upsertRemote, moveRemote, sayRemote, removeRemote, clearRemotes, setOnline, spawnCourier, courierSay, setLook: (av, outfit) => setLookFig("me", av, outfit), teleport, position, destroy, available: can3d, preview, spotAt: k => { const p = spotPos(k); return p ? { x: p.x, z: p.z } : null; }, guideKey: () => guide && guide.key, mapOpen: () => !!(mapEl && !mapEl.hidden), cols: () => COLS, rows: () => ROWS, riding: () => !!ride };
 })();
