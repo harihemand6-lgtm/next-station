@@ -129,7 +129,7 @@ window.AE = (function () {
     const cash = Math.round(Math.max(0, g.cash) / (L.raw ? 100 : 100 * ci(g)));
     const done = (g.missions || []).filter(m => m.done).length + (g.missionsDone || 0);
     const debt = (g.loans || []).reduce((n, l) => n + l.left, 0);
-    const extra = (g.house ? g.house.lvl * 150 + g.house.items.length * 15 : 0) + (g.spouse ? 200 : 0) + (g.kids || []).length * 200 + (g.goalsDone || []).length * 40 + (g.vehicle ? 1 + ["cycle", "scooter", "bike", "car", "suv"].indexOf(g.vehicle.id) : 0) * 60 + (g.groupsDone || 0) * 60 + (g.oddDone || 0) * 10;
+    const extra = (g.house ? g.house.lvl * 150 + g.house.items.length * 15 : 0) + (g.spouse ? 200 : 0) + (g.kids || []).length * 200 + (g.goalsDone || []).length * 40 + (g.vehicle ? 1 + ["cycle", "scooter", "bike", "car", "suv", "flyscooter", "hovercar"].indexOf(g.vehicle.id) : 0) * 60 + (g.groupsDone || 0) * 60 + (g.oddDone || 0) * 10;
     const raw = cash - Math.round(debt / (L.raw ? 100 : 100 * ci(g))) + g.r * 10 + g.x * 5 + bonus + done * 150 + extra - g.shady * 100;
     return Math.max(0, Math.min(20000, Math.round(raw)));
   }

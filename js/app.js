@@ -1357,7 +1357,7 @@
       case "ridetoggle": {
         const g = game; if (!g.vehicle || g.shift) break;
         if (WORLD.riding && WORLD.riding()) { WORLD.note("Wait till the ferry docks."); break; }
-        g.riding = !g.riding; save(); applyRide(); if (g.riding) WORLD.react("rideOn"); render(); break;
+        g.riding = !g.riding; save(); applyRide(); if (g.riding) WORLD.react(/fly|hover/.test(g.vehicle.id) ? "fly" : "rideOn"); render(); break;
       }
       case "roomjoin": {
         const n = +arg, R = NET.room ? NET.room() : null;
