@@ -142,7 +142,7 @@ window.AE_WORLD = (function () {
       let big = { hall: "hall", bank: "bank", cafe: "cafe", fxn: "fxn", rival: "rival", office: "office", home: "home", station: "station", mall: "mall", SHOW: "garage", infopark: "infopark", ipfood: "ipfood", broker: "broker", HTA: "heightsA", HTB: "heightsB" }[id] || (id === lifeLot ? "life" : "lm");
       let name = big === "life" ? (LANDMARK[o.lifeId] || "Market").replace("{stall}", o.words.stall) : lotName(o, id, L.name || "");
       const kind = big === "home" ? "home" : big === "rival" ? "shop" : L.kind || "shop";
-      const floors = { showroom: 2, hall: 2, hospital: 6, mall: 4, bank: 3, cafe: 1, fxn: 3, stadium: 2, tower: 8, market: 1, office: 3, station: 2, warehouse: 2, church: 2, colonial: 2, home: [2, 3, 4, 2, 2][(o.house && o.house.lvl) || 0], shop: 3 }[kind] || 2;
+      const floors = { showroom: 2, hall: 2, hospital: 6, mall: 4, bank: 3, cafe: 1, fxn: id === "fxn" ? 12 : 3, stadium: 2, tower: 8, market: 1, office: 3, station: 2, warehouse: 2, church: 2, colonial: 2, home: [2, 3, 4, 2, 2][(o.house && o.house.lvl) || 0], shop: 3 }[kind] || 2;
       addBuilding({ x: x0, y: y0, w: x1 - x0 + 1, d: y1 - y0 + 1, h: floors, floors, style: kind, big, kind, name, door: L.door, tint: R(), roof: ["church", "colonial", "office", "hall"].indexOf(kind) >= 0 || (kind === "home" && (o.house && o.house.lvl >= 3)) });
       if (name) labels.push({ x: (x0 + x1 + 1) / 2, y: (y0 + y1 + 1) / 2, t: name, c: BIGCOL[big] || "#e8dcc0", h: floors + 0.6 });
       const d = { x: L.door[0], y: L.door[1], label: name };
@@ -1042,7 +1042,7 @@ window.AE_WORLD = (function () {
     return new THREE.Mesh(new THREE.PlaneGeometry(w, h), m);
   }
   // ═══ Kochi 2030: neon trims, holographic FXN ads, flying traffic and FXN delivery drones ═══
-  let neonMats = [], holos = [], flyers = [];
+  let neonMats = [], holos = [], flyers = [], curNight = 0, curHour = 12, leds = [], beams = [], show = null;
   function city2030(o) {
     const R = rng(2030), cols = ["#19e6ff", "#ff2fd0", "#9b6bff", "#ffcf4a"], buckets = cols.map(() => []);
     blds.forEach(b => {
@@ -1057,11 +1057,123 @@ window.AE_WORLD = (function () {
     const tall = blds.filter(b => !b.monument && b.h >= 3).sort((a, b) => b.h - a.h).slice(0, isKochi ? 5 : 3);
     tall.forEach((b, i) => { const hb = holoBoard(2.6, 1.5, i); hb.position.set(b.x + b.w / 2, b.h + 1.3, b.y + b.d / 2); hb.rotation.y = i % 2 ? Math.PI / 2 : 0; scene.add(hb); });
     // the giant FXN hologram above the FXN store
-    if (spots.fxn) holoLogo(spots.fxn.x + 0.5, spots.fxn.y - 1.5);
+    if (spots.fxn) holoLogo(spots.fxn.x + 0.5, spots.fxn.y - 1.5, isKochi ? 13.6 : 5.2);
+    if (isKochi) megaAds();
     // flying traffic lanes above the streets, and FXN drones
     const RL = rng(77), lanes = isKochi ? [[[40, -4], [40, 52]], [[47, 52], [47, -4]], [[54, -4], [54, 52]], [[30, 9], [66, 9]], [[66, 22], [30, 22]], [[14, 34], [62, 34]], [[2, 12], [36, 12]]] : [[[4, 4], [44, 4]], [[44, 30], [4, 30]], [[20, -4], [20, 40]], [[34, 40], [34, -4]]];
     lanes.forEach((ln, i) => { for (let k = 0; k < 2; k++) { const type = ["hovercar", "flyscooter", "hovercar"][(i + k) % 3], rig = vehRig(type, ["#f2f2f2", "#1b1b1b", "#ff4f9a", "#19e6ff", "#c0392b"][(i * 2 + k) % 5]); rig.shadow.visible = false; scene.add(rig.group); flyers.push({ rig, a: ln[0], b: ln[1], t: RL(), sp: 0.02 + RL() * 0.02, alt: 4.2 + (i % 3) * 0.9 + k * 0.4, dir: k ? -1 : 1 }); } });
     for (let i = 0; i < (isKochi ? 6 : 3); i++) { const d = drone(); scene.add(d); const s0 = spots.fxn || { x: 10, y: 10 }; flyers.push({ drone: d, home: [s0.x + 0.5, s0.y + 0.5], a: [s0.x + 0.5, s0.y + 0.5], b: [4 + RL() * (COLS - 8), 4 + RL() * (ROWS - 8)], t: RL(), sp: 0.05 + RL() * 0.03, alt: 3.2 + RL() * 1.2, dir: 1 }); }
+  }
+  // ═══ Times Square / Lujiazui-style FXN advertising: LED skyscraper façades, a Piccadilly-style curved screen, sky beams and a nightly drone show ═══
+  const LED_ADS = [
+    ["FXN", "WEAR THE MOMENT", "#ff2f8f", "#2a0630"], ["RENT IT", "WEAR IT · RETURN IT", "#19e6ff", "#04203a"], ["BRIDAL", "FXN ATELIER", "#ffcf4a", "#3a0a1a"],
+    ["10 MIN", "FXN DRONE EXPRESS", "#7dffb0", "#06281c"], ["ONAM", "KASAVU SETS FROM ₹199", "#ffd36b", "#2b1a05"], ["FXN", "KOCHI 2030", "#c79bff", "#16082e"]
+  ];
+  function ledCanvas(w, h) { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; }
+  // draws one frame of an LED ad: gradient, light sweep, big type and a dress silhouette, on a pixel grid
+  function drawLed(c, k, t, tall) {
+    const x = c.getContext("2d"), W = c.width, H = c.height, nA = LED_ADS.length, A = LED_ADS[(((k | 0) % nA) + nA) % nA]; t = isFinite(t) ? t : 0;
+    const g = x.createLinearGradient(0, 0, W * Math.cos(t * 0.3), H); g.addColorStop(0, A[3]); g.addColorStop(0.5, A[2]); g.addColorStop(1, A[3]);
+    x.globalAlpha = 1; x.fillStyle = A[3]; x.fillRect(0, 0, W, H); x.globalAlpha = 0.55; x.fillStyle = g; x.fillRect(0, 0, W, H); x.globalAlpha = 1;
+    const sweep = ((t * 0.35) % 1.4 - 0.2) * (tall ? H : W); x.fillStyle = "rgba(255,255,255,.22)";
+    if (tall) x.fillRect(0, sweep, W, H * 0.06); else x.fillRect(sweep, 0, W * 0.06, H);
+    x.fillStyle = "#fff"; x.textAlign = "center"; x.textBaseline = "middle";
+    if (tall) {
+      x.font = `900 ${Math.round(W * 0.42)}px Mukta, sans-serif`; [...A[0]].forEach((ch, i, arr) => x.fillText(ch, W / 2, H * 0.16 + i * W * 0.42 - (arr.length > 3 ? W * 0.1 : 0)));
+      x.save(); x.translate(W / 2, H * 0.72); x.rotate(-Math.PI / 2); x.font = `800 ${Math.round(W * 0.15)}px Mukta, sans-serif`; x.fillText(A[1], 0, 0); x.restore();
+    } else {
+      x.font = `900 ${Math.round(H * 0.42)}px Mukta, sans-serif`; x.fillText(A[0], W * 0.38, H * 0.42);
+      x.font = `800 ${Math.round(H * 0.14)}px Mukta, sans-serif`; x.fillText(A[1], W * 0.38, H * 0.78);
+      const gx = W * 0.82, gy = H * 0.15, s = H * 0.7; x.fillStyle = "rgba(255,255,255,.9)";
+      x.beginPath(); x.arc(gx, gy + s * 0.08, s * 0.07, 0, 7); x.fill();
+      x.beginPath(); x.moveTo(gx - s * 0.1, gy + s * 0.18); x.lineTo(gx + s * 0.1, gy + s * 0.18); x.lineTo(gx + s * 0.06, gy + s * 0.45); x.lineTo(gx + s * 0.28, gy + s); x.lineTo(gx - s * 0.28, gy + s); x.lineTo(gx - s * 0.06, gy + s * 0.45); x.closePath(); x.fill();
+    }
+    x.fillStyle = "rgba(0,0,0,.28)"; const p = tall ? 6 : 5; for (let yy = 0; yy < H; yy += p) x.fillRect(0, yy, W, 1); for (let xx = 0; xx < W; xx += p) x.fillRect(xx, 0, 1, H);
+  }
+  // a few shared LED "channels" drive every façade, so phones only redraw 3 small textures
+  function ledChannel(k) {
+    let L = leds.find(q => q.tall && q.k0 === k % 3); if (L) return L;
+    const c = ledCanvas(128, 384); drawLed(c, k, 0, true);
+    const tex = new THREE.CanvasTexture(c); tex.encoding = THREE.sRGBEncoding;
+    const m = new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.8, roughness: 0.35 });
+    L = { c, tex, m, k: k % 3 * 2, k0: k % 3, tall: true, t: k * 2.3, every: 260, last: 0, swap: 0 }; leds.push(L); return L;
+  }
+  function ledPanel(w, h, k) { return new THREE.Mesh(new THREE.PlaneGeometry(w, h), ledChannel(k).m); }
+  function megaAds() {
+    // 1) media façades on the tallest towers (the FXN Tower first)
+    const towers = blds.filter(b => b.kind === "tower" || b.big === "fxn").sort((a, b) => (b.big === "fxn") - (a.big === "fxn") || b.h - a.h).slice(0, 6);
+    towers.forEach((b, i) => {
+      const cx = b.x + b.w / 2, cz = b.y + b.d / 2, w = b.w * 0.92, d = b.d * 0.92, y0 = 2.2, y1 = b.h - 0.2, hh = y1 - y0, fxn = b.big === "fxn";
+      const faces = fxn ? [[0, d / 2, 0, w], [0, -d / 2, Math.PI, w], [w / 2, 0, Math.PI / 2, d], [-w / 2, 0, -Math.PI / 2, d]] : [[0, d / 2, 0, w], [w / 2, 0, Math.PI / 2, d]];
+      faces.forEach(([ox, oz, ry, fw], j) => { const p = ledPanel(fw * (fxn ? 0.96 : 0.7), hh * (fxn ? 0.97 : 0.75), i * 2 + j); p.position.set(cx + ox * 1.012 + Math.sign(ox) * 0.02, y0 + hh / 2, cz + oz * 1.012 + Math.sign(oz) * 0.02); p.rotation.y = ry; scene.add(p); });
+      if (fxn) {
+        // crown ring and sky beams on the FXN Tower
+        const crown = new THREE.Mesh(new THREE.TorusGeometry(Math.max(w, d) * 0.62, 0.08, 8, 48), new THREE.MeshBasicMaterial({ color: 0xff2f8f }));
+        crown.rotation.x = Math.PI / 2; crown.position.set(cx, b.h + 0.25, cz); scene.add(crown); holos.push({ o: crown, hue: true });
+        for (let k = 0; k < 4; k++) {
+          const geo = new THREE.CylinderGeometry(0.05, 0.9, 30, 16, 1, true); geo.translate(0, 15, 0);
+          const beam = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: [0xff2f8f, 0x19e6ff, 0xffcf4a, 0x9b6bff][k], transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+          beam.position.set(cx + (k % 2 ? 1 : -1) * w * 0.35, b.h + 0.2, cz + (k < 2 ? 1 : -1) * d * 0.35); scene.add(beam); beams.push({ m: beam, ph: k * 1.6 });
+        }
+      }
+    });
+    // 2) "FXN Circus": a curved Piccadilly-style screen wrapping the Kaloor Junction corner
+    const nb = blds.find(b => b.name === "Kaloor Junction");
+    if (nb) {
+      const c = ledCanvas(1024, 192), tex = new THREE.CanvasTexture(c); tex.encoding = THREE.sRGBEncoding;
+      const m = new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.9, roughness: 0.3, side: THREE.DoubleSide });
+      const R = 2.2, geo = new THREE.CylinderGeometry(R, R, 1.5, 40, 1, true, Math.PI * 0.5, Math.PI * 0.5);
+      const scr = new THREE.Mesh(geo, m); scr.position.set(nb.x + nb.w - R + 0.15, nb.h + 0.9, nb.y + nb.d - R + 0.15); scene.add(scr);
+      leds.push({ c, tex, m, k: 0, circus: true, t: 0, every: 300, last: 0, swap: 0 });
+      drawCircus(c, 0);
+    }
+    // 3) the nightly FXN drone show over the backwaters, seen from Marine Drive
+    buildShow();
+  }
+  // Piccadilly mosaic: four ads side by side that rotate
+  function drawCircus(c, t) {
+    const x = c.getContext("2d"), W = c.width, H = c.height, n = 4, off = Math.floor(t / 6);
+    for (let i = 0; i < n; i++) { const sub = ledCanvas(W / n, H); drawLed(sub, i + off, t + i, false); x.drawImage(sub, i * W / n, 0); x.fillStyle = "#000"; x.fillRect(i * W / n, 0, 3, H); }
+  }
+  function textPoints(text, n, fn) { // sample lit pixels of a drawing into n points (u, v in 0..1)
+    const c = ledCanvas(120, 48), x = c.getContext("2d"); x.fillStyle = "#fff";
+    if (fn) fn(x, 120, 48); else { x.font = "900 44px Mukta, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(text, 60, 26); }
+    const d = x.getImageData(0, 0, 120, 48).data, pts = [];
+    for (let y = 0; y < 48; y += 2) for (let xx = 0; xx < 120; xx += 2) if (d[(y * 120 + xx) * 4 + 3] > 128) pts.push([xx / 120, y / 48]);
+    const out = []; for (let i = 0; i < n; i++) out.push(pts.length ? pts[Math.floor(i * pts.length / n)] : [Math.random(), Math.random()]); return out;
+  }
+  function buildShow() {
+    const N = 180, geo = new THREE.SphereGeometry(0.07, 6, 4), mat = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false });
+    const im = new THREE.InstancedMesh(geo, mat, N); im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.visible = false; scene.add(im);
+    const gown = (x, W, H) => { x.beginPath(); x.arc(W / 2, 7, 5, 0, 7); x.fill(); x.beginPath(); x.moveTo(W / 2 - 6, 13); x.lineTo(W / 2 + 6, 13); x.lineTo(W / 2 + 4, 24); x.lineTo(W / 2 + 18, 46); x.lineTo(W / 2 - 18, 46); x.lineTo(W / 2 - 4, 24); x.closePath(); x.fill(); };
+    const heart = (x, W, H) => { x.beginPath(); x.moveTo(W / 2, 44); x.bezierCurveTo(W / 2 - 40, 20, W / 2 - 18, -6, W / 2, 14); x.bezierCurveTo(W / 2 + 18, -6, W / 2 + 40, 20, W / 2, 44); x.fill(); };
+    const shapes = [{ p: textPoints("FXN", N), c: [0xff2f8f, 0xffcf4a] }, { p: textPoints("", N, gown), c: [0xffffff, 0x19e6ff] }, { p: textPoints("RENT", N), c: [0x19e6ff, 0x9b6bff] }, { p: textPoints("", N, heart), c: [0xff2f8f, 0xff2f8f] }, { p: textPoints("KOCHI", N), c: [0xffcf4a, 0x7dffb0] }];
+    const scatter = Array.from({ length: N }, () => [Math.random(), Math.random() * 1.6 - 0.3]);
+    show = { im, N, shapes, scatter, cur: scatter.map(p => p.slice()), dummy: new THREE.Object3D(), color: new THREE.Color(), x: 30.5, zc: 16.5, W: 13, H: 5.2, y0: 3.2 };
+  }
+  function stepShow(time) {
+    if (!show) return;
+    const on = curHour >= 19.5 && curHour < 23.5; show.im.visible = on; if (!on) return;
+    const cyc = 9000, k = Math.floor(time / cyc) % show.shapes.length, ph = (time % cyc) / cyc, S = show.shapes[k];
+    const target = ph < 0.12 || ph > 0.9 ? show.scatter : S.p, ease = Math.min(1, 0.06);
+    for (let i = 0; i < show.N; i++) {
+      const c = show.cur[i], t = target[i]; c[0] += (t[0] - c[0]) * ease; c[1] += (t[1] - c[1]) * ease;
+      show.dummy.position.set(show.x + Math.sin(time / 900 + i) * 0.04, show.y0 + (1 - c[1]) * show.H, show.zc - (c[0] - 0.5) * show.W);
+      show.dummy.updateMatrix(); show.im.setMatrixAt(i, show.dummy.matrix);
+      show.color.setHex(S.c[(i + Math.floor(time / 400)) % 2 ? 0 : 1]); show.im.setColorAt(i, show.color);
+    }
+    show.im.instanceMatrix.needsUpdate = true; if (show.im.instanceColor) show.im.instanceColor.needsUpdate = true;
+  }
+  function stepAds(dt, time) {
+    leds.forEach(L => {
+      L.m.emissiveIntensity = 0.55 + curNight * 1.4; L.t += isFinite(dt) ? dt : 0;
+      if (time - L.last < L.every) return; L.last = time;
+      if (L.circus) drawCircus(L.c, L.t); else { if (L.t - L.swap > 7) { L.swap = L.t; L.k++; } drawLed(L.c, L.k, L.t, L.tall); }
+      L.tex.needsUpdate = true;
+    });
+    beams.forEach(B => { B.m.material.opacity = curNight * 0.16; B.m.rotation.z = Math.sin(time / 1400 + B.ph) * 0.35; B.m.rotation.x = Math.cos(time / 1700 + B.ph) * 0.3; });
+    holos.forEach(h => { if (h.hue) h.o.material.color.setHSL((time / 6000) % 1, 0.9, 0.6); });
+    stepShow(time);
   }
   function drone() {
     const g = new THREE.Group(), body = new THREE.Mesh(mergeGeos([P(new THREE.BoxGeometry(0.22, 0.05, 0.22), col("#202024"), 0, 0, 0), P(new THREE.BoxGeometry(0.5, 0.02, 0.03), col("#2a2a2e"), 0, 0.01, 0, 0, Math.PI / 4, 0), P(new THREE.BoxGeometry(0.5, 0.02, 0.03), col("#2a2a2e"), 0, 0.01, 0, 0, -Math.PI / 4, 0)]), vcMat);
@@ -1104,14 +1216,14 @@ window.AE_WORLD = (function () {
     holos.push({ o: g, tex: t, cv: c, slide: k % HOLO_SLIDES.length, last: performance.now() + k * 900 });
     return g;
   }
-  function holoLogo(x, z) {
+  function holoLogo(x, z, y) {
     const c = document.createElement("canvas"); c.width = 1024; c.height = 128; const g2 = c.getContext("2d");
     g2.font = "700 92px Georgia, serif"; g2.textBaseline = "middle"; g2.fillStyle = "#ff4f9a"; for (let i = 0; i < 4; i++) { g2.fillText("FXN", 30 + i * 256, 64); g2.fillStyle = i % 2 ? "#ff4f9a" : "#ffcf4a"; }
     const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding;
     const g = new THREE.Group();
     const ring = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.5, 48, 1, true), new THREE.MeshBasicMaterial({ map: t, transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
     const disc = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.2, 48), new THREE.MeshBasicMaterial({ color: 0xff2fd0, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); disc.rotation.x = -Math.PI / 2; disc.position.y = -0.4;
-    g.add(ring, disc); g.position.set(x, 5.2, z); scene.add(g);
+    g.add(ring, disc); g.position.set(x, y || 5.2, z); if (y > 8) g.scale.setScalar(1.8); scene.add(g);
     holos.push({ o: g, spin: true, pulse: true });
   }
   // KSEB power poles with sagging wires: the most Kerala thing on any street
@@ -1419,7 +1531,7 @@ window.AE_WORLD = (function () {
     skyU.sunDir.value.set(-Math.cos(ang) * 0.8, Math.sin(ang), 0.45).normalize(); skyU.sunC.value.copy(sun.color); skyU.sunK.value = h > 5.5 && h < 19 ? 1 : 0;
     const night = h < 6 || h > 18.6 ? 1 : h < 7 ? 1 - (h - 6) : h > 17.8 ? (h - 17.8) / 0.8 : 0;
     facadeMats.forEach(m => { m.emissiveIntensity = m.userData.sign ? 0.15 + night * 0.8 : night * 0.9; });
-    neonMats.forEach(m => { m.emissiveIntensity = 0.9 + night * 2.4; });
+    neonMats.forEach(m => { m.emissiveIntensity = 0.9 + night * 2.4; }); curNight = night; curHour = h;
     if (lampMat) lampMat.emissiveIntensity = night * 2.2;
     stars.material.opacity = night * 0.85;
     renderer.toneMappingExposure = 0.94 + night * 0.4;
@@ -1482,7 +1594,7 @@ window.AE_WORLD = (function () {
       if (isKochi) stepWMAmbient(dt);
       spinners.forEach(g => { g.rotation.y += dt * 0.5; });
       if (metroTrain && !mride) stepMetro(dt);
-      stepFlyers(dt, time);
+      stepFlyers(dt, time); if (isKochi) stepAds(dt, time);
       waterTex.offset.set(time * 0.000012, time * 0.000008);
       clouds.forEach((c, i) => { c.position.x += dt * (0.25 + (i % 3) * 0.1); if (c.position.x > COLS / 2 + 160) c.position.x -= 320; });
       const fx = Math.sin(yaw), fz = Math.cos(yaw), hz = Math.cos(pitch) * dist, vy = Math.sin(pitch) * dist;
@@ -2048,7 +2160,7 @@ window.AE_WORLD = (function () {
     cancelAnimationFrame(raf); window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku); window.removeEventListener("resize", resize);
     SND.engine(null);
     if (renderer) { try { renderer.dispose(); if (renderer.forceContextLoss) renderer.forceContextLoss(); } catch (e) { } }
-    if (el) el.remove(); el = null; fx = []; burst.tex = null; mride = null; famWalk = false; neonMats = []; holos = []; flyers = []; glowMat = null; hmap = null; clouds = []; palmGeoC = null; rainGeoC = null; cloudMat = null; if (pmrem) { pmrem.dispose(); pmrem = null; } if (envRT) { envRT.dispose(); envRT = null; } envScene = null; envHour = -9; lastHour = -1; parkedHome = null; parkedKey = ""; cine = null; boxTexMat = null; wheelGeo = null; figs = {}; extraSpots = {}; guide = null; sceneMarker = null; renderer = null; vehicles = []; boats = []; facadeMats = []; tapFx = null;
+    if (el) el.remove(); el = null; fx = []; burst.tex = null; mride = null; famWalk = false; neonMats = []; holos = []; flyers = []; leds = []; beams = []; show = null; glowMat = null; hmap = null; clouds = []; palmGeoC = null; rainGeoC = null; cloudMat = null; if (pmrem) { pmrem.dispose(); pmrem = null; } if (envRT) { envRT.dispose(); envRT = null; } envScene = null; envHour = -9; lastHour = -1; parkedHome = null; parkedKey = ""; cine = null; boxTexMat = null; wheelGeo = null; figs = {}; extraSpots = {}; guide = null; sceneMarker = null; renderer = null; vehicles = []; boats = []; facadeMats = []; tapFx = null;
   }
   // test hook: place camera and clock
   let dbgHour = null;
@@ -2059,5 +2171,5 @@ window.AE_WORLD = (function () {
   const __stats = () => renderer ? { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures } : null;
   const __traffic = () => vehicles.map(v => ({ k: +(v.k == null ? 1 : v.k).toFixed(2), side: +(v.side || 0).toFixed(2), x: +v.m.position.x.toFixed(1), z: +v.m.position.z.toFixed(1), type: v.type }));
   const waterSpots = () => K.water ? Object.keys(K.water).filter(k => spots[k]).map(k => ({ key: k, name: K.water[k].name, line: K.water[k].line })) : [];
-  return { chatLog: (n, t) => log(n, t, "chat"), setPlots, plotState, startWater, waterSpots, waterRiding: () => !!wride, pause: on => { paused = !!on; }, __traffic, setFamilyWalk, remoteFamily, __stats, startMetro, metroSpots, metroRiding: () => !!mride, __figs: () => Object.values(figs).filter(f => f.kind === "remote" || f.kind === "me" || f.kind === "rfam" || f.lead).map(f => ({ id: f.id, x: +f.x.toFixed(1), z: +f.z.toFixed(1), veh: f.vehType || "" })), mapPoint, setVehicle, setParked, vehicleRemote, VEH, VCOL, __dbg, mount, setGuide, setMarker, setExtraSpot, randomDoor, npcSay, meSay, note, react, upsertRemote, moveRemote, sayRemote, removeRemote, clearRemotes, setOnline, spawnCourier, courierSay, setLook: (av, outfit) => setLookFig("me", av, outfit), teleport, position, destroy, available: can3d, preview, spotAt: k => { const p = spotPos(k); return p ? { x: p.x, z: p.z } : null; }, guideKey: () => guide && guide.key, mapOpen: () => !!(mapEl && !mapEl.hidden), cols: () => COLS, rows: () => ROWS, riding: () => !!ride };
+  return { __show: () => show ? { on: show.im.visible, n: show.N } : null, chatLog: (n, t) => log(n, t, "chat"), setPlots, plotState, startWater, waterSpots, waterRiding: () => !!wride, pause: on => { paused = !!on; }, __traffic, setFamilyWalk, remoteFamily, __stats, startMetro, metroSpots, metroRiding: () => !!mride, __figs: () => Object.values(figs).filter(f => f.kind === "remote" || f.kind === "me" || f.kind === "rfam" || f.lead).map(f => ({ id: f.id, x: +f.x.toFixed(1), z: +f.z.toFixed(1), veh: f.vehType || "" })), mapPoint, setVehicle, setParked, vehicleRemote, VEH, VCOL, __dbg, mount, setGuide, setMarker, setExtraSpot, randomDoor, npcSay, meSay, note, react, upsertRemote, moveRemote, sayRemote, removeRemote, clearRemotes, setOnline, spawnCourier, courierSay, setLook: (av, outfit) => setLookFig("me", av, outfit), teleport, position, destroy, available: can3d, preview, spotAt: k => { const p = spotPos(k); return p ? { x: p.x, z: p.z } : null; }, guideKey: () => guide && guide.key, mapOpen: () => !!(mapEl && !mapEl.hidden), cols: () => COLS, rows: () => ROWS, riding: () => !!ride };
 })();

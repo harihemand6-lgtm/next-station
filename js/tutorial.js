@@ -3,8 +3,9 @@
 window.AE_TUTOR = (function () {
   "use strict";
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const VERSION = 12; // bump when adding a "What's new" entry
+  const VERSION = 13; // bump when adding a "What's new" entry
   const NEWS = [
+    { v: 13, i: "🌃", t: "FXN light shows", d: "LED skyscrapers, the new FXN Tower and a drone show over the backwaters every night from 7:30 pm." },
     { v: 12, i: "👥", t: "Squads", d: "Share a 6-letter code to play, chat and talk with friends anywhere in the game." },
     { v: 11, i: "🏡", t: "FXN Nagar homes", d: "Rent a flat, rent a house, or buy a plot by the lake and build your own." },
     { v: 10, i: "🗳️", t: "Ward politics", d: "Join a party, campaign door to door and stand for Ward Councillor." },
