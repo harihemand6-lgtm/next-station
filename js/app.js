@@ -1356,7 +1356,7 @@
       onWater: (to, from) => { const g = game; wstate(g).rides++; g.min = Math.min((g.min || 0) + 15, 23 * 60 + 50); WORLD.react("metro"); save(); afterAction(); updateHud(); },
       onMetro: to => { const g = game; mstate(g).rides++; g.min = Math.min((g.min || 0) + 12, 23 * 60 + 50); if (!metroStep(g, "metro", to, ui.metroFrom)) { save(); afterAction(); } updateHud(); }
     });
-    applyRide(); WORLD.setFamilyWalk(!!(g.famWalk && !away(g))); syncFam(); syncParty._k = null; syncParty();
+    applyRide(); WORLD.setFamilyWalk(!!(g.famWalk && !away(g))); syncFam(); syncParty();
     if (NET.savedSquad && NET.enabled() && !NET.squad() && NET.savedSquad()) sqJoin(NET.savedSquad(), false);
     pttButton();
     if (loc === "KL" && window.AE_PLOTS) { if (!mountWorld._pl) { mountWorld._pl = true; AE_PLOTS.onChange(st => { if (WORLD.setPlots) WORLD.setPlots(st); }); } AE_PLOTS.start(); }
@@ -1370,7 +1370,7 @@
     const o = ui.outcome;
     if (o && o.reaction && !o._shown) { o._shown = true; WORLD.npcSay(o.reaction.role, o.reaction.line, prefs.subs ? o.reaction.sub : null); }
     if (NET.enabled() && netKey !== key) {
-      netKey = key;
+      netKey = key; syncParty._k = null;
       WORLD.clearRemotes();
       const tag = d => (d.py && POL() ? ((POL().parties.find(p => p.id === d.py) || {}).icon || "") + " " : "") + d.nick + (d.rd ? " · ★" + d.rd + " rider" : d.l && lifeById(d.l) ? " · " + lifeById(d.l).title : "") + (ui.party && d.pt === ui.party.pid ? " · team" : "");
       NET.join(loc, char || g.player, WORLD.position(), {

@@ -132,7 +132,11 @@ window.AE_NET = (function () {
     const from = p => (c === ch && p && !muted[p.id] && peers[p.id]) ? String(p.id) : null;
     c.on("presence", { event: "sync" }, () => { if (c === ch) { if (!overflow()) sync(); } })
       .on("presence", { event: "join" }, () => { if (c === ch) sendMove(true); })
-      .on("presence", { event: "leave" }, ({ key }) => { if (c === ch) { delete peers[key]; handlers.onLeave && handlers.onLeave(key); sync(); } })
+      .on("presence", { event: "leave" }, ({ key, currentPresences }) => {
+        // a player who just updated their state also fires "leave" for the old copy; only remove them if they're really gone
+        if (c !== ch || (currentPresences && currentPresences.length) || (c.presenceState()[key] || []).length) return;
+        delete peers[key]; handlers.onLeave && handlers.onLeave(key); sync();
+      })
       .on("broadcast", { event: "mv" }, ({ payload }) => { const id = from(payload); if (id) { const x = int(payload.x, 0, COLS - 1), y = int(payload.y, 0, ROWS - 1); peers[id].x = x; peers[id].y = y; handlers.onMove && handlers.onMove(id, x, y); } })
       .on("broadcast", { event: "say" }, ({ payload }) => {
         const id = from(payload); if (!id) return;
@@ -178,7 +182,8 @@ window.AE_NET = (function () {
   function party(to, k, pid, task) { if (!ch) return false; ch.send({ type: "broadcast", event: "party", payload: { id: myId, to: to || "", k, pid: pid || "", task: task || "" } }); return true; }
   function team(members, data) { if (!ch) return; ch.send({ type: "broadcast", event: "team", payload: Object.assign({ id: myId, members }, data) }); }
   function groupDone(members, task, real) { if (!ch) return; ch.send({ type: "broadcast", event: "gdone", payload: { id: myId, members, task, real } }); }
-  function setState(patch) { if (!my) return; Object.assign(my, patch); if (ch) { try { ch.track(my); } catch (e) { } } }
+  // only re-send presence when something actually changed: every re-track makes other players see a leave + join
+  function setState(patch) { if (!my) return; let changed = false; Object.keys(patch || {}).forEach(k => { if (JSON.stringify(my[k]) !== JSON.stringify(patch[k])) { my[k] = patch[k]; changed = true; } }); if (changed && ch) { clearTimeout(setState._t); setState._t = setTimeout(() => { try { ch && ch.track(my); } catch (e) { } }, 250); } }
   function peerPos(id) { const p = peers[id]; return p ? { x: p.x, y: p.y } : null; }
   function updatePeerPos(id, x, y) { if (peers[id]) { peers[id].x = x; peers[id].y = y; } }
 
