@@ -701,6 +701,59 @@
       <div class="list">${rows}</div>${projList}<p class="hint pol-disc">${esc(D.disclaimer)}</p>`, "pol");
   }
 
+  // ── Squads: private groups joined with a 6-character code, with squad chat and push-to-talk voice ──
+  const VOICE = () => window.AE_VOICE;
+  const fmtCode = c => c ? c.slice(0, 3) + "-" + c.slice(3) : "";
+  const sqH = {
+    onMembers: list => { ui.sqMembers = list; if (VOICE()) VOICE().sync(); sqLive(); },
+    onMsg: (id, nick, text) => { ui.sqMsgs = (ui.sqMsgs || []).concat({ nick, text, at: Date.now() }).slice(-40); if (WORLD.chatLog) WORLD.chatLog("👥 " + nick, text); SND.sfx("chat"); sqLive(); },
+    onRtc: p => { if (VOICE()) VOICE().signal(p); },
+    onTalk: (id, on) => { ui.sqTalk = Object.assign({}, ui.sqTalk, { [id]: on }); const el = document.querySelector(`[data-talk="${id}"]`); if (el) el.classList.toggle("on", on); },
+    onFull: () => { ui.msg = "That squad is full (6 players)."; sqParty(null); render(); }
+  };
+  function sqParty(code) { ui.party = code ? { pid: "sq" + code.toLowerCase() } : (ui.party && /^sq/.test(ui.party.pid) ? null : ui.party); NET.setState({ pt: ui.party ? ui.party.pid : "" }); }
+  async function sqJoin(code, create) {
+    const r = create ? await NET.squadCreate(sqH) : await NET.squadJoin(code, sqH);
+    if (!r.ok) { ui.msg = r.reason; render(); return; }
+    ui.sqMsgs = []; ui.sqTalk = {}; ui.sqMembers = []; sqParty(r.code); ui.msg = null; render();
+    WORLD.note("👥 " + (create ? "Squad created" : "Joined squad") + " · code " + fmtCode(r.code));
+  }
+  function sqLeave() { if (VOICE()) VOICE().disable(); NET.squadLeave(); sqParty(null); ui.sqMembers = []; ui.sqMsgs = []; pttButton(); render(); }
+  function sqMembersHTML() {
+    const S = NET.squad && NET.squad(); if (!S) return "";
+    return (ui.sqMembers || S.members).map(m => `<div class="sq-m"><span class="sq-talk ${ui.sqTalk && ui.sqTalk[m.id] ? "on" : ""}" data-talk="${m.id}">🔊</span><b>${esc(m.nick)}${m.me ? " (you)" : ""}</b>${m.v ? `<span class="pill">🎙️ voice</span>` : ""}${m.me ? "" : `<button class="btn small ghost" data-act="sqmute" data-arg="${m.id}">${m.muted ? "Unmute" : "Mute"}</button><button class="btn small ghost" data-act="sqreport" data-arg="${m.id}">Report</button>`}</div>`).join("");
+  }
+  const sqLogHTML = () => (ui.sqMsgs || []).slice(-20).map(m => `<p><b>${esc(m.nick)}</b> ${esc(m.text)}</p>`).join("") || `<p class="hint">No messages yet. Say hi!</p>`;
+  function sqLive() { const a = document.getElementById("sq-members"), b = document.getElementById("sq-log"); if (a) a.innerHTML = sqMembersHTML(); if (b) { b.innerHTML = sqLogHTML(); b.scrollTop = b.scrollHeight; } }
+  function pttButton() {
+    let b = document.getElementById("ptt"); const show = VOICE() && VOICE().isOn() && NET.squad && NET.squad();
+    if (!show) { if (b) b.remove(); return; }
+    if (b) return;
+    b = document.createElement("button"); b.id = "ptt"; b.className = "ptt"; b.setAttribute("aria-label", "Hold to talk to your squad"); b.innerHTML = "🎙️<small>Hold</small>";
+    const go = v => e => { e.preventDefault(); VOICE().talk(v); b.classList.toggle("on", v); };
+    b.addEventListener("pointerdown", go(true)); ["pointerup", "pointerleave", "pointercancel"].forEach(ev => b.addEventListener(ev, go(false)));
+    b.addEventListener("contextmenu", e => e.preventDefault());
+    document.body.appendChild(b);
+  }
+  function squadSheet() {
+    const S = NET.squad && NET.squad(), adult = prefs.adult === true;
+    if (!NET.enabled || !NET.enabled()) return sheetBox("👥 Squad", `<p class="hint">Squads need online mode, which isn't set up on this copy of the game.</p>`);
+    if (!S) return sheetBox("👥 Squad", `<p>Play with friends wherever they are in the game. One of you creates a squad and shares the 6-character code; the others type it in. Up to 6 players.</p>
+      <button class="btn primary big" data-act="sqcreate">Create a squad</button>
+      <h3 class="sec">Have a code?</h3><div class="row sq-join"><input id="sq-code" maxlength="7" placeholder="e.g. K7Q-P4Z" autocapitalize="characters" autocomplete="off" aria-label="Squad code"><button class="btn primary" data-act="sqjoin">Join</button></div>
+      <p class="hint">Only share codes with people you know. Squad chat uses the same filters as city chat, and you can mute or report anyone.</p>`, "squad");
+    const voice = VOICE() && VOICE().isOn();
+    const vrow = !adult ? `<p class="hint">🎙️ Voice and typed chat are for players aged 18+. ${prefs.adult === false ? "Use the quick phrases below." : `<button class="btn small" data-act="sqadult">I'm 18 or older</button>`}</p>`
+      : voice ? `<div class="row"><span class="pill good">🎙️ Voice on · hold the mic button to talk</span><button class="btn small ghost" data-act="sqvoiceoff">Turn off</button></div>`
+      : `<div class="row"><button class="btn small primary" data-act="sqvoice" ${VOICE() && VOICE().supported() ? "" : "disabled"}>🎙️ Turn on voice</button><span class="hint">Push-to-talk: your mic is only live while you hold the button.</span></div>`;
+    return sheetBox("👥 Squad " + fmtCode(S.code), `<div class="sq-code"><span>Squad code</span><b>${fmtCode(S.code)}</b><button class="btn small" data-act="sqshare">Share code</button></div>
+      <div id="sq-members" class="sq-members">${sqMembersHTML()}</div>${vrow}
+      <div id="sq-log" class="sq-log">${sqLogHTML()}</div>
+      <div class="chips">${NET.phrases().slice(0, 8).map((p, i) => `<button class="chip" data-act="sqphrase" data-arg="${i}">${esc(p)}</button>`).join("")}</div>
+      ${adult ? `<form class="row sq-send" data-sqform="1"><input id="sq-in" maxlength="80" placeholder="Message your squad" autocomplete="off" aria-label="Squad message"><button type="button" class="btn primary" data-act="sqsend">Send</button></form>` : ""}
+      <button class="btn small ghost" data-act="sqleave">Leave squad</button>`, "squad");
+  }
+
   // ── Kochi Water Metro ──
   const wstate = g => (g.water = g.water || { rides: 0 });
   function waterFare(g, from, to) {
@@ -960,7 +1013,7 @@
 
   function phoneSheet() {
     const g = game, P = myParty(), mates = partyHere();
-    const apps = [["duties", (JOB_ICON[g.lifeId] || "🧑‍💼") + " Today's duties", (() => { const D = duties(g); return D ? D.done.length + " of " + D.ids.length + " done" : "None"; })()], ["goals", "🎯 Life goals", (LF.nextGoal(g) || { t: "All done!" }).t], ["fxnopen", "👗 FXN", "Rent outfits"], ["arcade", "🎮 FXN Arcade", "Mini-games · earn up to " + inr(CS.money(g, 250)) + " each"], ["kin", "👨‍👩‍👧 Family", g.spouse ? g.spouse.name + ((g.kids || []).length ? " + " + g.kids.length : "") : "Single"], ["site:mangalya", "💍 MangalyaMatch", "Matrimony"], ["site:kalyanam", "🪔 KalyanaVeedu", "Matrimony"], ["site:nri", "✈️ NRI Rishta", "Matrimony"], ["site:chaidate", "☕ ChaiDate", "Dating"], ["site:sunset", "🌅 SunsetSwipe", "Dating"], ["site:bookclub", "📚 Paperback", "Dating"], ["board", "📋 Odd jobs & teams", "Quick money, team tasks"], ...(g.stateId === "KL" ? [["broker", "🏷️ FXN Homes", homeLabel(g)]] : []), ["politics", "🗳️ Ward politics", g.pol && g.pol.party ? (g.pol.seat ? "Ward Councillor · " : "") + polParty(g).name : "Join a party"], ...(isKL() ? [["metroapp", "🚇 Kochi Metro", metroTask(g) ? "Task: " + metroTask(g).T.t : "Rides and metro tasks"]] : []), ["garage", "🛵 Garage", g.vehicle ? (g.riding ? "Riding your " : "Your ") + CS.vehicleById(g.vehicle.id).name.toLowerCase() : "Buy a bicycle, scooter or car"], ["career", "💼 Career", "Switch job"], ["status", "🗂️ My papers", "Papers, loans, house"], ["retire", "🌅 Retire", "End this life"]];
+    const apps = [["duties", (JOB_ICON[g.lifeId] || "🧑‍💼") + " Today's duties", (() => { const D = duties(g); return D ? D.done.length + " of " + D.ids.length + " done" : "None"; })()], ["goals", "🎯 Life goals", (LF.nextGoal(g) || { t: "All done!" }).t], ["fxnopen", "👗 FXN", "Rent outfits"], ["arcade", "🎮 FXN Arcade", "Mini-games · earn up to " + inr(CS.money(g, 250)) + " each"], ["kin", "👨‍👩‍👧 Family", g.spouse ? g.spouse.name + ((g.kids || []).length ? " + " + g.kids.length : "") : "Single"], ["site:mangalya", "💍 MangalyaMatch", "Matrimony"], ["site:kalyanam", "🪔 KalyanaVeedu", "Matrimony"], ["site:nri", "✈️ NRI Rishta", "Matrimony"], ["site:chaidate", "☕ ChaiDate", "Dating"], ["site:sunset", "🌅 SunsetSwipe", "Dating"], ["site:bookclub", "📚 Paperback", "Dating"], ["board", "📋 Odd jobs & teams", "Quick money, team tasks"], ...(g.stateId === "KL" ? [["broker", "🏷️ FXN Homes", homeLabel(g)]] : []), ["squad", "👥 Squad", NET.squad && NET.squad() ? "Code " + fmtCode(NET.squad().code) + " · " + NET.squad().members.length + " in" : "Play with friends by code"], ["politics", "🗳️ Ward politics", g.pol && g.pol.party ? (g.pol.seat ? "Ward Councillor · " : "") + polParty(g).name : "Join a party"], ...(isKL() ? [["metroapp", "🚇 Kochi Metro", metroTask(g) ? "Task: " + metroTask(g).T.t : "Rides and metro tasks"]] : []), ["garage", "🛵 Garage", g.vehicle ? (g.riding ? "Riding your " : "Your ") + CS.vehicleById(g.vehicle.id).name.toLowerCase() : "Buy a bicycle, scooter or car"], ["career", "💼 Career", "Switch job"], ["status", "🗂️ My papers", "Papers, loans, house"], ["retire", "🌅 Retire", "End this life"]];
     const party = P ? `<p>Your group: you${mates.length ? ", " + mates.map(m => esc(m.nick)).join(", ") : " (waiting for players to join)"}.</p><button class="btn small ghost" data-act="partyleave">Leave group</button>` : `<p class="hint">Tap a player in the city to invite them to your group (up to 6).</p>`;
     return sheetBox("Phone", `<div class="apps">${apps.map(a => `<button class="app" data-act="${a[0].indexOf("site:") === 0 ? "site" : a[0]}" ${a[0].indexOf("site:") === 0 ? `data-arg="${a[0].slice(5)}"` : ""}><b>${esc(a[1])}</b><span>${esc(a[2])}</span></button>`).join("")}</div><h3 class="sec">Group</h3>${party}`);
   }
@@ -1061,6 +1114,7 @@
     if (k === "infopark") return infoparkSheet();
     if (k === "politics") return politicsSheet();
     if (k === "broker") return brokerSheet();
+    if (k === "squad") return squadSheet();
     if (k === "election") return electionSheet();
     if (k === "duty") return dutySheet();
     if (k === "duties") { const D = duties(game); return sheetBox("Today's duties", D ? `<div class="list">${D.ids.map(i => { const d = DUT[game.lifeId][i], ok = D.done.indexOf(i) >= 0; return item((ok ? "✅ " : "⬜ ") + esc(d.t), ok ? "Done" : inr(dutyPay(game, d)), ""); }).join("")}</div><p class="hint">Do all three for a bonus. Do them every day for a streak bonus (up to +50%).</p>` : `<p>No duties in this city.</p>`); }
@@ -1206,6 +1260,8 @@
       onMetro: to => { const g = game; mstate(g).rides++; g.min = Math.min((g.min || 0) + 12, 23 * 60 + 50); if (!metroStep(g, "metro", to, ui.metroFrom)) { save(); afterAction(); } updateHud(); }
     });
     applyRide(); WORLD.setFamilyWalk(!!(g.famWalk && !away(g))); syncFam(); syncParty._k = null; syncParty();
+    if (NET.savedSquad && NET.enabled() && !NET.squad() && NET.savedSquad()) sqJoin(NET.savedSquad(), false);
+    pttButton();
     if (loc === "KL" && window.AE_PLOTS) { if (!mountWorld._pl) { mountWorld._pl = true; AE_PLOTS.onChange(st => { if (WORLD.setPlots) WORLD.setPlots(st); }); } AE_PLOTS.start(); }
     WORLD.setExtraSpot("gig", g.shift ? g.shift.target : null);
     WORLD.setExtraSpot("odd", g.odd ? g.odd.target : null);
@@ -1426,6 +1482,7 @@
     if (tickN % 10 === 0) save();
   }, 1000);
 
+  $app.addEventListener("submit", e => { const f = e.target.closest("[data-sqform]"); if (!f) return; e.preventDefault(); const b = f.querySelector("[data-act=sqsend]"); if (b) b.click(); });
   $app.addEventListener("click", e => {
     const b = e.target.closest("[data-act]"); if (!b || b.disabled) return;
     const act = b.dataset.act, arg = b.dataset.arg;
@@ -1561,6 +1618,18 @@
       case "mtaskquit": { const M = mstate(game); M.task = null; M.step = 0; save(); render(); refreshGuide(); break; }
       case "politics": ui.polProj = false; openSheet("politics"); break;
       case "broker": openSheet("broker", { build: null }); break;
+      case "squad": openSheet("squad"); break;
+      case "sqcreate": sqJoin(null, true); break;
+      case "sqjoin": { const v = (document.getElementById("sq-code") || {}).value || ""; sqJoin(v, false); break; }
+      case "sqleave": sqLeave(); break;
+      case "sqshare": { const S = NET.squad(); if (!S) break; const t = "Join my Next Station squad! Open the game, tap Phone → Squad and enter code " + fmtCode(S.code) + "."; if (navigator.share) navigator.share({ text: t }).catch(() => { }); else if (navigator.clipboard) { navigator.clipboard.writeText(t).then(() => { ui.msg = "Code copied. Paste it to your friends."; render(); }).catch(() => { }); } break; }
+      case "sqphrase": { const r = NET.squadSay(null, +arg); if (r.ok) { ui.sqMsgs = (ui.sqMsgs || []).concat({ nick: "You", text: r.text }).slice(-40); sqLive(); } else { ui.msg = r.reason; render(); } break; }
+      case "sqsend": { const inp = document.getElementById("sq-in"); if (!inp || prefs.adult !== true) break; const r = NET.squadSay(inp.value); if (r.ok) { ui.sqMsgs = (ui.sqMsgs || []).concat({ nick: "You", text: r.text }).slice(-40); inp.value = ""; sqLive(); } else { ui.msg = r.reason; render(); } break; }
+      case "sqadult": ui.ageGate = true; render(); break;
+      case "sqvoice": { if (prefs.adult !== true) break; VOICE().enable({}).then(r => { if (!r.ok) ui.msg = r.reason; pttButton(); render(); }); break; }
+      case "sqvoiceoff": VOICE().disable(); pttButton(); render(); break;
+      case "sqmute": { const S = NET.squad(); const m = S && S.members.find(x => x.id === arg); if (!m) break; NET.squadMute(arg, !m.muted); VOICE() && VOICE().mute(arg, !m.muted); ui.sqMembers = NET.squad().members; if (VOICE()) VOICE().sync(); sqLive(); break; }
+      case "sqreport": { const S = NET.squad(); const m = S && S.members.find(x => x.id === arg); if (!m) break; NET.squadMute(arg, true); VOICE() && VOICE().mute(arg, true); NET.squadReport(arg, m.nick, "Reported from squad").then(() => { ui.msg = "Reported and muted. Thanks for keeping it friendly."; render(); }); break; }
       case "btab2": ui.btab2 = arg; ui.build = null; render(); break;
       case "tplot": ui.build = { id: arg }; render(); break;
       case "tbuildx": ui.build = null; render(); break;

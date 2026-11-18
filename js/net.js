@@ -265,5 +265,68 @@ window.AE_NET = (function () {
   }
   function leave(keepLobby) { if (ch) { try { ch.unsubscribe(); } catch (e) { } } clearTimeout(sendMove._t); ch = null; peers = {}; heard = {}; lastSent = ""; if (!keepLobby && lobMine && lobMine.c) { lobMine.c = ""; lobMine.n = 0; if (lob) { try { lob.track(lobMine); } catch (e) { } } } }
 
-  return { db, cleanNick: n => nickOf(n), myNick, rooms, room: () => ({ city, n: roomN, cap: CAP }), switchRoom, configured, setOutfit, gift, party, groupDone, setState, peerPos, lobby, takenLives, peers: () => peers, myId: () => myId, submitScore, topScores, enabled, join, move, say, sendText, check, mute, report, leave: () => leave(false), PHRASES, EMOTES, nick: () => nickOf(myNick()), heardFrom: id => heard[id] || [] };
+  // ── Squads: a private group joined with a 6-character code. Works across rooms and cities. Max 6 players.
+  // Carries squad chat (same filter as city chat) and the signalling for push-to-talk voice (js/voice.js).
+  const SQ_ALPHA = "ABCDEFGHJKMNPQRSTUVWXYZ23456789", SQ_MAX = 6;
+  let sq = null, sqLast = 0;
+  const okCode = c => new RegExp("^[" + SQ_ALPHA + "]{6}$").test(c);
+  function newCode() { const a = new Uint8Array(6); crypto.getRandomValues(a); return Array.from(a, b => SQ_ALPHA[b % SQ_ALPHA.length]).join(""); }
+  function sqMembers() {
+    if (!sq) return [];
+    const st = sq.ch.presenceState();
+    return Object.keys(st).map(k => { const s = (st[k] && st[k][0]) || {}; return { id: k, nick: nickOf(s.nk), t: +s.t || 0, v: s.v ? 1 : 0, me: k === myId, muted: !!sq.mute[k] }; }).sort((a, b) => a.t - b.t);
+  }
+  async function squadJoin(code, h) {
+    code = String(code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!okCode(code)) return { ok: false, reason: "Squad codes are 6 letters and numbers, like K7QP4Z." };
+    if (!enabled()) return { ok: false, reason: "Squads need the online mode." };
+    squadLeave(true);
+    myId = myId || Math.random().toString(36).slice(2, 10);
+    let c;
+    if (isLocal()) c = localChannel("ns-sq-" + code);
+    else { const sb = await loadSupabase(); client = client || sb.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY, { realtime: { params: { eventsPerSecond: 4 } } }); c = client.channel("ns-sq-" + code, { config: { presence: { key: myId }, broadcast: { self: false } } }); }
+    const me = { nk: myNick(), t: Date.now(), v: 0 };
+    sq = { code, ch: c, h: h || {}, me, mute: {} };
+    const cur = () => sq && sq.ch === c;
+    const member = id => cur() && id && id !== myId && c.presenceState()[id];
+    c.on("presence", { event: "sync" }, () => {
+      if (!cur()) return;
+      const list = sqMembers();
+      if (list.length > SQ_MAX && list.findIndex(m => m.me) >= SQ_MAX) { const hh = sq.h; squadLeave(); hh.onFull && hh.onFull(); return; }
+      sq.h.onMembers && sq.h.onMembers(list);
+    })
+      .on("broadcast", { event: "sm" }, ({ payload: p }) => { if (!p || !member(p.id) || sq.mute[p.id]) return; const r = p.k === "p" ? { ok: true, text: PHRASES[int(p.i, 0, PHRASES.length - 1)] } : check(p.text); if (r.ok) sq.h.onMsg && sq.h.onMsg(p.id, nickOf((c.presenceState()[p.id][0] || {}).nk), r.text); })
+      .on("broadcast", { event: "rtc" }, ({ payload: p }) => { if (!p || p.to !== myId || !member(p.from) || sq.mute[p.from]) return; sq.h.onRtc && sq.h.onRtc(p); })
+      .on("broadcast", { event: "talk" }, ({ payload: p }) => { if (p && member(p.id)) sq.h.onTalk && sq.h.onTalk(p.id, !!p.on); })
+      .subscribe(st => { if (st === "SUBSCRIBED" && cur()) { try { c.track(me); } catch (e) { } } });
+    try { localStorage.setItem("ns.squad", code); } catch (e) { }
+    return { ok: true, code };
+  }
+  function squadCreate(h) { return squadJoin(newCode(), h); }
+  function squadLeave(keepSaved) {
+    if (sq) { try { sq.ch.unsubscribe(); } catch (e) { } }
+    sq = null; if (!keepSaved) { try { localStorage.removeItem("ns.squad"); } catch (e) { } }
+  }
+  function squadSay(text, phrase) {
+    if (!sq) return { ok: false, reason: "Join a squad first." };
+    const now = Date.now(); if (now - sqLast < 1500) return { ok: false, reason: "Slow down a little." };
+    let payload;
+    if (phrase != null) payload = { id: myId, k: "p", i: int(phrase, 0, PHRASES.length - 1) };
+    else { const r = check(text); if (!r.ok) return r; payload = { id: myId, k: "t", text: r.text }; }
+    sqLast = now; sq.ch.send({ type: "broadcast", event: "sm", payload });
+    return { ok: true, text: payload.k === "p" ? PHRASES[payload.i] : payload.text };
+  }
+  function squadSignal(to, data) { if (sq) sq.ch.send({ type: "broadcast", event: "rtc", payload: Object.assign({ to, from: myId }, data) }); }
+  function squadTalk(on) { if (sq) sq.ch.send({ type: "broadcast", event: "talk", payload: { id: myId, on: !!on } }); }
+  function squadVoice(on) { if (!sq) return; sq.me.v = on ? 1 : 0; try { sq.ch.track(sq.me); } catch (e) { } }
+  function squadMute(id, on) { if (sq) { if (on) sq.mute[id] = 1; else delete sq.mute[id]; } }
+  async function squadReport(id, nick, reason) {
+    const row = { room: "squad", reported_nick: nick, reason: String(reason || "").slice(0, 200), messages: [] };
+    if (isLocal() || !client) { console.log("report (test mode)", row); return true; }
+    try { const { error } = await client.from("reports").insert(row); return !error; } catch (e) { return false; }
+  }
+  const squad = () => sq ? { code: sq.code, members: sqMembers(), myId } : null;
+  const savedSquad = () => { try { const c = localStorage.getItem("ns.squad"); return c && okCode(c) ? c : null; } catch (e) { return null; } };
+
+  return { squadJoin, squadCreate, squadLeave, squadSay, squadSignal, squadTalk, squadVoice, squadMute, squadReport, squad, savedSquad, phrases: () => PHRASES.slice(), db, cleanNick: n => nickOf(n), myNick, rooms, room: () => ({ city, n: roomN, cap: CAP }), switchRoom, configured, setOutfit, gift, party, groupDone, setState, peerPos, lobby, takenLives, peers: () => peers, myId: () => myId, submitScore, topScores, enabled, join, move, say, sendText, check, mute, report, leave: () => leave(false), PHRASES, EMOTES, nick: () => nickOf(myNick()), heardFrom: id => heard[id] || [] };
 })();

@@ -639,3 +639,19 @@ body:has(.play2) { overflow: hidden; }
 .pol-bar b { text-align: right; font-variant-numeric: tabular-nums; }
 .pol-bar.me span { font-weight: 800; }
 .pol-disc { font-size: .72rem; opacity: .6; }
+
+/* v11: squads and push-to-talk */
+.sq-code { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 16px; background: linear-gradient(120deg, #17122a, #3a1231); border: 1px solid rgba(233,196,106,.4); color: #fff; margin-bottom: 8px; }
+.sq-code span { font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; opacity: .7; }
+.sq-code b { flex: 1; font-size: 1.6rem; letter-spacing: .12em; font-variant-numeric: tabular-nums; color: #f7e7b4; }
+.sq-members { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
+.sq-m { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 8px; border-radius: 10px; background: rgba(255,255,255,.05); }
+.sq-m b { flex: 1; }
+.sq-talk { opacity: .15; transition: opacity .15s; } .sq-talk.on { opacity: 1; animation: bump .5s infinite; }
+.sq-log { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: 12px; background: rgba(0,0,0,.2); margin: 8px 0; font-size: .85rem; }
+.sq-log p { margin: 0; } .sq-log b { color: var(--accent-2); margin-right: 4px; }
+.sq-join input, .sq-send input { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.06); color: inherit; font-size: 1rem; letter-spacing: .06em; }
+.sq-join, .sq-send { display: flex; gap: 8px; }
+.ptt { position: fixed; z-index: 70; left: 20px; bottom: calc(160px + env(safe-area-inset-bottom)); width: 66px; height: 66px; border-radius: 50%; border: 2px solid rgba(255,255,255,.6); background: radial-gradient(circle at 35% 30%, #ff7ab0, #b0185a); color: #fff; font-size: 1.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(255,61,139,.45); touch-action: none; user-select: none; -webkit-user-select: none; }
+.ptt small { font-size: .6rem; font-weight: 800; letter-spacing: .08em; }
+.ptt.on { transform: scale(1.12); background: radial-gradient(circle at 35% 30%, #7dffb0, #13a35a); box-shadow: 0 0 0 8px rgba(61,220,151,.25), 0 8px 24px rgba(61,220,151,.5); }
