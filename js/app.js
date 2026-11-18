@@ -365,6 +365,7 @@
     return `<div class="sheet-bg" data-act="fxnclose"></div><section class="sheet fxn" role="dialog" aria-label="FXN app">
       <div class="fxn-head"><b class="fxn-logo">FXN</b><span>Rent it. Wear it. Return it.</span></div>
       ${(() => { const hp = helpFor("fxn"); return hp.box || `<div class="help-row">${hp.btn}</div>`; })()}
+      <div class="fxn-dm"><span>Delivery</span>${[["auto", "✨ Auto"], ["drone", "🚁 Drone"], ["robot", "🤖 Robot"], ["rider", "🛵 Rider"]].map(m => `<button class="chip ${(prefs.dmode || "auto") === m[0] ? "on" : ""}" data-act="dmode" data-arg="${m[0]}">${m[1]}</button>`).join("")}</div>
       <button class="fxn-arc" data-act="arcade"><span>🎮</span><div><b>FXN Arcade</b><small>Style Match · Pack Rush · Delivery Dash · Drone Drop</small></div><i>Play</i></button>
       ${ui.courier ? `<p class="note">${esc(ui.courier)} is on the way with your outfit. Stay where you are.</p>` : ""}
       <div class="chips">${tabs.map(t => `<button class="chip ${tab === t[0] ? "on" : ""}" data-act="fxntab" data-arg="${t[0]}">${esc(t[1])}</button>`).join("")}</div>
@@ -408,9 +409,12 @@
     // No shortcuts: in 3D every place must be reached on foot. Buttons only appear if the device can't run 3D.
     const walk = !WORLD.available(), go = k => walk ? [["goto:" + k, "Go there"]] : [];
     const hints = sideHints(g), loc = g.loc || g.stateId;
-    if (ui.courier) return { text: "🛵 " + ui.courier + " from FXN is on the way", sub: "Bringing your outfit from the dark store", key: "courier" };
+    if (ui.courier) return { text: (/Drone/.test(ui.courier) ? "🚁 " : /Bot/.test(ui.courier) ? "🤖 " : "🛵 ") + ui.courier + " is on the way", sub: /Drone|Bot/.test(ui.courier) ? "Stay where you are. It will find you." : "Bringing your outfit from the dark store", key: "courier" };
     const MT = metroTask(g);
     if (MT && loc === "KL") { const st = MT.T.steps[MT.step], key = st.visit || st.arrive || nearestStation(); return { text: "🚇 " + MT.T.t + ": " + st.txt, sub: st.arrive || st.ride ? "Walk to a 🚇 station on MG Road and take the metro" : "Walk to the marked spot", key }; }
+    if (ui.guideTo === "rally") return { text: "📣 Walk to the rally ground on Marine Drive", sub: "Rallies run 5–9 pm. Look for the flags.", key: "rally" };
+    if (ui.guideTo === "poll") return { text: "🗳️ Walk to the polling booth", sub: "Next to the Government Office, open 8 am–6 pm", key: "poll" };
+    if (loc === "KL" && g.pol && g.pol.party && electionToday(g) && g.pol.voted !== g.day && LF.hour(g) >= 8 && LF.hour(g) < 18) return { text: "🗳️ Election day! Go and vote", sub: "Polling booth next to the Government Office · results at 7 pm", key: "poll" };
     if (ui.guideTo === "board") return { text: "📋 Walk to the Notice Board", sub: "Quick jobs and team tasks for extra money", key: "board" };
     if (ui.guideTo === "garage") return { text: "Walk to " + (loc === "KL" ? "Vyttila Motors" : "City Motors"), sub: "Buy a bicycle, scooter, bike or car", key: "garage" };
     if (g.shift) return { text: "FXN delivery: take the parcel to " + g.shift.cust, sub: g.shift.left + " of " + CITY.rider.drops + " left" + (g.shift.ratings.length ? " · rating " + avgOf(g.shift.ratings) + "★" : ""), key: "gig", actions: go("gig") };
@@ -491,6 +495,9 @@
     if (/^wm/.test(k)) { const st = (WORLD.waterSpots ? WORLD.waterSpots() : []).find(m => m.key === k); return "⛴️ Water Metro · " + (st ? st.name : "jetty"); }
     if (k === "infopark") return "💻 Infopark Hub: gigs, meetups, tech jobs";
     if (k === "broker") return "🏷️ FXN Homes: flats, houses and plots";
+    if (/^pol_/.test(k) && POL()) { const P = POL().parties.find(p => "pol_" + p.id === k); return P ? P.icon + " " + P.name + " office: " + (g.pol && g.pol.party === P.id ? "party work" : g.pol && g.pol.party ? "visit" : "join") : null; }
+    if (k === "rally" && POL()) { const P = POL().parties.find(p => p.id === rallyParty(g)); return "📣 " + P.name + " rally: " + (g.pol && g.pol.party === P.id ? (g.pol.daily && g.pol.daily.rally ? "you're here ✓" : "join in") : "watch"); }
+    if (k === "poll") return "🗳️ Polling booth: vote";
     if (k === "heightsA" || k === "heightsB") return "🏢 FXN Heights: see flats";
     if (/^[TV]\d\d$/.test(k) && TOWN()) { const st = plotNow(k); if (!st) return "🌱 Plot " + k + " for sale · " + inr(plotPrice(g, k)); if (st.s === "resale") return "🏷️ Resale · " + inr(plotPrice(g, k)); if (st.s === "rent" && !st.n) return "🏠 To let · " + inr(CS.money(g, TOWN().houseRent)) + " a " + unitOf(g); return "🏡 " + (st.n || "A neighbour") + (st.s === "rent" ? " (tenant)" : ""); }
     if (k === "ipfood") return "🍜 Food Street · " + inr(LF.money(g, LF.FOOD.ipfood.cost));
@@ -504,6 +511,14 @@
     if (k === "gig") return game.shift ? riderDrop() : null;
     if (k === "odd") return onArrive("odd");
     if (k === "canvass") return canvassDoor();
+    if (/^pol_/.test(k)) { ui.polTab = "campaign"; return openSheet("politics"); }
+    if (k === "poll") { if (ui.guideTo === "poll") ui.guideTo = null; return openSheet("vote"); }
+    if (k === "rally") {
+      if (ui.guideTo === "rally") ui.guideTo = null; const g = game, P = polState(g), rp = rallyParty(g), RP = POL().parties.find(p => p.id === rp);
+      if (P.party === rp && !P.daily.rally) { P.daily.rally = 1; P.pts += 12; g.h = Math.min(100, g.h + 4); g.energy = Math.max(0, g.energy - 6); g.min = Math.min(g.min + 60, 23 * 60 + 50); WORLD.note("📣 " + POL().rallyLines[Math.floor(Math.random() * POL().rallyLines.length)] + " (+12 party points)"); WORLD.react("fun"); SND.sfx("wedding"); }
+      else if (!P.daily.rallyWatch) { P.daily.rallyWatch = 1; g.h = Math.min(100, g.h + 2); WORLD.note("📣 You watch the " + RP.name + " rally for a while. " + RP.slogan); }
+      save(); updateHud(); refreshGuide(); return;
+    }
     if (k === "office") return openSheet("office");
     if (k === "bank") return openSheet("bank", { venture: false });
     if (k === "cafe") { if (game.romance && game.romance.stage === "date") return openSheet("date", { dateText: null }); return doEat("cafe"); }
@@ -567,7 +582,11 @@
   function duties(g) {
     const list = DUT[g.lifeId]; if (!list) return null;
     if (!g.duty || g.duty.day !== g.day || g.duty.life !== g.lifeId) {
-      let h = g.day * 31 + g.lifeId.length * 7; const idx = list.map((_, i) => i).sort((a, b) => ((a * 7 + h) % 5) - ((b * 7 + h) % 5)).slice(0, 3).sort((a, b) => a - b);
+      // a proper shuffle per life and day, never the same three as yesterday, in a different order each day
+      const rnd = (n => () => { n = (n * 1103515245 + 12345) & 0x7fffffff; return n / 0x7fffffff; })((g.seed || 7) * 131 + g.day * 977 + g.lifeId.length * 31);
+      const prev = g.duty && g.duty.life === g.lifeId ? (g.duty.ids || []).slice().sort().join(",") : "";
+      let idx = [];
+      for (let tries = 0; tries < 6; tries++) { const all = list.map((_, i) => i); for (let i = all.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [all[i], all[j]] = [all[j], all[i]]; } idx = all.slice(0, 3); if (idx.slice().sort().join(",") !== prev) break; }
       g.duty = { day: g.day, life: g.lifeId, ids: idx, done: [], door: null, streak: g.duty && g.duty.done.length >= 3 && g.duty.day === g.day - 1 ? (g.duty.streak || 0) + 1 : 0 };
     }
     return g.duty;
@@ -652,17 +671,34 @@
   }
 
   // ── Ward politics (fictional parties, local civic issues only) ──
+  // member → Ward Councillor (ward vote every 7 days) → MLA (assembly vote every 21 days) → Minister
   const POL = () => window.AE_POL;
-  const polState = g => (g.pol = g.pol || { party: null, pts: 0, cand: false, seat: false, wins: 0, lastElec: 0, canv: null, poster: 0, rally: 0, proj: 0 });
+  const polState = g => { const P = (g.pol = g.pol || { party: null, pts: 0, cand: false, seat: false, wins: 0, lastElec: 0, canv: null, poster: 0, rally: 0, proj: 0 }); if (P.rank == null) P.rank = P.seat ? 1 : 0; P.fund = P.fund || 0; P.posters = P.posters || 0; P.manifesto = P.manifesto || []; P.mlaWins = P.mlaWins || 0; if (!P.daily || P.daily.day !== g.day) P.daily = { day: g.day }; return P; };
   const polParty = g => g.pol && g.pol.party ? POL().parties.find(p => p.id === g.pol.party) : null;
-  const nextElection = g => { const c = POL().cycle; return (Math.floor(g.day / c) + 1) * c; };
-  function polShares(g, live) {
-    const P = polState(g), seed = Math.floor(g.day / POL().cycle) * 97 + (g.name || "").length, rnd = i => ((Math.sin(seed * 13.7 + i * 7.1) + 1) / 2);
+  const nextElection = g => { const c = POL().cycle; return g.day % c === 0 && g.pol && g.pol.lastElec !== g.day ? g.day : (Math.floor(g.day / c) + 1) * c; };
+  const isAssembly = day => day % (POL().cycle * 3) === 0;
+  const electionToday = g => g.day > 0 && g.day % POL().cycle === 0 && !(g.pol && g.pol.lastElec === g.day);
+  const issueOf = g => POL().issues[Math.floor(g.day / POL().cycle) % POL().issues.length];
+  const rankName = P => P.rank === 3 ? "Minister for " + (P.portfolio || "Tourism") : POL().ranks[P.rank || 0];
+  function rallyParty(g) { const P = g.pol, ne = nextElection(g); if (P && P.party && ne - g.day <= 2) return P.party; return POL().parties[g.day % 3].id; }
+  function polShares(g, noisy) {
+    const P = polState(g), D = POL(), day = nextElection(g), seed = Math.floor(day / D.cycle) * 97 + (g.name || "").length, rnd = i => ((Math.sin(seed * 13.7 + i * 7.1) + 1) / 2), iss = issueOf(g);
     const peers = NET.peers ? Object.values(NET.peers() || {}) : [];
-    const raw = POL().parties.map((p, i) => { let v = 26 + rnd(i) * 14; if (p.id === P.party) { v += Math.min(13, P.pts * 0.14); if (P.cand) v += g.r * 0.06 + 2; if (P.seat) v += 2; } v += peers.filter(d => d.py === p.id).length * 2; if (live === false) v += (rnd(i + 9) - 0.5) * 8; return v; });
+    const raw = D.parties.map((p, i) => {
+      let v = 26 + rnd(i) * 12 + (iss.fixes.indexOf(p.id) >= 0 ? 4 : 0);
+      if (p.id === P.party) { v += Math.min(13, P.pts * 0.12) + Math.min(4, P.posters * 0.25) + Math.min(4, P.fund / CS.money(g, 2000)); if (P.cand) v += g.r * 0.06 + 2 + (P.manifesto.indexOf(iss.id) >= 0 ? 3 : 0); if (P.rank) v += 2; }
+      v += peers.filter(d => d.py === p.id).length * 2; if (noisy) v += (rnd(i + 9) - 0.5) * 8; return v; });
     const sum = raw.reduce((a, b) => a + b, 0); return raw.map(v => Math.round(v / sum * 1000) / 10);
   }
-  function syncParty() { if (NET.setState) { const id = (game.pol && game.pol.party) || ""; if (syncParty._k !== id) { syncParty._k = id; NET.setState({ py: id }); } } }
+  function syncParty() { if (NET.setState) { const id = (game.pol && game.pol.party) || "", pr = (game.pol && game.pol.rank) || 0; if (syncParty._k !== id + pr) { syncParty._k = id + pr; NET.setState({ py: id, pr }); } } }
+  // what the city shows: posters by ward mood (+ yours), tonight's rally, the polling booth, a victory march
+  function polWorld() {
+    const g = game; if (!g || !WORLD.setPolitics || (g.loc || g.stateId) !== "KL") return;
+    const P = polState(g), D = POL(), h = LF.hour(g), sh = polShares(g), posters = {};
+    D.parties.forEach((p, i) => { posters[p.id] = Math.round(sh[i] / 100 * 22) + (p.id === P.party ? Math.min(14, P.posters) : 0); });
+    const rp = rallyParty(g), RP = D.parties.find(p => p.id === rp);
+    WORLD.setPolitics({ posters, rally: h >= 17 && h < 21 && !electionToday(g) ? { party: rp, icon: RP.icon, name: RP.name } : null, poll: electionToday(g) && h >= 8 && h < 18, march: P.march === g.day && h >= 19 ? { party: P.party } : null });
+  }
   function canvassDoor() {
     const g = game, P = polState(g), C = P.canv; if (!C || C.day !== g.day) return;
     P.pts += 10; g.r = Math.min(100, g.r + 2); g.min = Math.min(g.min + 25, 23 * 60 + 50); g.energy = Math.max(0, g.energy - 4);
@@ -670,48 +706,78 @@
     C.n++; if (C.n >= 3) { C.target = null; WORLD.note("🗳️ Door-to-door done for today. +30 party points in all."); } else C.target = WORLD.randomDoor(Math.random());
     WORLD.setExtraSpot("canvass", C.target); save(); updateHud(); refreshGuide();
   }
-  // runs when you wake up: every 7th day the ward votes
-  function polElection(g) {
-    const P = g.pol; if (!P || !P.party || g.day % POL().cycle !== 0 || P.lastElec === g.day || away(g)) return;
-    P.lastElec = g.day;
-    const shares = polShares(g, false), win = shares.indexOf(Math.max.apply(null, shares)), winner = POL().parties[win], mine = winner.id === P.party;
-    let pay = 0; if (P.seat) { pay = CS.money(g, POL().honorarium); g.cash += pay; }
-    const was = P.seat, stood = P.cand;
-    if (stood) { P.seat = mine; if (mine) { P.wins++; g.r = Math.min(100, g.r + 10); g.h = Math.min(100, g.h + 8); } else g.h = Math.max(0, g.h - 4); }
-    else if (was) P.seat = false;
-    P.cand = false; P.pts = Math.round(P.pts * 0.4);
-    ui.elec = { shares, win, stood, mine, pay, was };
-    setTimeout(() => { openSheet("election"); SND.sfx(stood && mine ? "wedding" : "notify"); }, 1200);
+  // the vote is counted at 7 pm on election day (or when you wake up, if you slept through it)
+  function polElection(g, dayArg) {
+    const P = g.pol, D = POL(), day = dayArg || g.day; if (!P || !P.party || day % D.cycle !== 0 || P.lastElec === day || away(g)) return;
+    P.lastElec = day;
+    const asm = isAssembly(day), shares = polShares(g, true), win = shares.indexOf(Math.max.apply(null, shares)), winner = D.parties[win], mine = winner.id === P.party;
+    const hon = [0, D.honorarium, D.mla.honorarium, D.minister.honorarium][P.rank || 0], pay = hon ? CS.money(g, hon) : 0; g.cash += pay;
+    const before = P.rank || 0, stood = P.cand; let promo = "";
+    if (stood === "mla") { if (mine) { P.rank = 2; P.mlaWins++; promo = "MLA"; if (P.mlaWins >= D.minister.wins) { P.rank = 3; P.portfolio = D.minister.portfolios[Math.floor(Math.random() * D.minister.portfolios.length)]; promo = "Minister for " + P.portfolio; } } else P.rank = Math.min(before, 1); }
+    else if (stood) { if (mine) { P.rank = Math.max(before, 1); P.wins++; promo = before ? "" : "Ward Councillor"; } else if (before === 1) P.rank = 0; }
+    else if (before === 1 && !asm) P.rank = 0;
+    if (mine && stood) { g.r = Math.min(100, g.r + 10); g.h = Math.min(100, g.h + 8); } else if (stood) g.h = Math.max(0, g.h - 4);
+    P.seat = P.rank >= 1; P.cand = false; P.pts = Math.round(P.pts * 0.45); P.fund = Math.round(P.fund * 0.5); P.blitz = 0;
+    if (mine) P.march = g.day;
+    ui.elec = { shares, win, stood: !!stood, asm, mine, pay, promo, voted: P.voted === day };
+    syncParty(); save(); polWorld();
+    setTimeout(() => { openSheet("election"); SND.sfx(stood && mine ? "wedding" : "notify"); }, 900);
   }
   function electionSheet() {
     const g = game, E = ui.elec; if (!E) return "";
-    const W = POL().parties[E.win], Pp = polParty(g);
-    const bars = POL().parties.map((p, i) => `<div class="pol-bar"><span>${p.icon} ${esc(p.name)}</span><i style="width:${E.shares[i]}%;background:${p.color}"></i><b>${E.shares[i]}%</b></div>`).join("");
-    const head = E.stood ? (E.mine ? "🏅 You won " + POL().ward + "!" : "You lost this time") : W.icon + " " + W.name + " wins " + POL().ward;
-    const body = E.stood ? (E.mine ? "You're the Ward Councillor. Pick a ward project from the 🗳️ app and collect your honorarium every election day." : "The " + W.name + " took the ward. Keep campaigning and stand again next week.") : (Pp && W.id === Pp.id ? "Your party won! Party members celebrate at the chayakkada." : "Not your party's day. Campaign harder for the next one.");
-    return sheetBox("🗳️ " + POL().ward + " results · Day " + g.day, `<p class="duty-ok">${esc(head)}</p><div class="pol-bars">${bars}</div><p>${esc(body)}</p>${E.pay ? `<p class="hint">Councillor honorarium: +${inr(E.pay)}</p>` : ""}<p class="hint">Next election: Day ${nextElection(g)}</p>`, "pol");
+    const D = POL(), W = D.parties[E.win], Pp = polParty(g);
+    const bars = D.parties.map((p, i) => `<div class="pol-bar ${i === E.win ? "me" : ""}"><span>${p.icon} ${esc(p.name)}</span><i style="width:${E.shares[i]}%;background:${p.color}"></i><b>${E.shares[i]}%</b></div>`).join("");
+    const head = E.stood ? (E.mine ? "🏅 You won! You're now " + (E.promo || rankName(g.pol)) : "You lost this time") : W.icon + " " + W.name + " wins " + (E.asm ? "the Assembly seat" : D.ward);
+    const body = E.mine ? "Your party won! Watch the victory march on MG Road tonight from 7 pm." : "Not your party's day. Campaign harder for the next one.";
+    return sheetBox("🗳️ " + (E.asm ? "Assembly" : D.ward) + " results", `<p class="duty-ok">${esc(head)}</p><div class="pol-bars">${bars}</div><p>${esc(Pp ? body : "")}</p>${E.pay ? `<p class="hint">Honorarium: +${inr(E.pay)}</p>` : ""}${E.voted ? "" : `<p class="hint">You didn't vote this time. Every vote counts!</p>`}<p class="hint">Next election: Day ${nextElection(g)}</p>`, "pol");
+  }
+  function voteSheet() {
+    const g = game, D = POL(), P = polState(g);
+    if (P.voted === g.day) return sheetBox("🗳️ Polling booth", `<p class="duty-ok">You've voted. ☑️ Ink on your finger!</p><p class="hint">Results at 7 pm.</p>`, "pol");
+    return sheetBox("🗳️ Polling booth · " + (isAssembly(g.day) ? "Assembly" : D.ward) + " election", `<p>Pick a party. It's a secret ballot.</p><div class="pol-parties">${D.parties.map(p => `<button class="pol-card" style="--pc:${p.color}" data-act="polvote" data-arg="${p.id}"><div class="pol-top"><span class="pol-ic">${p.icon}</span><div><b>${esc(p.name)}</b><small>${esc(p.slogan)}</small></div></div></button>`).join("")}</div>`, "pol");
   }
   function politicsSheet() {
-    const g = game, P = polState(g), Pp = polParty(g), D = POL(), h = LF.hour(g), ne = nextElection(g);
-    if (!Pp) return sheetBox("🗳️ " + D.ward + " politics", `<p class="hint">Three local parties are fighting for ${D.ward}. Join one, campaign, and stand for Ward Councillor. Elections every ${D.cycle} days.</p>
+    const g = game, P = polState(g), Pp = polParty(g), D = POL(), h = LF.hour(g), ne = nextElection(g), iss = issueOf(g), asm = isAssembly(ne);
+    if (!Pp) return sheetBox("🗳️ " + D.ward + " politics", `<p class="hint">Three local parties are fighting for ${D.ward}. Join one, campaign around the city, and climb from Ward Councillor to MLA to Minister. The ward votes every ${D.cycle} days.</p>
+      <p class="note">🔥 Issue this week: <b>${esc(iss.t)}</b></p>
       <div class="pol-parties">${D.parties.map(p => `<div class="pol-card" style="--pc:${p.color}"><div class="pol-top"><span class="pol-ic">${p.icon}</span><div><b>${esc(p.name)}</b><small>${esc(p.slogan)}</small></div></div><ul>${p.plank.map(x => `<li>${esc(x)}</li>`).join("")}</ul><button class="btn small primary" data-act="poljoin" data-arg="${p.id}">Join</button></div>`).join("")}</div>
-      <p class="hint pol-disc">${esc(D.disclaimer)}</p>`, "pol");
-    const C = P.canv && P.canv.day === g.day ? P.canv : null, canvDone = C && C.n >= 3, eve = h >= 17 && h < 22;
-    const shares = polShares(g), mineI = D.parties.findIndex(p => p.id === Pp.id);
-    const canStand = !P.cand && P.pts >= D.standPoints && g.r >= D.standRep && g.cash >= CS.money(g, D.fee);
-    const rows = [
-      item("🚪 Door-to-door campaign", canvDone ? "Done for today" : C ? "Door " + (C.n + 1) + " of 3: follow the arrow" : "Knock on 3 doors · +10 points each", canvDone || C ? "" : `<button class="btn small primary" data-act="polcanv" ${away(g) ? "disabled" : ""}>Start</button>`),
-      item("🪧 Put up posters", P.poster === g.day ? "Done for today" : inr(CS.money(g, D.posterCost)) + " · +8 points", P.poster === g.day ? "" : `<button class="btn small" data-act="polposter" ${g.cash >= CS.money(g, D.posterCost) ? "" : "disabled"}>Print</button>`),
-      item("📣 Evening rally", P.rally === g.day ? "You were there today" : eve ? "+12 points, and it's fun" : "Rallies run 5 to 10 pm", P.rally === g.day ? "" : `<button class="btn small" data-act="polrally" ${eve && g.energy >= 8 ? "" : "disabled"}>Go</button>`),
-      P.cand ? item("📝 You're a candidate", "Voting on Day " + ne + ". Sleep to see the results.", "") :
-        item("📝 Stand for Ward Councillor", "Needs " + D.standPoints + " party points and " + D.standRep + " reputation · fee " + inr(CS.money(g, D.fee)), `<button class="btn small primary" data-act="polstand" ${canStand ? "" : "disabled"}>File</button>`),
-      P.seat ? item("🏗️ Ward project", P.proj === ne ? "Chosen for this term" : "Pick one project this term", P.proj === ne ? "" : `<button class="btn small primary" data-act="polproj">Choose</button>`) : "",
-      item("🚶 Leave the party", "Costs 10 reputation", `<button class="btn small" data-act="polleave" ${P.cand ? "disabled" : ""}>Leave</button>`)
-    ].join("");
-    const projList = ui.polProj ? `<h3 class="sec">Ward projects</h3><div class="list">${D.projects.map(x => item(esc(x.t), "+" + x.r + " reputation, +" + x.h + " mood", `<button class="btn small primary" data-act="polpick" data-arg="${x.id}">Build</button>`)).join("")}</div>` : "";
-    return sheetBox(Pp.icon + " " + Pp.name, `<div class="pol-me" style="--pc:${Pp.color}"><b>${P.seat ? "🏅 Ward Councillor" : P.cand ? "📝 Candidate" : "Party member"}</b><span>${P.pts} party points · reputation ${Math.round(g.r)} · election on Day ${ne}</span></div>
-      <div class="pol-bars">${D.parties.map((p, i) => `<div class="pol-bar ${i === mineI ? "me" : ""}"><span>${p.icon} ${esc(p.short)}</span><i style="width:${shares[i]}%;background:${p.color}"></i><b>${shares[i]}%</b></div>`).join("")}<small class="hint">Ward mood today (polls can be wrong)</small></div>
-      <div class="list">${rows}</div>${projList}<p class="hint pol-disc">${esc(D.disclaimer)}</p>`, "pol");
+      <p class="hint">You can also walk to a party office (🌊 🍈 ⚡ on the map) to join.</p><p class="hint pol-disc">${esc(D.disclaimer)}</p>`, "pol");
+    const tab = ui.polTab || "campaign", T = P.daily, shares = polShares(g), mineI = D.parties.findIndex(p => p.id === Pp.id);
+    const tabs = [["campaign", "📣 Campaign"], ["election", "🗳️ Election"], ["career", "🏛️ Career"]];
+    let body = "";
+    if (tab === "campaign") {
+      const C = P.canv && P.canv.day === g.day ? P.canv : null, canvDone = C && C.n >= 3, eve = h >= 17 && h < 21, day = h >= 9 && h < 20, morn = h >= 6 && h < 11;
+      const R = (icon, t, sub, act, ok, done) => item(icon + " " + t, done ? "Done for today ✓" : sub, done ? "" : `<button class="btn small ${ok ? "primary" : ""}" data-act="${act}" ${ok ? "" : "disabled"}>Go</button>`);
+      const rp = rallyParty(g), RP = D.parties.find(p => p.id === rp);
+      body = `<div class="list">${[
+        item("🚪 Door-to-door", canvDone ? "Done for today ✓" : C ? "Door " + (C.n + 1) + " of 3: follow the arrow" : "Knock on 3 doors · +10 points each", canvDone || C ? "" : `<button class="btn small primary" data-act="polcanv" ${away(g) ? "disabled" : ""}>Start</button>`),
+        R("🪧", "Put up posters", inr(CS.money(g, D.posterCost)) + " · +8 points · they appear on city walls", "polposter", g.cash >= CS.money(g, D.posterCost), P.poster === g.day),
+        item("📣 " + (rp === P.party ? "Your party's rally" : RP.name + " rally"), T.rally ? "You were there ✓" : eve ? (rp === P.party ? "Now at the Marine Drive rally ground · +12 points" : "Tonight it's " + RP.name + ". Yours is on another day.") : "Every evening 5–9 pm on Marine Drive", T.rally || !eve ? "" : `<button class="btn small primary" data-act="polgorally">Walk there</button>`),
+        R("🎤", "TV debate at the Town Hall studio", day ? "3 tough questions · up to +18 points" : "Studio open 9 am–8 pm", "poldebate", day && g.energy >= 6, T.debate),
+        R("☕", "Meet voters at the chayakkada", "+6 points, +2 reputation", "polvoters", true, T.voters),
+        R("📱", "Social media campaign", "+6 points", "polsocial", true, T.social),
+        R("🧹", "Volunteer clean-up drive", morn ? "+8 points, +3 reputation" : "Mornings 6–11 am", "polvolunteer", morn && g.energy >= 10, T.volunteer),
+        R("🍽️", "Fundraising dinner", eve ? "Raise " + inr(CS.money(g, 800)) + " for the campaign · +4 points" : "Evenings 5–9 pm", "polfund", eve && g.energy >= 8, T.fund)
+      ].join("")}</div>`;
+      if (ui.polQ) { const Q = ui.polQ, q = D.debate[Q.ids[Q.i]]; body = `<p class="hint">TV debate · question ${Q.i + 1} of 3</p><p class="duty-q">${esc(q[0])}</p><div class="duty-opts">${Q.order.map(k => `<button class="btn" data-act="poldans" data-arg="${k}">${esc(q[1][k])}</button>`).join("")}</div>`; }
+    } else if (tab === "election") {
+      const need = asm ? D.mla : { points: D.standPoints, rep: D.standRep, fee: D.fee }, canMla = P.rank >= 1 || P.wins >= D.mla.wins;
+      const okStand = !P.cand && P.pts >= need.points && g.r >= need.rep && g.cash >= CS.money(g, need.fee) && (!asm || canMla);
+      const picks = D.promises.map(x => `<button class="chip ${P.manifesto.indexOf(x.id) >= 0 ? "on" : ""}" data-act="polpromise" data-arg="${x.id}" ${P.cand ? "disabled" : ""}>${esc(x.t)}</button>`).join("");
+      body = `<p class="note">🔥 Issue this week: <b>${esc(iss.t)}</b>. ${iss.fixes.indexOf(Pp.id) >= 0 ? "Your party's promises cover it. +support" : "Not your party's strength. Put it in your manifesto."}</p>
+        <div class="pol-bars">${D.parties.map((p, i) => `<div class="pol-bar ${i === mineI ? "me" : ""}"><span>${p.icon} ${esc(p.short)}</span><i style="width:${shares[i]}%;background:${p.color}"></i><b>${shares[i]}%</b></div>`).join("")}<small class="hint">Opinion poll (polls can be wrong)</small></div>
+        <div class="list">${item("🗓️ Next vote: Day " + ne + (asm ? " · Assembly (MLA seat)" : " · " + D.ward), electionToday(g) ? "Today! Polling booth by the Government Office, 8 am–6 pm. Results 7 pm." : "Vote at the polling booth on the day", electionToday(g) && P.voted !== g.day ? `<button class="btn small primary" data-act="polgopoll">Go vote</button>` : "")}
+        ${P.cand ? item("📝 You're standing" + (P.cand === "mla" ? " for MLA" : " for Ward Councillor"), "Keep campaigning. Every point counts.", "") : item("📝 Stand " + (asm ? "for MLA" : "for Ward Councillor"), "Needs " + need.points + " party points, " + need.rep + " reputation" + (asm ? ", and a past ward win" : "") + " · fee " + inr(CS.money(g, need.fee)), `<button class="btn small primary" data-act="polstand" ${okStand ? "" : "disabled"}>File</button>`)}
+        ${item("💥 Campaign blitz", P.blitz ? "Used this cycle ✓" : "Spend " + inr(CS.money(g, 1500)) + " of party funds for +20 points (funds: " + inr(P.fund) + ")", P.blitz ? "" : `<button class="btn small" data-act="polblitz" ${P.fund >= CS.money(g, 1500) ? "" : "disabled"}>Launch</button>`)}</div>
+        <h3 class="sec">Your manifesto (pick 3)</h3><div class="chips">${picks}</div>`;
+    } else {
+      const steps = D.ranks.map((r, i) => `<div class="pol-step ${P.rank >= i ? "on" : ""}"><b>${i === 3 && P.rank === 3 ? esc(rankName(P)) : esc(r)}</b><small>${["Join and campaign", "Win a ward election", "Win an assembly election (every 21 days) after a ward win", "Win the assembly twice"][i]}</small></div>`).join("");
+      const projList = P.rank >= 1 ? `<h3 class="sec">${P.rank >= 2 ? "Constituency" : "Ward"} projects</h3>${P.proj === ne ? `<p class="hint">Project chosen for this term ✓</p>` : `<div class="list">${D.projects.map(x => item(esc(x.t), "+" + x.r * P.rank + " reputation, +" + x.h + " mood", `<button class="btn small primary" data-act="polpick" data-arg="${x.id}">Build</button>`)).join("")}</div>`}` : "";
+      body = `<div class="pol-ladder">${steps}</div><p class="hint">Honorarium every election day: Councillor ${inr(CS.money(g, D.honorarium))}, MLA ${inr(CS.money(g, D.mla.honorarium))}, Minister ${inr(CS.money(g, D.minister.honorarium))}.</p>${projList}
+        <div class="list">${item("🚶 Leave the party", "Costs 10 reputation and any seat you hold", `<button class="btn small ghost" data-act="polleave" ${P.cand ? "disabled" : ""}>Leave</button>`)}</div>`;
+    }
+    return sheetBox(Pp.icon + " " + Pp.name, `<div class="pol-me" style="--pc:${Pp.color}"><b>${esc(rankName(P))}${P.cand ? " · 📝 candidate" : ""}</b><span>${P.pts} party points · reputation ${Math.round(g.r)} · funds ${inr(P.fund)} · vote on Day ${ne}</span></div>
+      <div class="chips">${tabs.map(t => `<button class="chip ${tab === t[0] ? "on" : ""}" data-act="poltab" data-arg="${t[0]}">${t[1]}</button>`).join("")}</div>${body}<p class="hint pol-disc">${esc(D.disclaimer)}</p>`, "pol");
   }
 
   // ── Squads: private groups joined with a 6-character code, with squad chat and push-to-talk voice ──
@@ -849,13 +915,16 @@
     save(); if (!noRender) { if (ui.sheet || ui.outcome || ui.eventOpen || ui.fxn) render(); else { updateHud(); refreshGuide(); } }
     return fresh;
   }
+  function dmodeFor(g) { const m = prefs.dmode || "auto"; if (m !== "auto") return m; return Math.random() < 0.55 ? "drone" : "robot"; }
   function rent(id) {
     const g = game, it = fxItem(id), price = rentPrice(g, it);
     if (!it || g.cash < price || ui.courier) return;
     g.cash -= price; save();
     const st = locState(g), name = FX.courierNames[g.loc || g.stateId] || "Rider";
-    ui.courier = name; ui.fxn = false; render();
-    WORLD.spawnCourier(name, { skin: 4, height: 172, weight: 64, hair: "short", hairColor: 0, acc: "cap" }, { top: "#ff4f9a", bottom: "#1b1830", style: "tee", trim: "#1b1830" }, () => {
+    // FXN 2030 delivers by drone or sidewalk robot (or a rider, if you prefer)
+    const mode = dmodeFor(g), label = mode === "drone" ? "FXN Drone " + (100 + Math.floor(Math.random() * 900)) : mode === "robot" ? "FXN Bot " + ["Kunjan", "Chinnu", "Appu", "Minnu"][Math.floor(Math.random() * 4)] : name;
+    ui.courier = label; ui.fxn = false; render();
+    const done = () => {
       g.outfit = id; ui.courier = null; g.rented = (g.rented || 0) + 1; save(); setTimeout(() => { WORLD.react("delivery"); afterAction(); }, 2600);
       WORLD.setLook(char || g.player, it.look);
       WORLD.courierSay(FX.courierLines[Math.floor(AE.rnd(g) * FX.courierLines.length)]);
@@ -863,7 +932,9 @@
       if (away(g) && it.tags.indexOf("local:" + g.loc) >= 0 && !(g.localBonus || []).includes(g.loc)) { g.localBonus = (g.localBonus || []).concat(g.loc); g.r = Math.min(100, g.r + 5); WORLD.note("Locals in " + st.city + " love your " + it.name + "! +5 reputation"); }
       NET.setOutfit && NET.setOutfit(id);
       render();
-    });
+    };
+    if (mode === "rider" || !WORLD.spawnDelivery) WORLD.spawnCourier(name, { skin: 4, height: 172, weight: 64, hair: "short", hairColor: 0, acc: "cap" }, { top: "#ff4f9a", bottom: "#1b1830", style: "tee", trim: "#1b1830" }, done);
+    else WORLD.spawnDelivery(mode, label, done);
   }
 
   // ═══ City systems UI ═══
@@ -1212,6 +1283,7 @@
     if (k === "broker") return brokerSheet();
     if (k === "squad") return squadSheet();
     if (k === "election") return electionSheet();
+    if (k === "vote") return voteSheet();
     if (k === "duty") return dutySheet();
     if (k === "duties") { const D = duties(game); return sheetBox("Today's duties", D ? `<div class="list">${D.ids.map(i => { const d = DUT[game.lifeId][i], ok = D.done.indexOf(i) >= 0; return item((ok ? "✅ " : "⬜ ") + esc(d.t), ok ? "Done" : inr(dutyPay(game, d)), ""); }).join("")}</div><p class="hint">Do all three for a bonus. Do them every day for a streak bonus (up to +50%).</p>` : `<p>No duties in this city.</p>`); }
     if (k === "group") return groupSheet();
@@ -1356,7 +1428,7 @@
       onWater: (to, from) => { const g = game; wstate(g).rides++; g.min = Math.min((g.min || 0) + 15, 23 * 60 + 50); WORLD.react("metro"); save(); afterAction(); updateHud(); },
       onMetro: to => { const g = game; mstate(g).rides++; g.min = Math.min((g.min || 0) + 12, 23 * 60 + 50); if (!metroStep(g, "metro", to, ui.metroFrom)) { save(); afterAction(); } updateHud(); }
     });
-    applyRide(); WORLD.setFamilyWalk(!!(g.famWalk && !away(g))); syncFam(); syncParty();
+    applyRide(); WORLD.setFamilyWalk(!!(g.famWalk && !away(g))); syncFam(); syncParty(); polWorld();
     if (NET.savedSquad && NET.enabled() && !NET.squad() && NET.savedSquad()) sqJoin(NET.savedSquad(), false);
     pttButton();
     if (loc === "KL" && window.AE_PLOTS) { if (!mountWorld._pl) { mountWorld._pl = true; AE_PLOTS.onChange(st => { if (WORLD.setPlots) WORLD.setPlots(st); }); } AE_PLOTS.start(); }
@@ -1372,7 +1444,7 @@
     if (NET.enabled() && netKey !== key) {
       netKey = key; syncParty._k = null;
       WORLD.clearRemotes();
-      const tag = d => (d.py && POL() ? ((POL().parties.find(p => p.id === d.py) || {}).icon || "") + " " : "") + d.nick + (d.rd ? " · ★" + d.rd + " rider" : d.l && lifeById(d.l) ? " · " + lifeById(d.l).title : "") + (ui.party && d.pt === ui.party.pid ? " · team" : "");
+      const tag = d => (d.py && POL() ? ((POL().parties.find(p => p.id === d.py) || {}).icon || "") + (d.pr ? " " + ["", "Councillor", "MLA", "Minister"][d.pr] : "") + " " : "") + d.nick + (d.rd ? " · ★" + d.rd + " rider" : d.l && lifeById(d.l) ? " · " + lifeById(d.l).title : "") + (ui.party && d.pt === ui.party.pid ? " · team" : "");
       NET.join(loc, char || g.player, WORLD.position(), {
         onJoin: (id, d) => { WORLD.upsertRemote(id, Object.assign({}, d, { outfit: d.o && fxItem(d.o) ? fxItem(d.o).look : null, outfitKey: d.o || "", nick: tag(d) })); WORLD.vehicleRemote(id, remoteSpec(d)); WORLD.remoteFamily(id, d.fam); },
         onUpdate: (id, d) => { WORLD.upsertRemote(id, Object.assign({}, d, { outfit: d.o && fxItem(d.o) ? fxItem(d.o).look : null, outfitKey: d.o || "", nick: tag(d) })); WORLD.vehicleRemote(id, remoteSpec(d)); WORLD.remoteFamily(id, d.fam); },
@@ -1571,6 +1643,7 @@
   setInterval(() => {
     if (ui.view !== "play" || !game || game.done || document.hidden) return;
     if (tickN % 60 === 0) prefs.lastPlay = Date.now();
+    if (tickN % 5 === 0 && POL()) { polWorld(); const g = game; if (g.pol && g.pol.party && electionToday(g) && LF.hour(g) >= 19 && !ui.sheet) polElection(g); }
     if (window.AE_TUTOR && game.welcomed && !AE_TUTOR.isOpen() && !ui.sheet) { // one-time pointers for first encounters
       prefs.help = prefs.help || {}; const once = (k, sel, t) => { if (!prefs.help[k] && AE_TUTOR.hint(sel, t)) { prefs.help[k] = 1; save(); return true; } return false; };
       once("h_act", ".world .act:not([hidden])", "Tap this button to go in, talk or start. It appears whenever you're at a place.") || (game.vehicle && once("h_ride", ".dk.ride", "Tap Ride to hop on your vehicle. It's much faster.")) || once("h_ptt", "#ptt", "Hold this button to talk to your squad. Let go to stop.");
@@ -1620,7 +1693,7 @@
       case "board": openSheet("board"); break;
       case "retire": openSheet("retire"); break;
       case "retireyes": { ui.sheet = null; AE.finish(game); save(); render(); window.scrollTo(0, 0); break; }
-      case "sleep": { const r = LF.sleep(game); polElection(game); SND.sfx("sleep"); ui.sheet = null; WORLD.note("😴 " + r.text); WORLD.react("sleep"); (r.grew || []).forEach(n => WORLD.note("🎂 " + n + " is growing up!")); if (game.outfit && !r.nap) { game.outfit = null; WORLD.setLook(char || game.player, null); if (NET.setOutfit) NET.setOutfit(""); } afterAction(true); render(); break; }
+      case "sleep": { const d0 = game.day; const r = LF.sleep(game); if (game.day > d0) polElection(game, d0); SND.sfx("sleep"); ui.sheet = null; WORLD.note("😴 " + r.text); WORLD.react("sleep"); (r.grew || []).forEach(n => WORLD.note("🎂 " + n + " is growing up!")); if (game.outfit && !r.nap) { game.outfit = null; WORLD.setLook(char || game.player, null); if (NET.setOutfit) NET.setOutfit(""); } afterAction(true); render(); break; }
       case "eat": ui.sheet = null; render(); doEat(arg); break;
       case "newlife": if (game && !game.done && ui.view === "home") { ui.confirmNew = true; render(); break; } if (!char) { ui.after = "life"; go("creator", { draft: defaultDraft() }); } else { go("life", { stateId: "KL", daily: null }); if (NET.lobby) NET.lobby("", () => { if (ui.view === "life") render(); }); } break;
       case "editchar": ui.after = "profile"; go("creator", { draft: Object.assign({}, char) }); break;
@@ -1730,6 +1803,7 @@
       case "mtaskquit": { const M = mstate(game); M.task = null; M.step = 0; save(); render(); refreshGuide(); break; }
       case "politics": ui.polProj = false; openSheet("politics"); break;
       case "broker": openSheet("broker", { build: null }); break;
+      case "dmode": prefs.dmode = arg; save(); render(); break;
       case "squad": openSheet("squad"); break;
       case "helpok": prefs.help = prefs.help || {}; prefs.help[arg] = 1; if (ui.helpOpen === arg) ui.helpOpen = null; save(); render(); break;
       case "helpshow": ui.helpOpen = ui.helpOpen === arg ? null : arg; render(); break;
@@ -1760,14 +1834,29 @@
         else if (kk === "st") { const S = T.styles.find(q => q.id === v); if (!S) break; c = CS.money(g, S.cost * 0.6); st.st = v; }
         if (g.cash < c) break; g.cash -= c; H.st = st; SND.sfx("spend");
         PLOTS().claim(H.at, st).then(() => { save(); updateHud(); render(); WORLD.react("decor"); }); break; }
-      case "poljoin": { const g = game, P = polState(g); if (P.party) break; P.party = arg; P.pts = 5; syncParty(); save(); render(); WORLD.note(polParty(g).icon + " You joined the " + polParty(g).name + ". " + polParty(g).slogan); WORLD.react("fun"); break; }
-      case "polleave": { const g = game, P = polState(g); if (!P.party || P.cand) break; P.party = null; P.pts = 0; P.seat = false; P.canv = null; g.r = Math.max(0, g.r - 10); WORLD.setExtraSpot("canvass", null); syncParty(); save(); render(); refreshGuide(); break; }
+      case "poljoin": { const g = game, P = polState(g); if (P.party) break; P.party = arg; P.pts = 5; P.rank = 0; syncParty(); save(); render(); polWorld(); WORLD.note(polParty(g).icon + " You joined the " + polParty(g).name + ". " + polParty(g).slogan); WORLD.react("fun"); break; }
+      case "polleave": { const g = game, P = polState(g); if (!P.party || P.cand) break; P.party = null; P.pts = 0; P.seat = false; P.rank = 0; P.canv = null; P.manifesto = []; g.r = Math.max(0, g.r - 10); WORLD.setExtraSpot("canvass", null); syncParty(); save(); render(); refreshGuide(); polWorld(); break; }
+      case "poltab": ui.polTab = arg; ui.polQ = null; render(); break;
       case "polcanv": { const g = game, P = polState(g); if (P.canv && P.canv.day === g.day) break; P.canv = { day: g.day, n: 0, target: WORLD.randomDoor(Math.random()) }; WORLD.setExtraSpot("canvass", P.canv.target); ui.sheet = null; save(); render(); refreshGuide(); break; }
-      case "polposter": { const g = game, P = polState(g), c = CS.money(g, POL().posterCost); if (P.poster === g.day || g.cash < c) break; g.cash -= c; P.poster = g.day; P.pts += 8; SND.sfx("spend"); save(); updateHud(); render(); WORLD.note("🪧 Posters up across the ward. +8 points"); break; }
-      case "polrally": { const g = game, P = polState(g); if (P.rally === g.day) break; P.rally = g.day; P.pts += 12; g.h = Math.min(100, g.h + 4); g.energy = Math.max(0, g.energy - 8); g.min = Math.min(g.min + 60, 23 * 60 + 50); ui.msg = POL().rallyLines[Math.floor(Math.random() * POL().rallyLines.length)]; WORLD.react("fun"); save(); updateHud(); render(); break; }
-      case "polstand": { const g = game, P = polState(g), c = CS.money(g, POL().fee); if (P.cand || P.pts < POL().standPoints || g.r < POL().standRep || g.cash < c) break; g.cash -= c; P.cand = true; save(); updateHud(); render(); WORLD.note("📝 Nomination filed! Voting on Day " + nextElection(g) + "."); break; }
-      case "polproj": ui.polProj = true; render(); break;
-      case "polpick": { const g = game, P = polState(g), x = POL().projects.find(q => q.id === arg); if (!x || !P.seat) break; P.proj = nextElection(g); g.r = Math.min(100, g.r + x.r); g.h = Math.min(100, g.h + x.h); ui.polProj = false; SND.sfx("goal"); save(); updateHud(); render(); WORLD.note("🏗️ Ward project approved: " + x.t); break; }
+      case "polposter": { const g = game, P = polState(g), c = CS.money(g, POL().posterCost); if (P.poster === g.day || g.cash < c) break; g.cash -= c; P.poster = g.day; P.pts += 8; P.posters += 4; SND.sfx("spend"); save(); updateHud(); render(); polWorld(); WORLD.note("🪧 Your posters are up on the city walls. +8 points"); break; }
+      case "polgorally": ui.sheet = null; ui.guideTo = "rally"; render(); refreshGuide(); WORLD.note("📣 Walk to the rally ground on Marine Drive (📣 on the map)."); break;
+      case "polgopoll": ui.sheet = null; ui.guideTo = "poll"; render(); refreshGuide(); WORLD.note("🗳️ Walk to the polling booth by the Government Office (🗳️ on the map)."); break;
+      case "poldebate": { const D = POL(); ui.polQ = { ids: D.debate.map((_, i) => i).sort(() => Math.random() - 0.5).slice(0, 3), i: 0, right: 0, order: [0, 1, 2].sort(() => Math.random() - 0.5) }; render(); break; }
+      case "poldans": { const g = game, P = polState(g), Q = ui.polQ; if (!Q) break; if (+arg === 0) { Q.right++; SND.sfx("coin"); } else SND.sfx("error"); Q.i++; Q.order = [0, 1, 2].sort(() => Math.random() - 0.5);
+        if (Q.i >= 3) { const pts = Q.right * 6; P.pts += pts; P.daily.debate = 1; g.energy = Math.max(0, g.energy - 6); g.min = Math.min(g.min + 60, 23 * 60 + 50); g.r = Math.min(100, g.r + Q.right); ui.polQ = null; ui.msg = "🎤 Debate done: " + Q.right + "/3 strong answers. +" + pts + " party points."; save(); updateHud(); }
+        render(); break; }
+      case "polvoters": { const g = game, P = polState(g); if (P.daily.voters) break; P.daily.voters = 1; P.pts += 6; g.r = Math.min(100, g.r + 2); g.min = Math.min(g.min + 30, 23 * 60 + 50); ui.msg = POL().voterLines[Math.floor(Math.random() * POL().voterLines.length)]; save(); render(); break; }
+      case "polsocial": { const g = game, P = polState(g); if (P.daily.social) break; P.daily.social = 1; P.pts += 6; ui.msg = "📱 " + POL().socialLines[Math.floor(Math.random() * POL().socialLines.length)]; save(); render(); break; }
+      case "polvolunteer": { const g = game, P = polState(g); if (P.daily.volunteer) break; P.daily.volunteer = 1; P.pts += 8; g.r = Math.min(100, g.r + 3); g.energy = Math.max(0, g.energy - 10); g.min = Math.min(g.min + 90, 23 * 60 + 50); ui.msg = "🧹 Your volunteers cleaned a whole street. Residents clapped."; WORLD.react("fun"); save(); updateHud(); render(); break; }
+      case "polfund": { const g = game, P = polState(g); if (P.daily.fund) break; P.daily.fund = 1; P.fund += CS.money(g, 800); P.pts += 4; g.energy = Math.max(0, g.energy - 8); g.min = Math.min(g.min + 90, 23 * 60 + 50); ui.msg = "🍽️ " + POL().fundLines[Math.floor(Math.random() * POL().fundLines.length)]; save(); updateHud(); render(); break; }
+      case "polblitz": { const g = game, P = polState(g), c = CS.money(g, 1500); if (P.blitz || P.fund < c) break; P.fund -= c; P.blitz = 1; P.pts += 20; P.posters += 6; ui.msg = "💥 Campaign blitz: auto-rickshaw announcements, banners and a jingle. +20 points."; save(); render(); polWorld(); break; }
+      case "polpromise": { const g = game, P = polState(g); if (P.cand) break; const i = P.manifesto.indexOf(arg); if (i >= 0) P.manifesto.splice(i, 1); else { P.manifesto.push(arg); if (P.manifesto.length > 3) P.manifesto.shift(); } save(); render(); break; }
+      case "polstand": { const g = game, P = polState(g), D = POL(), asm = isAssembly(nextElection(g)), need = asm ? D.mla : { points: D.standPoints, rep: D.standRep, fee: D.fee }, c = CS.money(g, need.fee);
+        if (P.cand || P.pts < need.points || g.r < need.rep || g.cash < c || (asm && !(P.rank >= 1 || P.wins >= D.mla.wins))) break;
+        g.cash -= c; P.cand = asm ? "mla" : "ward"; save(); updateHud(); render(); WORLD.note("📝 Nomination filed for " + (asm ? "MLA" : "Ward Councillor") + "! Voting on Day " + nextElection(g) + "."); break; }
+      case "polvote": { const g = game, P = polState(g); if (P.voted === g.day || !electionToday(g)) break; P.voted = g.day; if (arg === P.party) P.pts += 3; ui.sheet = "vote"; SND.sfx("coin"); save(); render(); WORLD.react("fun"); break; }
+      case "polproj": ui.polTab = "career"; render(); break;
+      case "polpick": { const g = game, P = polState(g), x = POL().projects.find(q => q.id === arg); if (!x || !P.rank) break; P.proj = nextElection(g); g.r = Math.min(100, g.r + x.r * P.rank); g.h = Math.min(100, g.h + x.h); SND.sfx("goal"); save(); updateHud(); render(); WORLD.note("🏗️ Project approved and inaugurated: " + x.t); break; }
       case "wmride": {
         const g = game, from = ui.station, f = waterFare(g, from, arg); if (g.cash < f || !f) break;
         if (!WORLD.startWater(from, arg)) break;

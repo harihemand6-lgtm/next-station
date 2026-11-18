@@ -3,8 +3,9 @@
 window.AE_TUTOR = (function () {
   "use strict";
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const VERSION = 14; // bump when adding a "What's new" entry
+  const VERSION = 15; // bump when adding a "What's new" entry
   const NEWS = [
+    { v: 15, i: "🗳️", t: "Real politics", d: "Party offices, posters on walls, evening rallies, TV debates, a polling booth, and a path from Councillor to MLA to Minister." },
     { v: 14, i: "🤝", t: "Team tasks for 3, 4 and 5", d: "Snake-boat races, wedding sadyas, hackathons, fashion shows and more. Everyone plays a role." },
     { v: 13, i: "🌃", t: "FXN light shows", d: "LED skyscrapers, the new FXN Tower and a drone show over the backwaters every night from 7:30 pm." },
     { v: 12, i: "👥", t: "Squads", d: "Share a 6-letter code to play, chat and talk with friends anywhere in the game." },
@@ -37,7 +38,8 @@ window.AE_TUTOR = (function () {
     metro: ["Kochi Metro", ["Pick a station and ride. It's faster than walking.", "The Kochi1 card gives a discount on every ride and boat.", "Metro tasks are little city adventures that pay."]],
     water: ["Water Metro", ["Electric boats between jetties.", "Island line: High Court ⇄ Vypeen, Bolgatty, Fort Kochi. Canal line: Vyttila ⇄ Infopark.", "Pick where you're going and enjoy the ride."]],
     infopark: ["Infopark", ["Bug bash (daytime): answer 3 quick fix-it questions, earn by score.", "Meetups (evening): grow skills and reputation.", "See jobs to switch to a tech career."]],
-    politics: ["Ward politics", ["Join one of three made-up local parties.", "Earn party points: knock on doors, put up posters, go to rallies.", "With enough points, stand for Ward Councillor. The ward votes every 7 days."]],
+    politics: ["Ward politics", ["Join a party here or at its office (🌊 🍈 ⚡ on the map).", "Campaign: doors, posters (they show up on walls), evening rallies on Marine Drive, TV debates, voters, fundraisers.", "Stand for Ward Councillor, vote at the 🗳️ booth on election day, then climb to MLA and Minister."]],
+    vote: ["Voting", ["Pick a party. It's a secret ballot.", "Results come at 7 pm. Winners get a victory march on MG Road."]],
     broker: ["FXN Homes", ["Flats: rent or buy in FXN Heights.", "Houses: rent a ready house. Plots: buy land and build your own.", "Better-paid jobs or more savings unlock bigger homes. Your house stays until you retire."]],
     squad: ["Squads", ["Create a squad and share the code with friends you know.", "They enter the code to join you from anywhere.", "Chat, and if you're 18+, hold 🎙️ to talk. You can mute or report anyone."]],
     house: ["Your home", ["Sleep here at night to get energy back and start a new day.", "Eat at home to save money.", "Make it nicer: furniture, paint, and outside upgrades for owned houses."]],

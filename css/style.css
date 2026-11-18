@@ -704,3 +704,10 @@ body:has(.play2) { overflow: hidden; }
 .tm-wait { height: 6px; border-radius: 3px; background: rgba(255,255,255,.1); overflow: hidden; }
 .tm-wait i { display: block; height: 100%; width: 40%; background: linear-gradient(90deg, transparent, #e9c46a, transparent); animation: tmw 1.2s infinite linear; }
 @keyframes tmw { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+.pol-ladder { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
+.pol-step { padding: 8px 12px; border-radius: 12px; border-left: 4px solid rgba(255,255,255,.2); background: rgba(255,255,255,.04); opacity: .6; }
+.pol-step.on { opacity: 1; border-left-color: #e9c46a; background: rgba(233,196,106,.12); }
+.pol-step b { display: block; } .pol-step small { font-size: .75rem; opacity: .75; }
+button.pol-card { width: 100%; text-align: left; color: inherit; }
+.fxn-dm { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 4px 0 6px; }
+.fxn-dm > span { font-size: .75rem; opacity: .7; text-transform: uppercase; letter-spacing: .1em; margin-right: 2px; }

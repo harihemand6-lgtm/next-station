@@ -1,4 +1,4 @@
-// Daily duties: hands-on work for each life. Three a day, picked from these five.
+// Daily duties: hands-on work for each life. Three a day, picked from eight, in a different mix every day.
 // at: where it happens (spot key; "door" = a random customer's door). type:
 //   go   — just get there (deliveries, pickups)
 //   tap  — tap fast: n taps in secs seconds
@@ -148,3 +148,109 @@ window.AE_DUTIES = {
     { t: "Evening walk on Marine Drive", at: "board", type: "tap", n: 14, secs: 6, verb: "Walk", pay: 100, done: "Missed this breeze in the desert." }
   ]
 };
+
+// more duties so the week doesn't repeat (8 per life)
+(function () { const MORE = {
+  street: [
+    { t: "Restock the snack jars", at: "m", type: "tap", n: 14, secs: 6, verb: "Fill", pay: 140, done: "Jars full of banana chips and achappam." },
+    { t: "Count the day's cash", at: "m", type: "pick", rounds: [{ q: "Three chayas at ₹15 and one vada at ₹10?", o: ["₹55", "₹45", "₹60", "₹50"], a: 0 }, { q: "A ₹100 note for ₹65?", o: ["₹35", "₹45", "₹25", "₹40"], a: 0 }], pay: 160, done: "Every rupee accounted for." },
+    { t: "Deliver a tea order to an office", at: "office", type: "go", pay: 150, done: "Twelve chayas, not a drop spilled." }
+  ],
+  job: [
+    { t: "Review a teammate's code", at: "office", type: "pick", rounds: [{ q: "The password is saved in plain text.", o: ["Ask them to hash it", "Approve it", "Ignore it", "Delete the repo"], a: 0 }, { q: "A function is 400 lines long.", o: ["Suggest splitting it into smaller ones", "Love it", "Say nothing", "Rewrite it in secret"], a: 0 }], pay: 220, done: "Helpful review, happy teammate." },
+    { t: "Lunch-and-learn talk at Infopark", at: "infopark", type: "seq", steps: ["Plug in the laptop", "Intro slide", "Live demo", "Q&A"], pay: 250, done: "Twenty people want your slides." },
+    { t: "Fix the server at 11 pm", at: "house", type: "hold", verb: "Restart", zone: [0.6, 0.8], pay: 300, done: "Back online before anyone noticed." }
+  ],
+  govt: [
+    { t: "Survey a ward for the census", at: "door", type: "go", pay: 170, done: "Household counted. They offered you juice." },
+    { t: "Sort the incoming post", at: "office", type: "seq", steps: ["Open the bag", "Sort by section", "Log in the register", "Hand it out"], pay: 180, done: "Every letter on the right desk." },
+    { t: "Inspect a ration shop", at: "mall", type: "pick", rounds: [{ q: "The weighing scale shows 950 g for 1 kg.", o: ["Note it and ask for a fix", "Ignore it", "Buy rice", "Leave"], a: 0 }], pay: 210, done: "Fair weights for everyone now." }
+  ],
+  creator: [
+    { t: "Film a sunset reel at Marine Drive", at: "f", type: "hold", verb: "Record", zone: [0.62, 0.82], pay: 220, done: "Golden hour, perfectly timed." },
+    { t: "Reply to comments", at: "cafe", type: "tap", n: 18, secs: 7, verb: "Reply", pay: 160, done: "Your fans feel heard." },
+    { t: "Shoot an FXN outfit review", at: "fxn", type: "seq", steps: ["Unbox", "Try it on", "Twirl", "Give your honest take"], pay: 260, done: "Sponsored, but honest. Nice." }
+  ],
+  startup: [
+    { t: "Pitch to an angel investor", at: "cafe", type: "pick", rounds: [{ q: "\"How will you make money?\"", o: ["Subscriptions from paying customers we already have", "Ads, maybe", "We'll figure it out", "Crypto"], a: 0 }], pay: 300, done: "They want a second meeting." },
+    { t: "Hire your first designer", at: "infopark", type: "seq", steps: ["Post the job", "Shortlist", "Interview", "Make an offer"], pay: 240, done: "Welcome aboard!" },
+    { t: "Deliver a demo to a client", at: "door", type: "go", pay: 220, done: "Client signed the pilot." }
+  ],
+  craft: [
+    { t: "Polish a finished piece", at: "m", type: "tap", n: 18, secs: 7, verb: "Polish", pay: 170, done: "It gleams." },
+    { t: "Pack an order for a buyer in Dubai", at: "m", type: "seq", steps: ["Bubble wrap", "Box", "Invoice", "Courier label"], pay: 200, done: "Off to the Gulf." },
+    { t: "Sell at the Sunday craft market", at: "board", type: "pick", rounds: [{ q: "A tourist asks for a souvenir under ₹500.", o: ["A small kathakali mask", "The big bronze lamp", "Nothing", "Your tools"], a: 0 }], pay: 210, done: "Sold with a smile." }
+  ],
+  film: [
+    { t: "Location scouting near the backwaters", at: "f", type: "go", pay: 180, done: "Perfect spot for the song sequence." },
+    { t: "Rehearse the climax scene", at: "hall", type: "seq", steps: ["Blocking", "Lines", "Emotion", "Final take"], pay: 260, done: "The director nodded. That's a lot." },
+    { t: "Dub your lines", at: "m", type: "hold", verb: "Speak", zone: [0.6, 0.8], pay: 220, done: "Lip-sync perfect." }
+  ],
+  cricket: [
+    { t: "Fielding drills", at: "f", type: "tap", n: 20, secs: 7, verb: "Catch", pay: 180, done: "Safe hands!" },
+    { t: "Watch match footage with the coach", at: "hall", type: "pick", rounds: [{ q: "You keep getting out to short balls.", o: ["Practise the pull shot", "Close your eyes", "Bat left-handed", "Skip practice"], a: 0 }], pay: 200, done: "Weakness spotted, plan made." },
+    { t: "Visit a school for a coaching clinic", at: "office", type: "seq", steps: ["Warm-up", "Batting basics", "Bowling basics", "Selfies"], pay: 220, done: "Fifty future cricketers inspired." }
+  ],
+  reality: [
+    { t: "Dance rehearsal", at: "hall", type: "hold", verb: "Pose", zone: [0.62, 0.82], pay: 220, done: "Nailed the final pose." },
+    { t: "Confession-cam interview", at: "m", type: "pick", rounds: [{ q: "\"Who's your biggest rival?\"", o: ["Myself from last week", "Everyone", "The cameraman", "No comment, forever"], a: 0 }], pay: 200, done: "Classy answer. The fans love it." },
+    { t: "Fan meet at the mall", at: "mall", type: "tap", n: 18, secs: 7, verb: "Sign", pay: 240, done: "Autographs for everyone." }
+  ],
+  trader: [
+    { t: "Read the market news", at: "cafe", type: "pick", rounds: [{ q: "A company you hold misses its profit target.", o: ["Re-check the reason before acting", "Panic sell everything", "Buy ten times more", "Ignore forever"], a: 0 }], pay: 220, done: "Calm head, clear plan." },
+    { t: "Set stop-losses before the open", at: "m", type: "seq", steps: ["Open the app", "Pick the trade", "Set the stop-loss", "Confirm"], pay: 240, done: "Risk under control." },
+    { t: "Meet your CA about taxes", at: "bank", type: "go", pay: 200, done: "Taxes filed early. Unusual and great." }
+  ],
+  nurse: [
+    { t: "Check a patient's vitals", at: "hospital", type: "seq", steps: ["Temperature", "Pulse", "Blood pressure", "Note it in the chart"], pay: 240, done: "All normal. Patient relieved." },
+    { t: "Home visit for an elderly patient", at: "door", type: "go", pay: 220, done: "Ammachi blessed you twice." },
+    { t: "Calm a nervous child before an injection", at: "hospital", type: "pick", rounds: [{ q: "The child is scared.", o: ["Explain gently and distract with a story", "Rush it", "Shout", "Leave"], a: 0 }], pay: 200, done: "Brave kid, sticker earned." }
+  ],
+  cab: [
+    { t: "Airport run before dawn", at: "station", type: "go", pay: 260, done: "Flight caught with time to spare." },
+    { t: "Wash the cab", at: "m", type: "tap", n: 18, secs: 7, verb: "Scrub", pay: 140, done: "Shiny enough for a wedding." },
+    { t: "Find the fastest route in traffic", at: "m", type: "pick", rounds: [{ q: "MG Road is jammed. To Kaloor?", o: ["Take the back road via Banerji Road", "Wait in the jam", "Go via Thrissur", "Honk harder"], a: 0 }], pay: 190, done: "Passenger tipped you for the shortcut." }
+  ],
+  teacher: [
+    { t: "Correct the answer sheets", at: "m", type: "tap", n: 20, secs: 7, verb: "Mark", pay: 180, done: "All corrected, fairly." },
+    { t: "Parent-teacher meeting", at: "hall", type: "pick", rounds: [{ q: "A parent worries their child is behind.", o: ["Share a simple practice plan", "Blame the child", "Say nothing", "Leave early"], a: 0 }], pay: 210, done: "Parent left hopeful." },
+    { t: "Take the class on a field trip", at: "f", type: "seq", steps: ["Count the kids", "Walk in pairs", "Explain the backwaters", "Count again"], pay: 230, done: "Same number of kids came back. Success." }
+  ],
+  kitchen: [
+    { t: "Grind the masala", at: "m", type: "hold", verb: "Grind", zone: [0.6, 0.8], pay: 160, done: "Fragrant and fine." },
+    { t: "Plate a fish moilee", at: "m", type: "seq", steps: ["Rice", "Fish", "Moilee gravy", "Curry leaves"], pay: 200, done: "Looks like a magazine cover." },
+    { t: "Buy fresh fish at the harbour", at: "ferryFK", type: "go", pay: 170, done: "Karimeen, still sparkling." }
+  ],
+  homestay: [
+    { t: "Welcome guests at the jetty", at: "ferryFK", type: "go", pay: 180, done: "Garlands and tender coconut. Five stars." },
+    { t: "Make the beds", at: "m", type: "tap", n: 16, secs: 6, verb: "Fold", pay: 140, done: "Hotel-perfect corners." },
+    { t: "Plan a guest's day", at: "m", type: "pick", rounds: [{ q: "A couple wants a romantic evening.", o: ["Sunset houseboat ride", "A government office tour", "The bus stand", "Stay in"], a: 0 }], pay: 200, done: "They're already booking next year." }
+  ],
+  stylist: [
+    { t: "Steam a bridal saree", at: "fxn", type: "hold", verb: "Steam", zone: [0.62, 0.82], pay: 200, done: "Not a single crease." },
+    { t: "Style a client for a gala", at: "fxn", type: "pick", rounds: [{ q: "Black-tie gala at a lake resort.", o: ["Floor-length gown", "Cricket whites", "Lungi", "Gym wear"], a: 0 }], pay: 240, done: "Best dressed at the gala." },
+    { t: "Return rented outfits to the FXN store", at: "fxn", type: "go", pay: 150, done: "Checked in, ready for the next customer." }
+  ],
+  band: [
+    { t: "Sound check", at: "hall", type: "seq", steps: ["Drums", "Bass", "Guitar", "Vocals"], pay: 180, done: "Crystal clear." },
+    { t: "Jam a new song", at: "m", type: "tap", n: 20, secs: 7, verb: "Strum", pay: 200, done: "That riff is going to be a hit." },
+    { t: "Busk on Marine Drive", at: "f", type: "hold", verb: "Hold the note", zone: [0.62, 0.82], pay: 210, done: "A crowd gathered. Coins and claps." }
+  ],
+  planner: [
+    { t: "Taste the wedding menu", at: "cafe", type: "pick", rounds: [{ q: "The bride is vegetarian.", o: ["Make sure there's a full veg sadya", "Serve only fish fry", "Skip food", "Pizza"], a: 0 }], pay: 220, done: "Menu approved by both families." },
+    { t: "Count the chairs at the venue", at: "hall", type: "tap", n: 20, secs: 7, verb: "Count", pay: 160, done: "Exactly 400. Phew." },
+    { t: "Pick up the flowers", at: "door", type: "go", pay: 170, done: "Jasmine for days." }
+  ],
+  seafood: [
+    { t: "Ice the catch", at: "m", type: "tap", n: 18, secs: 7, verb: "Ice", pay: 150, done: "Fresh till tomorrow." },
+    { t: "Haggle with a hotel buyer", at: "m", type: "pick", rounds: [{ q: "They offer ₹300/kg for prawns worth ₹420.", o: ["Meet in the middle at ₹380", "Accept ₹300", "Refuse to sell", "Give it free"], a: 0 }], pay: 240, done: "Good deal, long-term buyer." },
+    { t: "Deliver to a restaurant", at: "door", type: "go", pay: 160, done: "Chef says it's the best catch this week." }
+  ],
+  gulf: [
+    { t: "Video call home", at: "house", type: "hold", verb: "Smile", zone: [0.6, 0.8], pay: 120, done: "Amma cried happy tears." },
+    { t: "Send money home", at: "bank", type: "seq", steps: ["Open the app", "Enter the amount", "Check the rate", "Send"], pay: 180, done: "Money sent at a good rate." },
+    { t: "Help a new arrival settle in", at: "station", type: "go", pay: 170, done: "They have a SIM card and a friend now." }
+  ]
+};
+  Object.keys(MORE).forEach(k => { if (window.AE_DUTIES[k]) window.AE_DUTIES[k] = window.AE_DUTIES[k].concat(MORE[k]); });
+})();

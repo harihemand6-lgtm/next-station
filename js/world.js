@@ -140,8 +140,9 @@ window.AE_WORLD = (function () {
     Object.keys(K.lots).forEach(id => {
       const L = K.lots[id], [x0, y0, x1, y1] = L.r;
       let big = { hall: "hall", bank: "bank", cafe: "cafe", fxn: "fxn", rival: "rival", office: "office", home: "home", station: "station", mall: "mall", SHOW: "garage", infopark: "infopark", ipfood: "ipfood", broker: "broker", HTA: "heightsA", HTB: "heightsB" }[id] || (id === lifeLot ? "life" : "lm");
-      let name = big === "life" ? (LANDMARK[o.lifeId] || "Market").replace("{stall}", o.words.stall) : lotName(o, id, L.name || "");
-      const kind = big === "home" ? "home" : big === "rival" ? "shop" : L.kind || "shop";
+      const movedOut = big === "home" && o.homeAt && o.homeAt.x != null; if (movedOut) big = "lm";
+      let name = movedOut ? "" : big === "life" ? (LANDMARK[o.lifeId] || "Market").replace("{stall}", o.words.stall) : lotName(o, id, L.name || "");
+      const kind = big === "home" ? "home" : movedOut ? "res" : big === "rival" ? "shop" : L.kind || "shop";
       const floors = { showroom: 2, hall: 2, hospital: 6, mall: 4, bank: 3, cafe: 1, fxn: id === "fxn" ? 12 : 3, stadium: 2, tower: 8, market: 1, office: 3, station: 2, warehouse: 2, church: 2, colonial: 2, home: [2, 3, 4, 2, 2][(o.house && o.house.lvl) || 0], shop: 3 }[kind] || 2;
       addBuilding({ x: x0, y: y0, w: x1 - x0 + 1, d: y1 - y0 + 1, h: floors, floors, style: kind, big, kind, name, door: L.door, tint: R(), roof: ["church", "colonial", "office", "hall"].indexOf(kind) >= 0 || (kind === "home" && (o.house && o.house.lvl >= 3)) });
       if (name) labels.push({ x: (x0 + x1 + 1) / 2, y: (y0 + y1 + 1) / 2, t: name, c: BIGCOL[big] || "#e8dcc0", h: floors + 0.6 });
@@ -159,7 +160,12 @@ window.AE_WORLD = (function () {
     spots.ferryFK = { x: K.ferry.FK[0], y: K.ferry.FK[1], label: "Boat Jetty", ride: "ferryMD", rideLabel: "Take the ferry to Marine Drive" };
     // FXN Nagar plots: gates on the road, houses come and go with their owners
     const T = window.AE_TOWN; if (T) T.plots.forEach(pl => { spots[pl.id] = { x: pl.door[0], y: pl.door[1], label: (pl.kind === "villa" ? "Villa plot " : "Plot ") + pl.id, plot: pl.id }; });
-    if (o.homeAt && o.homeAt.x != null) { if (o.homeAt.key && o.homeAt.key !== "house") delete spots[o.homeAt.key]; spots.house = { x: o.homeAt.x, y: o.homeAt.y, label: o.homeAt.label || "Home" }; }
+    if (o.homeAt && o.homeAt.x != null) {
+      if (o.homeAt.key && o.homeAt.key !== "house") delete spots[o.homeAt.key];
+      spots.house = { x: o.homeAt.x, y: o.homeAt.y, label: o.homeAt.label || "Home" };
+      const pp = nearestWalk({ x: o.homeAt.x - 1, y: o.homeAt.y }) || { x: o.homeAt.x, y: o.homeAt.y };
+      if (pp.x !== o.homeAt.x || pp.y !== o.homeAt.y) spots.p = { x: pp.x, y: pp.y, label: o.homeAt.label || "Home" }; else spots.p = { x: o.homeAt.x + 1, y: o.homeAt.y, label: o.homeAt.label || "Home" };
+    }
     Object.keys(K.water).forEach(k => { const W = K.water[k]; spots[k] = { x: W.spot[0], y: W.spot[1], label: "Water Metro · " + W.name, wm: W.line }; });
     // Kochi Metro: stairs down to MG Road under each station
     K.metro.stations.forEach(([z, name], i) => { const k = METRO_KEYS[i]; spots[k] = { x: K.metro.x - 1, y: Math.floor(z), label: name + " Metro", metro: i, z }; });
@@ -745,6 +751,81 @@ window.AE_WORLD = (function () {
       buildWaterMetro(); canalBridges();
     }
   }
+  // ═══ Ward politics in the city: party offices, posters on walls, evening rallies, the polling booth and victory processions ═══
+  let polG = null, posterG = null, crowd = null, polKey = "";
+  const POLD = () => window.AE_POL;
+  function polColor(id) { const P = POLD() && POLD().parties.find(q => q.id === id); return P ? P.color : "#888"; }
+  function flagMesh(color, h) {
+    const g = new THREE.Group(), pole = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, h || 0.9, 5), new THREE.MeshStandardMaterial({ color: 0xdddddd }));
+    pole.position.y = (h || 0.9) / 2; g.add(pole);
+    const fl = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.2), new THREE.MeshStandardMaterial({ color: col(color), side: THREE.DoubleSide, emissive: col(color), emissiveIntensity: 0.15 }));
+    fl.position.set(0.17, (h || 0.9) - 0.1, 0); g.add(fl); g.userData.flag = fl; return g;
+  }
+  function buildPolitics() {
+    if (polG) scene.remove(polG); polG = new THREE.Group(); scene.add(polG);
+    const D = POLD(); if (!D || !isKochi) return;
+    D.parties.forEach(P => {
+      const at = D.offices[P.id]; if (!at) return; const [x, y] = at, bx = x === 68 ? x + 0.75 : x - 0.75;
+      const kiosk = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 1.4), new THREE.MeshStandardMaterial({ color: 0xf4efe6, roughness: 0.8 })); kiosk.position.set(bx, 0.45, y + 0.5); kiosk.castShadow = true; polG.add(kiosk);
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.08, 1.55), new THREE.MeshStandardMaterial({ color: col(P.color) })); roof.position.set(bx, 0.94, y + 0.5); polG.add(roof);
+      const sign = signPlane(P.icon + " " + P.name.toUpperCase() + " OFFICE", P.color, "#ffffff", 1.4, 0.26); sign.position.set(bx + (x === 68 ? -0.46 : 0.46), 0.72, y + 0.5); sign.rotation.y = x === 68 ? -Math.PI / 2 : Math.PI / 2; polG.add(sign);
+      [-0.55, 0.55].forEach(dz => { const f = flagMesh(P.color, 1.5); f.position.set(bx, 0.9, y + 0.5 + dz); polG.add(f); });
+      spots["pol_" + P.id] = { x, y, label: P.icon + " " + P.name + " office" };
+    });
+  }
+  // party posters on street-facing walls; how many of each colour follows the ward's mood plus your own postering
+  function setPosters(counts) {
+    if (posterG) scene.remove(posterG); posterG = new THREE.Group(); scene.add(posterG);
+    const D = POLD(); if (!D || !counts) return;
+    const mats = {}; D.parties.forEach(P => {
+      const c = document.createElement("canvas"); c.width = 128; c.height = 160; const x = c.getContext("2d");
+      x.fillStyle = P.color; x.fillRect(0, 0, 128, 160); x.fillStyle = "rgba(255,255,255,.92)"; x.fillRect(8, 8, 112, 92);
+      x.font = "64px sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(P.icon, 64, 54);
+      x.fillStyle = "#fff"; x.font = "800 22px Mukta, sans-serif"; x.fillText(P.short, 64, 118); x.font = "700 13px Mukta, sans-serif"; x.fillText("VOTE · WARD 42", 64, 142);
+      mats[P.id] = new THREE.MeshStandardMaterial({ map: srgbTex(c), roughness: 0.9 });
+    });
+    const walls = blds.filter(b => b.big === "lm" || b.big === "res" || !b.big).filter(b => b.h <= 4 && b.y + b.d < ROWS - 1);
+    const R = rng(polKey.length + 7), geo = new THREE.PlaneGeometry(0.28, 0.35);
+    Object.keys(counts).forEach(id => { for (let i = 0; i < counts[id] && walls.length; i++) { const b = walls[Math.floor(R() * walls.length)], m = new THREE.Mesh(geo, mats[id]); m.position.set(b.x + 0.2 + R() * (b.w - 0.4), 0.45 + R() * 0.35, b.y + b.d + 0.012); m.rotation.z = (R() - 0.5) * 0.12; posterG.add(m); } });
+  }
+  // a crowd of supporters with flags, standing at a rally or marching in a procession
+  function setCrowd(c) {
+    if (crowd) { crowd.figs.forEach(g => scene.remove(g)); if (crowd.stage) scene.remove(crowd.stage); crowd = null; }
+    delete spots.rally;
+    if (!c || !ok3d) return;
+    const N = c.march ? 14 : 12, figsC = [];
+    for (let i = 0; i < N; i++) {
+      const m = person(personLook(PEOPLE.random("crowd" + i + c.party, {}), null), false), fl = flagMesh(polColor(c.party), 0.75);
+      fl.position.set(0.12, m.H * 0.55, 0); m.group.add(fl); scene.add(m.group); figsC.push({ g: m.group, m, ph: Math.random() * 6, i });
+    }
+    crowd = { c, figs: figsC.map(f => f.g), list: figsC, t: 0 };
+    if (!c.march) {
+      const [x, y] = c.at; spots.rally = { x, y, label: (c.icon || "📣") + " Rally" };
+      const st = new THREE.Group(), deck = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.3, 2.2), new THREE.MeshStandardMaterial({ color: 0x3a2f2a })); deck.position.set(x - 0.6, 0.15, y + 0.5); st.add(deck);
+      const ban = signPlane((c.icon || "") + " " + (c.name || "RALLY").toUpperCase() + " RALLY", polColor(c.party), "#fff", 2.2, 0.35); ban.position.set(x - 0.95, 0.9, y + 0.5); ban.rotation.y = Math.PI / 2; st.add(ban);
+      scene.add(st); crowd.stage = st;
+      figsC.forEach((f, i) => { const a = (i / N) * Math.PI - Math.PI / 2, r = 1.1 + (i % 3) * 0.35; f.g.position.set(x + 0.5 + Math.cos(a) * r * 0.6, 0, y + 0.5 + Math.sin(a) * r); f.g.rotation.y = -Math.PI / 2; });
+    }
+  }
+  function stepCrowd(dt, time) {
+    if (!crowd) return; crowd.t += dt;
+    crowd.list.forEach(f => {
+      const fl = f.g.children.find(o => o.userData && o.userData.flag); if (fl) fl.rotation.z = Math.sin(time / 180 + f.ph) * 0.35;
+      if (crowd.c.march) { // procession down MG Road and back
+        const L = 40, d = ((crowd.t * 1.1 + f.i * 0.6) % (L * 2)), z = 4 + (d < L ? d : L * 2 - d), x = 46.5 + ((f.i % 3) - 1) * 0.35;
+        f.g.position.set(x, deckY(x, z) + Math.abs(Math.sin(time / 160 + f.ph)) * 0.04, z); f.g.rotation.y = d < L ? 0 : Math.PI;
+      } else { f.g.position.y = Math.abs(Math.sin(time / 220 + f.ph)) * 0.05; }
+    });
+  }
+  function setPolitics(st) {
+    if (!isKochi || !scene) return;
+    const k = JSON.stringify(st || {}); if (k === polKey) return; polKey = k; st = st || {};
+    if (!polG) buildPolitics();
+    setPosters(st.posters || null);
+    setCrowd(st.rally ? Object.assign({ at: POLD().rallyAt }, st.rally) : st.march ? Object.assign({ march: true }, st.march) : null);
+    if (st.poll && spots.office) { const pp = nearestWalk({ x: spots.office.x + 3, y: spots.office.y }) || spots.office; spots.poll = { x: pp.x, y: pp.y, label: "🗳️ Polling booth" }; } else delete spots.poll;
+  }
+
   // ═══ FXN Nagar township: plots with houses that belong to players (or FXN Rentals, or neighbours) ═══
   let townG = {}, townKey = {};
   const TWALL = () => (window.AE_TOWN || {}).walls || [["Cream", "#efe4cf"]], TROOF = () => (window.AE_TOWN || {}).roofs || [["Terracotta", "#b5532f"]];
@@ -928,7 +1009,7 @@ window.AE_WORLD = (function () {
           <div class="msg-panel" hidden><div class="map-top"><div><b>Messages</b><span>Last 60 · tap a tab to filter</span></div><button class="w-btn small msg-close">Close</button></div><div class="msg-tabs"><button data-mt="all" class="on">All</button><button data-mt="game">Updates</button><button data-mt="chat">Players</button><button data-mt="town">Townsfolk</button></div><div class="msg-list"></div></div></div>
         <form class="chat-row" hidden><input maxlength="80" placeholder="Type a message (no numbers, links or handles)" aria-label="Chat message"><button class="w-btn">Send</button></form>`;
       labelLayer = el.querySelector(".w-labels"); banner = el.querySelector(".w-banner"); actBtn = el.querySelector(".act"); logEl = el.querySelector(".w-toast"); toastQ = []; toastCur = null; clearTimeout(toastT);
-      figs = {}; spinners = []; metroTrain = null; wride = null; wmBoats = {}; extraSpots = {}; inside = {}; guide = null; sceneMarker = null; nearKey = null; yaw = Math.PI; pitch = 0.42; dist = 2.9; follow = true; spin = 0; vehicles = []; boats = []; facadeMats = []; ride = null; ferry = null;
+      figs = {}; spinners = []; metroTrain = null; wride = null; wmBoats = {}; dlv = null; extraSpots = {}; inside = {}; guide = null; sceneMarker = null; nearKey = null; yaw = Math.PI; pitch = 0.42; dist = 2.9; follow = true; spin = 0; vehicles = []; boats = []; facadeMats = []; ride = null; ferry = null;
       ok3d = false;
       try { if (THREE) { renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" }); ok3d = !!renderer.getContext(); } } catch (e) { ok3d = false; }
       const view = el.querySelector(".w3-view");
@@ -951,7 +1032,7 @@ window.AE_WORLD = (function () {
         makeSky(); makeWater(); makeOuterLand(o);
         groundMesh = new THREE.Mesh(new THREE.PlaneGeometry(COLS, ROWS), new THREE.MeshStandardMaterial({ map: groundTexture(), roughness: 0.95, alphaTest: 0.5 }));
         groundMesh.rotation.x = -Math.PI / 2; groundMesh.position.set(COLS / 2, 0, ROWS / 2); groundMesh.receiveShadow = true; scene.add(groundMesh);
-        renderCity(o); plantTrees(); streetLamps(); spawnTraffic(); powerLines(); bushes(); if (isKochi) townBuild(o.plots || {});
+        renderCity(o); plantTrees(); streetLamps(); spawnTraffic(); powerLines(); bushes(); if (isKochi) { townBuild(o.plots || {}); polG = null; polKey = ""; crowd = null; buildPolitics(); }
         if (isKochi) { fishingNets(); bridgesRails(); chayaStall(36.45, 29.35); metro(); streetSigns(); busStops(); roadPalms(); }
         city2030(o);
         labels.forEach(l => { const s = textSprite(l.t, l.c, 0.42); s.position.set(l.x, l.h + 0.7, l.y); scene.add(s); });
@@ -1633,7 +1714,7 @@ window.AE_WORLD = (function () {
       if (isKochi) stepWMAmbient(dt);
       spinners.forEach(g => { g.rotation.y += dt * 0.5; });
       if (metroTrain && !mride) stepMetro(dt);
-      stepFlyers(dt, time); if (isKochi) stepAds(dt, time);
+      stepFlyers(dt, time); stepDelivery(dt, time); if (isKochi) { stepAds(dt, time); stepCrowd(dt, time); }
       waterTex.offset.set(time * 0.000012, time * 0.000008);
       clouds.forEach((c, i) => { c.position.x += dt * (0.25 + (i % 3) * 0.1); if (c.position.x > COLS / 2 + 160) c.position.x -= 320; });
       // below 0.12 the camera stops dropping and tilts up instead, so you can see tall buildings and their ads
@@ -1745,7 +1826,7 @@ window.AE_WORLD = (function () {
   // ═══ maps: an illustrated city map (roads with names, pins, your route) for the minimap and the full map ═══
   const BP = 20; // base map pixels per tile
   const METRO_KEYS = ["metroKL", "metroMG", "metroES"];
-  const PIN = { broker: ["🏷️", "#ff4f9a", 4], heightsA: ["🏢", "#6b4fa0", 1], heightsB: ["🏢", "#6b4fa0", 1], wmHC: ["⛴", "#0fa3b8", 3], wmVY: ["⛴", "#0fa3b8", 3], wmBG: ["⛴", "#0fa3b8", 3], wmFK: ["⛴", "#0fa3b8", 3], wmVT: ["⛴", "#0fa3b8", 3], wmKK: ["⛴", "#0fa3b8", 3], infopark: ["💻", "#2b7bd6", 4], ipfood: ["🍜", "#c98a2b", 2], duty: ["⭐", "#f4a52b", 6], metroKL: ["🚇", "#16998c", 3], metroMG: ["🚇", "#16998c", 3], metroES: ["🚇", "#16998c", 3], m: ["💼", "#f4a52b", 3], house: ["🏠", "#8f6bff", 4], f: ["🌳", "#3f9b4a", 2], board: ["📋", "#16998c", 4], station: ["🚉", "#16998c", 3], hall: ["🏛️", "#8a3b3b", 3], fxn: ["👗", "#ff4f9a", 5], office: ["🏢", "#1f6b52", 3], bank: ["🏦", "#1f4e8c", 3], cafe: ["☕", "#8a5a3a", 2], mall: ["🛍️", "#6b4fa0", 2], hospital: ["🏥", "#d84343", 2], food: ["🍵", "#c98a2b", 2], ferryMD: ["⛴️", "#1f73b8", 2], ferryFK: ["⛴️", "#1f73b8", 2], garage: ["🛵", "#e0602b", 3], v: ["🏪", "#ef6a5f", 1], gig: ["📦", "#ff4f9a", 6], odd: ["🔧", "#e0a530", 6], grp: ["👥", "#16998c", 6] };
+  const PIN = { pol_tide: ["🌊", "#0fa3b8", 3], pol_chakka: ["🍈", "#e0a526", 3], pol_spark: ["⚡", "#8f6bff", 3], rally: ["📣", "#ff4f9a", 5], poll: ["🗳️", "#2b7bd6", 6], broker: ["🏷️", "#ff4f9a", 4], heightsA: ["🏢", "#6b4fa0", 1], heightsB: ["🏢", "#6b4fa0", 1], wmHC: ["⛴", "#0fa3b8", 3], wmVY: ["⛴", "#0fa3b8", 3], wmBG: ["⛴", "#0fa3b8", 3], wmFK: ["⛴", "#0fa3b8", 3], wmVT: ["⛴", "#0fa3b8", 3], wmKK: ["⛴", "#0fa3b8", 3], infopark: ["💻", "#2b7bd6", 4], ipfood: ["🍜", "#c98a2b", 2], duty: ["⭐", "#f4a52b", 6], metroKL: ["🚇", "#16998c", 3], metroMG: ["🚇", "#16998c", 3], metroES: ["🚇", "#16998c", 3], m: ["💼", "#f4a52b", 3], house: ["🏠", "#8f6bff", 4], f: ["🌳", "#3f9b4a", 2], board: ["📋", "#16998c", 4], station: ["🚉", "#16998c", 3], hall: ["🏛️", "#8a3b3b", 3], fxn: ["👗", "#ff4f9a", 5], office: ["🏢", "#1f6b52", 3], bank: ["🏦", "#1f4e8c", 3], cafe: ["☕", "#8a5a3a", 2], mall: ["🛍️", "#6b4fa0", 2], hospital: ["🏥", "#d84343", 2], food: ["🍵", "#c98a2b", 2], ferryMD: ["⛴️", "#1f73b8", 2], ferryFK: ["⛴️", "#1f73b8", 2], garage: ["🛵", "#e0602b", 3], v: ["🏪", "#ef6a5f", 1], gig: ["📦", "#ff4f9a", 6], odd: ["🔧", "#e0a530", 6], grp: ["👥", "#16998c", 6] };
   let mv = { s: 12, cx: 0, cy: 0 }, route = null, routeT = 0;
   function mapImage() {
     const c = document.createElement("canvas"); c.width = COLS * BP; c.height = ROWS * BP;
@@ -2197,7 +2278,94 @@ window.AE_WORLD = (function () {
     parkedHome = vehRig(spec.type, spec.color); const h = spots.house, pk = opts.homeAt && opts.homeAt.park;
     if (pk) parkedHome.group.position.set(pk[0], 0, pk[1]); else parkedHome.group.position.set(h.x + 1.4, 0, h.y + 0.55); parkedHome.group.rotation.y = Math.PI / 2; scene.add(parkedHome.group);
   }
-  function courierSay(t, s) { bubble(figs.courier, t, s); }
+  function courierSay(t, s) { if (figs.courier) bubble(figs.courier, t, s); else if (dlv) note(dlv.mode === "drone" ? "🚁 FXN Drone: " + t : "🤖 FXN Bot: " + t); }
+  // ═══ FXN drone and robot deliveries ═══
+  let dlv = null;
+  function fxnBoxMesh() {
+    const b = new THREE.Group(), box = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.2, 0.26), new THREE.MeshStandardMaterial({ color: 0xff3d8b, roughness: 0.5 }));
+    const band = new THREE.Mesh(new THREE.BoxGeometry(0.27, 0.05, 0.27), new THREE.MeshStandardMaterial({ color: 0xffffff })); b.add(box, band); box.castShadow = true; return b;
+  }
+  function droneMesh() {
+    const g = new THREE.Group(), body = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.1, 0.42), new THREE.MeshStandardMaterial({ color: 0x1d1b33, metalness: 0.4, roughness: 0.4 }));
+    g.add(body); const rot = [];
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => {
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.03, 0.04), new THREE.MeshStandardMaterial({ color: 0x2b2840 })); arm.position.set(a * 0.17, 0, b * 0.17); arm.rotation.y = a * b > 0 ? -Math.PI / 4 : Math.PI / 4; g.add(arm);
+      const r = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.01, 16), new THREE.MeshBasicMaterial({ color: 0xc8d6ff, transparent: true, opacity: 0.35 })); r.position.set(a * 0.3, 0.06, b * 0.3); g.add(r); rot.push(r);
+    });
+    const led = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.02, 0.06), new THREE.MeshBasicMaterial({ color: 0xff3d8b })); led.position.set(0, -0.06, 0.2); g.add(led);
+    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 1, 4), new THREE.MeshBasicMaterial({ color: 0x222222 })); g.add(cable);
+    g.userData = { rot, cable }; return g;
+  }
+  function robotMesh() {
+    const g = new THREE.Group(), white = new THREE.MeshStandardMaterial({ color: 0xf5f4f2, roughness: 0.4 }), pink = new THREE.MeshStandardMaterial({ color: 0xff3d8b, roughness: 0.5 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.3, 0.55), white); body.position.y = 0.26; body.castShadow = true; g.add(body);
+    const lid = new THREE.Group(), lidM = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.06, 0.57), pink); lidM.position.set(0, 0, 0.285); lid.add(lidM); lid.position.set(0, 0.44, -0.285); g.add(lid);
+    const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.12), new THREE.MeshBasicMaterial({ color: 0x19e6ff })); scr.position.set(0, 0.3, 0.281); g.add(scr);
+    [-0.08, 0.08].forEach(x => { const e = new THREE.Mesh(new THREE.PlaneGeometry(0.04, 0.05), new THREE.MeshBasicMaterial({ color: 0x0b0a24 })); e.position.set(x, 0.31, 0.283); g.add(e); });
+    const wheels = []; [-0.2, 0, 0.2].forEach(z => [-0.23, 0.23].forEach(x => { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.05, 12), new THREE.MeshStandardMaterial({ color: 0x222222 })); w.rotation.z = Math.PI / 2; w.position.set(x, 0.07, z); g.add(w); wheels.push(w); }));
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.6, 4), new THREE.MeshBasicMaterial({ color: 0xdddddd })); pole.position.set(0.16, 0.7, -0.22); g.add(pole);
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 0.09), new THREE.MeshBasicMaterial({ color: 0xff3d8b, side: THREE.DoubleSide })); flag.position.set(0.23, 0.96, -0.22); g.add(flag);
+    g.userData = { lid, wheels, flag }; g.scale.setScalar(0.68); return g;
+  }
+  function spawnDelivery(mode, name, onArrive) {
+    clearDelivery(); removeFig("courier");
+    const s = spots.fxn || { x: 20, y: 4 };
+    if (!ok3d) { setTimeout(() => onArrive && onArrive(), 1500); return; }
+    const box = fxnBoxMesh(), g = mode === "drone" ? droneMesh() : robotMesh();
+    dlv = { mode, name, g, box, st: "go", t: 0, cb: onArrive, x: s.x + 0.5, z: s.y + 0.5, y: mode === "drone" ? 13.5 : 0, h: 0 };
+    if (mode === "drone") { g.add(box); box.position.y = -0.2; } else { g.add(box); box.position.set(0, 0.32, 0); box.visible = false; const st = nearestWalk({ x: s.x, y: s.y }) || s; dlv.x = st.x + 0.5; dlv.z = st.y + 0.5; dlv.path = toPts(path(tileOf(dlv), tileOf(me))); }
+    g.position.set(dlv.x, dlv.y, dlv.z); scene.add(g); SND.sfx(mode === "drone" ? "vroom" : "click"); dTrack();
+  }
+  function clearDelivery() { if (dlv) { scene.remove(dlv.g); if (dlv.box.parent) dlv.box.parent.remove(dlv.box); dlv = null; } dTrack(); }
+  function dTrack() {
+    const t = el && el.querySelector(".deliv"); if (!t) return;
+    if (!dlv || dlv.st === "back") { t.hidden = true; return; }
+    const d = Math.hypot(dlv.x - me.x, dlv.z - me.z); t.hidden = false;
+    t.innerHTML = dlv.st === "go" ? `<b>${dlv.mode === "drone" ? "🚁 FXN Drone Express" : "🤖 FXN Bot"} is on the way</b><span>${esc(dlv.name)} · ${Math.max(5, Math.round(d * 3 / 5) * 5)} m away</span>` : `<b>📦 Your FXN parcel is here</b><span>${dlv.mode === "drone" ? "Lowering it down to you…" : "Opening the lid…"}</span>`;
+  }
+  function stepDelivery(dt, time) {
+    const D = dlv; if (!D) return; D.t += dt;
+    const g = D.g, U = g.userData;
+    if (D.mode === "drone") {
+      U.rot.forEach((r, i) => { r.rotation.y += dt * 40 * (i % 2 ? 1 : -1); });
+      const hover = 1.8;
+      if (D.st === "go") {
+        const tx = me.x + Math.sin(me.heading) * 0.7, tz = me.z + Math.cos(me.heading) * 0.7, dx = tx - D.x, dz = tz - D.z, d = Math.hypot(dx, dz), sp = 7 * dt;
+        if (d > sp) { D.x += dx / d * sp; D.z += dz / d * sp; D.h = Math.atan2(dx, dz); }
+        D.y += (Math.max(hover, roofAt(D.x, D.z) + 1.2) + (d > 4 ? 3 : 0) - D.y) * Math.min(1, dt * 1.5);
+        if (d < 0.25 && D.y < hover + 1.6) { D.hov = D.y; D.st = "lower"; D.t = 0; me.lock = time + 4200; me.path = []; me.heading = Math.atan2(D.x - me.x, D.z - me.z); cine = { yaw: me.heading + Math.PI / 2, dist: 3, back: dist, until: time + 4000 }; SND.sfx("doorbell"); }
+        if (D.t > 30) { D.x = tx; D.z = tz; D.y = Math.min(D.y, hover + 1); }
+      } else if (D.st === "lower") {
+        D.y += (hover - D.y) * Math.min(1, dt * 2.5); const L = Math.min(1, D.t / 1.6), len = 0.2 + L * (D.y - 0.45); D.box.position.y = -len; U.cable.scale.y = len; U.cable.position.y = -len / 2;
+        if (L >= 1 && D.t > 1.7) { D.st = "give"; D.t = 0; g.remove(D.box); me.mesh.group.add(D.box); D.box.position.set(0, me.mesh.legL + 0.1, 0.2); me.carry = true; U.cable.scale.y = 0.01; }
+      } else if (D.st === "give") {
+        if (D.t > 0.5) { const k = Math.min(1, (D.t - 0.5) / 0.35); D.box.position.y = me.mesh.legL + 0.1 + k * 0.35; D.box.rotation.y = k * 5; D.box.scale.setScalar(1 + k * 0.4); }
+        if (D.t > 0.85) { me.mesh.group.remove(D.box); me.carry = false; burst(me.x, (me.mesh.H || 0.7) * 0.6, me.z); me.twirlT = 0.9; SND.sfx("sparkle"); const cb = D.cb; D.cb = null; if (cb) cb(); D.st = "back"; D.t = 0; dTrack(); }
+      } else if (D.st === "back") { D.y += dt * 3; D.z -= dt * 2; if (D.t > 5) return clearDelivery(); }
+      g.position.set(D.x, D.y + Math.sin(time / 300) * 0.04, D.z); g.rotation.y = D.h;
+      if (D.st === "go" && time - (D.tt || 0) > 400) { D.tt = time; dTrack(); }
+    } else {
+      if (D.st === "go") {
+        if (time - (D.rp || 0) > 900) { D.rp = time; D.path = toPts(path(tileOf(D), tileOf(me))); if (D.path.length) D.path[D.path.length - 1] = { x: me.x + Math.sin(me.heading) * 0.7, z: me.z + Math.cos(me.heading) * 0.7 }; }
+        const f = { x: D.x, z: D.z, path: D.path, heading: D.h }; stepPath(f, dt, SPEED * 1.7); D.x = f.x; D.z = f.z; if (f.moving !== false && D.path.length) D.h += angDiff(D.h, Math.atan2(D.path[0].x - D.x, D.path[0].z - D.z)) * Math.min(1, dt * 8);
+        U.wheels.forEach(w => { w.rotation.x += dt * 14; }); U.flag.rotation.y = Math.sin(time / 150) * 0.4;
+        if (Math.hypot(D.x - me.x, D.z - me.z) < 0.95 || D.t > 50) { D.st = "open"; D.t = 0; me.lock = time + 4200; me.path = []; D.h = Math.atan2(me.x - D.x, me.z - D.z); me.heading = Math.atan2(D.x - me.x, D.z - me.z); cine = { yaw: me.heading + Math.PI / 2, dist: 2.4, back: dist, until: time + 4000 }; SND.sfx("doorbell"); dTrack(); }
+      } else if (D.st === "open") {
+        const k = Math.min(1, D.t / 0.6); U.lid.rotation.x = -k * 1.6; D.box.visible = true; D.box.position.y = 0.32 + k * 0.2;
+        if (D.t > 0.9) { D.st = "give"; D.t = 0; g.remove(D.box); me.mesh.group.add(D.box); D.box.position.set(0, me.mesh.legL + 0.1, 0.2); me.carry = true; SND.sfx("click"); }
+      } else if (D.st === "give") {
+        U.lid.rotation.x = -1.6 * Math.max(0, 1 - D.t / 0.6);
+        if (D.t > 0.5) { const k = Math.min(1, (D.t - 0.5) / 0.35); D.box.position.y = me.mesh.legL + 0.1 + k * 0.35; D.box.rotation.y = k * 5; D.box.scale.setScalar(1 + k * 0.4); }
+        if (D.t > 0.85) { me.mesh.group.remove(D.box); me.carry = false; burst(me.x, (me.mesh.H || 0.7) * 0.6, me.z); me.twirlT = 0.9; SND.sfx("sparkle"); const cb = D.cb; D.cb = null; if (cb) cb(); D.st = "back"; D.t = 0; dTrack(); const s = spots.fxn || { x: 2, y: 2 }; D.path = toPts(path(tileOf(D), { x: s.x, y: s.y })); }
+      } else if (D.st === "back") {
+        const f = { x: D.x, z: D.z, path: D.path, heading: D.h }; stepPath(f, dt, SPEED * 1.7); D.x = f.x; D.z = f.z; if (D.path.length) D.h += angDiff(D.h, Math.atan2(D.path[0].x - D.x, D.path[0].z - D.z)) * Math.min(1, dt * 8);
+        U.wheels.forEach(w => { w.rotation.x += dt * 14; });
+        if (D.t > 8 || !D.path.length || Math.hypot(D.x - me.x, D.z - me.z) > 16) return clearDelivery();
+      }
+      g.position.set(D.x, deckY(D.x, D.z), D.z); g.rotation.y = D.h;
+      if (D.st === "go" && time - (D.tt || 0) > 400) { D.tt = time; dTrack(); }
+    }
+  }
   function vehicleRemote(id, spec) { const f = figs["r_" + id]; if (f) { setFigVehicle(f, spec); f.H = figH(f); } }
   function teleport(k) { inside[k] = true; const p = spotPos(k); if (!p) return; const t = nearestWalk({ x: Math.floor(p.x), y: Math.floor(p.z) + 1 }) || { x: Math.floor(p.x), y: Math.floor(p.z) }; me.x = t.x + 0.5; me.z = t.y + 0.5; me.path = []; sendMe(true); }
   function position() { return me ? tileOf(me) : { x: 8, y: 18 }; }
@@ -2216,5 +2384,5 @@ window.AE_WORLD = (function () {
   const __stats = () => renderer ? { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures } : null;
   const __traffic = () => vehicles.map(v => ({ k: +(v.k == null ? 1 : v.k).toFixed(2), side: +(v.side || 0).toFixed(2), x: +v.m.position.x.toFixed(1), z: +v.m.position.z.toFixed(1), type: v.type }));
   const waterSpots = () => K.water ? Object.keys(K.water).filter(k => spots[k]).map(k => ({ key: k, name: K.water[k].name, line: K.water[k].line })) : [];
-  return { __show: () => show ? { on: show.im.visible, n: show.N } : null, chatLog: (n, t) => log(n, t, "chat"), setPlots, plotState, startWater, waterSpots, waterRiding: () => !!wride, pause: on => { paused = !!on; }, __traffic, setFamilyWalk, remoteFamily, __stats, startMetro, metroSpots, metroRiding: () => !!mride, __figs: () => Object.values(figs).filter(f => f.kind === "remote" || f.kind === "me" || f.kind === "rfam" || f.lead).map(f => ({ id: f.id, x: +f.x.toFixed(1), z: +f.z.toFixed(1), veh: f.vehType || "" })), mapPoint, setVehicle, setParked, vehicleRemote, VEH, VCOL, __dbg, mount, setGuide, setMarker, setExtraSpot, randomDoor, npcSay, meSay, note, react, upsertRemote, moveRemote, sayRemote, removeRemote, clearRemotes, setOnline, spawnCourier, courierSay, setLook: (av, outfit) => setLookFig("me", av, outfit), teleport, position, destroy, available: can3d, preview, spotAt: k => { const p = spotPos(k); return p ? { x: p.x, z: p.z } : null; }, guideKey: () => guide && guide.key, mapOpen: () => !!(mapEl && !mapEl.hidden), cols: () => COLS, rows: () => ROWS, riding: () => !!ride };
+  return { __dlv: () => dlv ? { x: dlv.x, z: dlv.z, y: dlv.y, st: dlv.st, me: [me.x, me.z] } : null, spawnDelivery, setPolitics, __show: () => show ? { on: show.im.visible, n: show.N } : null, chatLog: (n, t) => log(n, t, "chat"), setPlots, plotState, startWater, waterSpots, waterRiding: () => !!wride, pause: on => { paused = !!on; }, __traffic, setFamilyWalk, remoteFamily, __stats, startMetro, metroSpots, metroRiding: () => !!mride, __figs: () => Object.values(figs).filter(f => f.kind === "remote" || f.kind === "me" || f.kind === "rfam" || f.lead).map(f => ({ id: f.id, x: +f.x.toFixed(1), z: +f.z.toFixed(1), veh: f.vehType || "" })), mapPoint, setVehicle, setParked, vehicleRemote, VEH, VCOL, __dbg, mount, setGuide, setMarker, setExtraSpot, randomDoor, npcSay, meSay, note, react, upsertRemote, moveRemote, sayRemote, removeRemote, clearRemotes, setOnline, spawnCourier, courierSay, setLook: (av, outfit) => setLookFig("me", av, outfit), teleport, position, destroy, available: can3d, preview, spotAt: k => { const p = spotPos(k); return p ? { x: p.x, z: p.z } : null; }, guideKey: () => guide && guide.key, mapOpen: () => !!(mapEl && !mapEl.hidden), cols: () => COLS, rows: () => ROWS, riding: () => !!ride };
 })();
