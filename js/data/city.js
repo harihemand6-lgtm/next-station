@@ -52,6 +52,29 @@ window.AE_CITY = {
       { id: "night", t: "Night lights", d: "Ride the metro after 7 pm and see Kochi lit up.", steps: [{ ride: true, night: true, txt: "Ride the metro after 7 pm" }], pay: 0, mood: 12 }
     ]
   },
+  // Kochi Water Metro fares (rupees before city scaling): one leg, two legs (via High Court), canal line
+  water: { fares: [20, 30], canal: 30 },
+  // Infopark, Kakkanad: freelance bug bash (quiz), evening tech meetups, tech hiring
+  infopark: {
+    gigPay: 600,
+    quiz: [
+      { q: "The FXN app crashes when a user has no internet. Best fix?", o: ["Show an offline screen and retry later", "Tell users to buy more data", "Delete the app"], a: 0 },
+      { q: "Checkout is slow on Fridays. First thing to check?", o: ["Server logs and slow database queries", "The office Wi-Fi password", "Repaint the buttons"], a: 0 },
+      { q: "A client wants dark mode. Where do you start?", o: ["Colour variables in the stylesheet", "Rewrite everything in a new language", "Switch the phone off"], a: 0 },
+      { q: "Two riders got the same order. Likely cause?", o: ["Two requests assigned it at the same time", "Riders are too fast", "Monsoon"], a: 0 },
+      { q: "Where should a password be stored?", o: ["Hashed, never as plain text", "In a sticky note", "In the app's source code"], a: 0 },
+      { q: "The login page breaks only on iPhones. What do you test first?", o: ["Safari on a real iPhone", "Your Android phone again", "Nothing, users can switch phones"], a: 0 },
+      { q: "A feature works on your laptop but not on the server. Best next step?", o: ["Compare versions and settings between the two", "Ship it anyway", "Blame the intern"], a: 0 },
+      { q: "Search shows rented-out sarees as available. Fix?", o: ["Filter by live stock before showing results", "Hide the search bar", "Add more sarees"], a: 0 }
+    ],
+    meetups: [
+      "Kochi Python meetup: you demo a tiny script and three people ask for the code.",
+      "Startup Mission pitch night: a founder hands you a card and says 'call me Monday'.",
+      "AI in Malayalam talk: half the room is laughing at chatbot translations of film dialogues.",
+      "Women in Tech Kochi: the best Q&A of the year and great unniyappam.",
+      "Design jam at the lake garden: you leave with five new friends and one new font."
+    ]
+  },
   vehicleColors: [["Red", 0], ["Blue", 1], ["White", 2], ["Black", 3], ["Yellow", 4], ["Green", 5], ["Purple", 6], ["Pink", 7]],
   houseLevels: [
     { name: "Rented room", cost: 0, upkeep: 0, h: 0, floors: 1 },

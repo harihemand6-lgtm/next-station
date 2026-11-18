@@ -473,6 +473,9 @@
     if (k === "board") return "Notice Board: jobs and group tasks";
     if (k === "garage") return "🛵 " + (isKL() ? "Vyttila Motors" : "City Motors") + ": buy a ride";
     if (/^metro/.test(k)) { const st = (WORLD.metroSpots() || []).find(m => m.key === k); return "🚇 " + (st ? st.name : "Metro") + " station: ride"; }
+    if (/^wm/.test(k)) { const st = (WORLD.waterSpots ? WORLD.waterSpots() : []).find(m => m.key === k); return "⛴️ Water Metro · " + (st ? st.name : "jetty"); }
+    if (k === "infopark") return "💻 Infopark Hub: gigs, meetups, tech jobs";
+    if (k === "ipfood") return "🍜 Food Street · " + inr(LF.money(g, LF.FOOD.ipfood.cost));
     return null;
   }
   function onSpot(k) {
@@ -493,6 +496,9 @@
     if (k === "board") { if (ui.guideTo === "board") ui.guideTo = null; return openSheet("board"); }
     if (k === "garage") { ui.guideTo = null; return openSheet("garage", { atShop: true }); }
     if (/^metro/.test(k)) return openSheet("metro", { station: k });
+    if (/^wm/.test(k)) return openSheet("water", { station: k });
+    if (k === "infopark") return openSheet("infopark", { ipq: null });
+    if (k === "ipfood") return doEat("ipfood");
   }
   const isKL = () => (game.loc || game.stateId) === "KL";
   // ── FXN Arcade: 2 paid plays per game per day, pay scales with score ──
@@ -621,6 +627,37 @@
     const tasks = MET().tasks.map(T => { const done = M.done.indexOf(T.id) >= 0, act = M.task === T.id;
       return item((done ? "✅ " : act ? "▶️ " : "") + T.t, act ? "Now: " + T.steps[M.step].txt : T.d + (T.pay ? " · " + inr(CS.money(g, T.pay)) : " · mood boost"), done ? "" : act ? `<button class="btn small" data-act="mtaskquit">Stop</button>` : `<button class="btn small primary" data-act="mtask" data-arg="${T.id}" ${M.task ? "disabled" : ""}>Start</button>`); }).join("");
     return sheetBox(here ? "🚇 " + here.name + " Metro" : "🚇 Kochi Metro", `${here ? `<p class="hint">Trains every few minutes. Pick where you're going.</p><div class="list">${rides}</div>` : rides}${card}<h3 class="sec">Metro tasks</h3><div class="list">${tasks}</div>`);
+  }
+
+  // ── Kochi Water Metro ──
+  const wstate = g => (g.water = g.water || { rides: 0 });
+  function waterFare(g, from, to) {
+    const list = WORLD.waterSpots(), A = list.find(s => s.key === from), B = list.find(s => s.key === to); if (!A || !B) return 0;
+    const base = A.line === "B" ? CITY.water.canal : (from === "wmHC" || to === "wmHC") ? CITY.water.fares[0] : CITY.water.fares[1];
+    return Math.round(CS.money(g, base) * (mstate(g).card ? 1 - MET().cardOff : 1));
+  }
+  function waterSheet() {
+    const g = game, at = ui.station, list = WORLD.waterSpots ? WORLD.waterSpots() : [], here = list.find(s => s.key === at);
+    if (!here) return sheetBox("⛴️ Kochi Water Metro", `<p class="hint">Walk to a ⛴ jetty: High Court (Marine Drive), Vypeen, Bolgatty or Fort Kochi on the island line, Vyttila or Kakkanad on the canal line.</p>`);
+    const rides = list.filter(s => s.line === here.line && s.key !== at).map(s => { const f = waterFare(g, at, s.key);
+      return item("→ " + s.name, inr(f) + (mstate(g).card ? " with Kochi1 card" : "") + (here.line === "A" && at !== "wmHC" && s.key !== "wmHC" ? " · via High Court" : ""), `<button class="btn small primary" data-act="wmride" data-arg="${s.key}" ${g.cash >= f ? "" : "disabled"}>Board</button>`); }).join("");
+    return sheetBox("⛴️ " + here.name + " Water Metro", `<p class="hint">Electric, air-conditioned boats every few minutes. ${here.line === "B" ? "Canal line: Vyttila ⇄ Kakkanad (Infopark)." : "Island line: High Court ⇄ Vypeen, Bolgatty and Fort Kochi."}</p><div class="list">${rides}</div>${mstate(g).card ? `<p class="hint">💳 Your Kochi1 card works here too.</p>` : `<p class="hint">Tip: the Kochi1 card from any 🚇 metro station gives ${Math.round(MET().cardOff * 100)}% off boats too.</p>`}`);
+  }
+  // ── Infopark, Kakkanad ──
+  function ipState(g) { if (!g.ip || g.ip.day !== g.day) g.ip = { day: g.day, gig: false, meet: false }; return g.ip; }
+  function infoparkSheet() {
+    const g = game, I = ipState(g), IP = CITY.infopark, h = LF.hour(g), Q = ui.ipq;
+    if (Q && !Q.done) { const r = IP.quiz[Q.ids[Q.i]];
+      return sheetBox("💻 Bug bash · " + (Q.i + 1) + " of 3", `<p class="hint">A Kakkanad startup needs quick fixes before their launch.</p><p class="duty-q">${esc(r.q)}</p><div class="duty-opts">${Q.order.map(k => `<button class="btn" data-act="ipans" data-arg="${k}">${esc(r.o[k])}</button>`).join("")}</div>`, "duty"); }
+    if (Q && Q.done) return sheetBox("💻 Bug bash done", `<p class="duty-ok">${Q.right === 3 ? "Flawless. The startup's CTO wants your number." : Q.right ? "Shipped with a couple of patches." : "Rough day. They paid you for showing up."}</p><p class="hint">${Q.right}/3 right · +${inr(Q.pay)}</p><button class="btn primary big" data-act="ipback">Back to Infopark</button>`, "duty");
+    const day = h >= 9 && h < 18, eve = h >= 17 && h < 22;
+    const rows = [
+      item("💻 Freelance bug bash", I.gig ? "Done for today" : day ? "3 quick fixes for a startup · up to " + inr(CS.money(g, IP.gigPay)) : "Startups hire 9 am to 6 pm", I.gig ? "" : `<button class="btn small primary" data-act="ipgig" ${day && g.energy >= 15 ? "" : "disabled"}>Start</button>`),
+      item("🎤 Evening tech meetup", I.meet ? "You went today" : eve ? "Learn, network, free chai · skills and reputation up" : "Meetups run 5 to 10 pm", I.meet ? "" : `<button class="btn small primary" data-act="ipmeet" ${eve && g.energy >= 8 ? "" : "disabled"}>Join</button>`),
+      item("💼 Tech jobs at Infopark", "Software, startup and trading roles", `<button class="btn small" data-act="career">See jobs</button>`),
+      item("🍜 Infopark Food Street", "Next door · " + inr(LF.money(g, LF.FOOD.ipfood.cost)), `<button class="btn small" data-act="ipeat">Eat</button>`)
+    ].join("");
+    return sheetBox("💻 Infopark, Kakkanad", `<p class="hint">Kerala's IT campus in 2030: glass towers, a lake garden and 1.2 lakh techies. The canal Water Metro from Vyttila stops right here.</p><div class="list">${rows}</div>${ui.ipMsg ? `<p class="note">${esc(ui.ipMsg)}</p>` : ""}`);
   }
 
   // ── vehicles ──
@@ -875,6 +912,8 @@
     if (k === "garage") return garageSheet();
     if (k === "rooms") return roomsSheet();
     if (k === "metro") return metroSheet();
+    if (k === "water") return waterSheet();
+    if (k === "infopark") return infoparkSheet();
     if (k === "duty") return dutySheet();
     if (k === "duties") { const D = duties(game); return sheetBox("Today's duties", D ? `<div class="list">${D.ids.map(i => { const d = DUT[game.lifeId][i], ok = D.done.indexOf(i) >= 0; return item((ok ? "✅ " : "⬜ ") + esc(d.t), ok ? "Done" : inr(dutyPay(game, d)), ""); }).join("")}</div><p class="hint">Do all three for a bonus. Do them every day for a streak bonus (up to +50%).</p>` : `<p>No duties in this city.</p>`); }
     if (k === "group") return groupSheet();
@@ -1015,6 +1054,7 @@
       onType: v => { const r = NET.sendText(v); if (r.ok) { WORLD.meSay(r.text, true); return true; } WORLD.note(r.reason); return false; },
       onRemoteTap: (id, nick) => { const p = NET.peers()[id]; openSheet("player", { target: { id, nick: p ? p.nick : nick } }); },
       onRoomTap: () => openSheet("rooms"),
+      onWater: (to, from) => { const g = game; wstate(g).rides++; g.min = Math.min((g.min || 0) + 15, 23 * 60 + 50); WORLD.react("metro"); save(); afterAction(); updateHud(); },
       onMetro: to => { const g = game; mstate(g).rides++; g.min = Math.min((g.min || 0) + 12, 23 * 60 + 50); if (!metroStep(g, "metro", to, ui.metroFrom)) { save(); afterAction(); } updateHud(); }
     });
     applyRide(); WORLD.setFamilyWalk(!!(g.famWalk && !away(g))); syncFam();
@@ -1369,6 +1409,22 @@
       case "metrocard": { const g = game, c = CS.money(g, MET().card); if (g.cash < c) break; g.cash -= c; mstate(g).card = true; save(); updateHud(); render(); break; }
       case "mtask": { const M = mstate(game); if (M.task) break; M.task = arg; M.step = 0; save(); ui.sheet = null; render(); refreshGuide(); WORLD.note("🚇 " + MET().tasks.find(t => t.id === arg).t + ": " + MET().tasks.find(t => t.id === arg).steps[0].txt); break; }
       case "mtaskquit": { const M = mstate(game); M.task = null; M.step = 0; save(); render(); refreshGuide(); break; }
+      case "wmride": {
+        const g = game, from = ui.station, f = waterFare(g, from, arg); if (g.cash < f || !f) break;
+        if (!WORLD.startWater(from, arg)) break;
+        g.cash -= f; ui.sheet = null; ui.station = null; save(); render(); updateHud(); break;
+      }
+      case "ipgig": { const g = game, I = ipState(g); if (I.gig) break; const ids = CITY.infopark.quiz.map((_, i) => i).sort(() => Math.random() - 0.5).slice(0, 3); ui.ipq = { ids, i: 0, right: 0, order: [0, 1, 2].sort(() => Math.random() - 0.5) }; render(); break; }
+      case "ipans": {
+        const g = game, Q = ui.ipq; if (!Q || Q.done) break; const r = CITY.infopark.quiz[Q.ids[Q.i]];
+        if (+arg === r.a) { Q.right++; SND.sfx("coin"); } else SND.sfx("error");
+        Q.i++; Q.order = [0, 1, 2].sort(() => Math.random() - 0.5);
+        if (Q.i >= 3) { const I = ipState(g); I.gig = true; Q.done = true; Q.pay = Math.round(CS.money(g, CITY.infopark.gigPay) * (0.4 + 0.2 * Q.right) / 10) * 10; g.cash += Q.pay; g.x = Math.min(100, (g.x || 0) + 2 + Q.right); g.energy = Math.max(0, g.energy - 15); g.min = Math.min(g.min + 90, 23 * 60 + 50); SND.sfx("payday"); WORLD.note("💻 Bug bash +" + inr(Q.pay)); afterAction(); updateHud(); }
+        render(); break;
+      }
+      case "ipback": ui.ipq = null; render(); break;
+      case "ipmeet": { const g = game, I = ipState(g); if (I.meet) break; I.meet = true; g.x = Math.min(100, (g.x || 0) + 4); g.r = Math.min(100, g.r + 3); g.h = Math.min(100, g.h + 4); g.energy = Math.max(0, g.energy - 8); g.min = Math.min(g.min + 60, 23 * 60 + 50); ui.ipMsg = CITY.infopark.meetups[Math.floor(Math.random() * CITY.infopark.meetups.length)]; WORLD.react("fun"); afterAction(); updateHud(); render(); break; }
+      case "ipeat": ui.sheet = null; render(); doEat("ipfood"); break;
       case "metroride": {
         const g = game, from = ui.station, f = metroFare(g, from, arg); if (g.cash < f) break;
         if (!WORLD.startMetro(from, arg)) break;

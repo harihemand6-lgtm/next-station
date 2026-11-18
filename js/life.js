@@ -49,7 +49,8 @@ window.AE_LIFE = (function () {
     chaya: { name: "Chaaya and pazhampori", cost: 40, gain: 30, mood: 2 },
     cafe: { name: "Meal at Café Monsoon", cost: 220, gain: 60, mood: 5 },
     home: { name: "Home-cooked meal", cost: 90, gain: 55, mood: 3 },
-    sadya: { name: "Full sadya on a banana leaf", cost: 300, gain: 90, mood: 8 }
+    sadya: { name: "Full sadya on a banana leaf", cost: 300, gain: 90, mood: 8 },
+    ipfood: { name: "Biriyani and lime soda at Infopark Food Street", cost: 160, gain: 55, mood: 4 }
   };
   function eat(g, where) {
     const F = FOOD[where]; const cost = money(g, F.cost);
@@ -98,6 +99,7 @@ window.AE_LIFE = (function () {
     { id: "paper", t: "Get your address proof", hint: "Apply at the Government Office", ok: g => (g.papers || []).indexOf("id") >= 0, reward: 500 },
     { id: "ride", t: "Buy your first vehicle", hint: "Walk to Vyttila Motors (south-east, 🛵 on the map)", ok: g => !!g.vehicle, reward: 500 },
     { id: "metro", t: "Ride the Kochi Metro", hint: "Walk to a 🚇 station on MG Road", ok: g => !!(g.metro && g.metro.rides), reward: 200 },
+    { id: "water", t: "Ride the Kochi Water Metro", hint: "Walk to a ⛴ jetty: High Court on Marine Drive or Vyttila", ok: g => !!(g.water && g.water.rides), reward: 200 },
     { id: "home", t: "Move out of your rented room", hint: "Upgrade your house from Home", ok: g => g.house && g.house.lvl >= 1, reward: 1000 },
     { id: "match", t: "Find someone special", hint: "Use MangalyaMatch or ChaiDate on your phone", ok: g => !!(g.romance || g.spouse), reward: 500 },
     { id: "wed", t: "Get married", hint: "Date, meet the families, then the wedding", ok: g => !!g.spouse, reward: 2000 },
