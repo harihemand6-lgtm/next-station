@@ -411,6 +411,8 @@
     if (base && LF.night(g)) return { text: "It's " + LF.clock(g) + ". Walk home to sleep", sub: ["Hungry? Grab a late chaaya first"].concat(hints).join(" · "), key: "house", actions: go("house") };
     if (g.energy < 12) return { text: "You're exhausted. Walk home and rest", sub: "Sleep or take a nap at home", key: base ? "house" : "station", actions: go("house") };
     if (g.hunger < 20) return { text: "You're hungry! " + (foodKey === "food" ? "Eat at the chayakkada on Marine Drive" : "Eat at Café Monsoon"), sub: hints.join(" · "), key: foodKey, actions: go(foodKey) };
+    const ND = !away(g) && LF.canWork(g) && nextDuty(g);
+    if (ND) { const key = dutySpot(ND.d.at); if (key === "duty") ensureDutyDoor(g); return { text: (JOB_ICON[g.lifeId] || "🧑‍💼") + " Duty " + ND.n + "/" + ND.of + ": " + ND.d.t, sub: "Walk to the glowing spot · " + inr(dutyPay(g, ND.d)) + (ND.d.type === "go" ? "" : " · a quick hands-on task"), key }; }
     if (!away(g)) {
       const ev = cityEvent(g), ok = ev && wearing(g, ev.dress);
       const evSub = ev ? "Also: " + AE.fill(ev.title, g) + " (dress code: " + dressName(ev.dress) + (ok ? " ✓" : "") + ")" : "";
@@ -428,6 +430,7 @@
     const g = game; if (!g || g.done || ui.outcome || ui.mscene || ui.cityEv || ui.sheet) return;
     if (k === "garage" && ui.guideTo === "garage") { ui.guideTo = null; openSheet("garage"); return; }
     if (metroStep(g, "visit", k)) return;
+    { const ND = !away(g) && LF.canWork(g) && nextDuty(g); if (ND && dutySpot(ND.d.at) === k) return startDuty(g, ND); }
     if (g.shift) { if (k === "gig") riderDrop(); return; }
     if (k === "odd" && g.odd) { WORLD.setExtraSpot("odd", null); const r = CS.finishOdd(g); WORLD.note(r.text); WORLD.react("odd"); g.min = Math.min(g.min + 60, 23 * 60 + 50); save(); render(); return; }
     const mg = AE.missionGuide(g);
@@ -489,6 +492,62 @@
     if (/^metro/.test(k)) return openSheet("metro", { station: k });
   }
   const isKL = () => (game.loc || game.stateId) === "KL";
+
+  // ── Daily duties: three hands-on tasks a day for your profession ──
+  const DUT = window.AE_DUTIES || {};
+  const SPOT_ALT = { hospital: "m", mall: "cafe", ferryFK: "station", food: "cafe", garage: "m", house: "m" };
+  function dutySpot(k) { if (k === "door") return "duty"; if (WORLD.spotAt(k)) return k; const alt = SPOT_ALT[k]; return alt && WORLD.spotAt(alt) ? alt : "m"; }
+  function duties(g) {
+    const list = DUT[g.lifeId]; if (!list) return null;
+    if (!g.duty || g.duty.day !== g.day || g.duty.life !== g.lifeId) {
+      let h = g.day * 31 + g.lifeId.length * 7; const idx = list.map((_, i) => i).sort((a, b) => ((a * 7 + h) % 5) - ((b * 7 + h) % 5)).slice(0, 3).sort((a, b) => a - b);
+      g.duty = { day: g.day, life: g.lifeId, ids: idx, done: [], door: null, streak: g.duty && g.duty.done.length >= 3 && g.duty.day === g.day - 1 ? (g.duty.streak || 0) + 1 : 0 };
+    }
+    return g.duty;
+  }
+  function nextDuty(g) { const D = duties(g); if (!D) return null; const i = D.ids.find(x => D.done.indexOf(x) < 0); return i == null ? null : { i, d: DUT[g.lifeId][i], n: D.done.length + 1, of: D.ids.length }; }
+  const dutyPay = (g, d) => CS.money(g, d.pay) + (g.duty && g.duty.streak ? Math.round(CS.money(g, d.pay) * Math.min(0.5, g.duty.streak * 0.1)) : 0);
+  function ensureDutyDoor(g) { if (!g.duty.door) { g.duty.door = WORLD.randomDoor(Math.random()); save(); } WORLD.setExtraSpot("duty", g.duty.door); }
+  function startDuty(g, ND) {
+    if (ND.d.type === "go") return finishDuty(g, ND, 0);
+    const d = ND.d, S = { i: ND.i, type: d.type, count: 0, step: 0, round: 0, miss: 0, t0: 0, done: false, fail: false };
+    if (d.type === "seq") S.order = d.steps.map((_, k) => k).sort(() => Math.random() - 0.5);
+    openSheet("duty", { dutyS: S });
+  }
+  function finishDuty(g, ND, miss) {
+    const d = ND.d, D = duties(g), pay = Math.round(dutyPay(g, d) * (miss > 1 ? 0.75 : 1));
+    g.cash += pay; g.r = Math.min(100, g.r + 1); g.s = Math.min(100, (g.s || 0) + 2); g.energy = Math.max(0, g.energy - 5); g.min = Math.min(g.min + 40, 23 * 60 + 50);
+    D.done.push(ND.i); if (d.at === "door") { D.door = null; WORLD.setExtraSpot("duty", null); }
+    WORLD.note("✅ " + d.done + " +" + inr(pay));
+    if (D.done.length >= D.ids.length) { const b = CS.money(g, 150); g.cash += b; g.h = Math.min(100, g.h + 5); setTimeout(() => { WORLD.note("🏁 All of today's duties done! Bonus +" + inr(b) + (D.streak ? " · " + (D.streak + 1) + "-day streak" : "")); WORLD.react("work"); }, 900); }
+    save(); afterAction(true); updateHud(); refreshGuide();
+    return pay;
+  }
+  function dutySheet() {
+    const g = game, S = ui.dutyS, list = DUT[g.lifeId] || [], d = list[S.i]; if (!d) return "";
+    const D = duties(g), hdr = `<p class="hint">Duty ${D.done.length + (S.done ? 0 : 1)} of ${D.ids.length} · ${inr(dutyPay(g, d))}</p>`;
+    if (S.done) return sheetBox("✅ " + d.t, `<p class="duty-ok">${esc(d.done)}</p><p class="hint">+${inr(S.paid)}${S.miss > 1 ? " (a few slips, so a little less)" : ""}</p><button class="btn primary big" data-act="closesheet">Continue</button>`, "duty");
+    let body = "";
+    if (S.fail) body = `<p class="duty-bad">${S.type === "hold" ? "Not quite! Let go inside the green zone." : "Too slow! Have another go."}</p><button class="btn primary big" data-act="dretry">Try again</button>`;
+    else if (d.type === "tap") body = `<p>Tap <b>${esc(d.verb)}</b> ${d.n} times in ${d.secs} seconds.</p><div class="duty-bar"><i id="d-timer" style="width:100%"></i></div><button class="duty-big" data-act="dtap" id="d-tap">${esc(d.verb)}<small id="d-count">${S.count} / ${d.n}</small></button>`;
+    else if (d.type === "seq") body = `<p>Tap the steps in the right order.</p><ol class="duty-done">${d.steps.slice(0, S.step).map(x => `<li>✓ ${esc(x)}</li>`).join("")}</ol><div class="duty-opts">${S.order.filter(k => k >= S.step).map(k => `<button class="btn" data-act="dseq" data-arg="${k}">${esc(d.steps[k])}</button>`).join("")}</div>`;
+    else if (d.type === "pick") { const r = d.rounds[S.round]; body = `<p class="hint">Question ${S.round + 1} of ${d.rounds.length}</p><p class="duty-q">${esc(r.q)}</p><div class="duty-opts">${r.o.map((x, k) => `<button class="btn" data-act="dpick" data-arg="${k}">${esc(x)}</button>`).join("")}</div>`; }
+    else if (d.type === "hold") body = `<p>Hold <b>${esc(d.verb)}</b> and let go when the bar is in the green.</p><div class="duty-hold"><i class="zone" style="left:${d.zone[0] * 100}%;width:${(d.zone[1] - d.zone[0]) * 100}%"></i><i class="fill" id="d-fill"></i></div><button class="duty-big" id="d-hold">${esc(d.verb)} <small>(hold)</small></button>`;
+    return sheetBox((JOB_ICON[g.lifeId] || "🧑‍💼") + " " + d.t, hdr + body, "duty");
+  }
+  let dutyTimer = 0;
+  function bindDuty() {
+    clearInterval(dutyTimer);
+    const g = game, S = ui.dutyS; if (!S || S.done || S.fail) return; const d = (DUT[g.lifeId] || [])[S.i]; if (!d) return;
+    if (d.type === "tap") dutyTimer = setInterval(() => { if (!S.t0) return; const left = 1 - (performance.now() - S.t0) / (d.secs * 1000), el = document.getElementById("d-timer"); if (el) el.style.width = Math.max(0, left * 100) + "%"; if (left <= 0 && !S.done) { S.fail = true; clearInterval(dutyTimer); SND.sfx("error"); render(); } }, 80);
+    if (d.type === "hold") {
+      const b = document.getElementById("d-hold"), fill = document.getElementById("d-fill"); let t0 = 0, raf = 0, v = 0;
+      const loop = () => { v = (performance.now() - t0) / 1700; fill.style.width = Math.min(100, v * 100) + "%"; if (v >= 1) { stop(true); return; } raf = requestAnimationFrame(loop); };
+      const stop = over => { if (!t0) return; cancelAnimationFrame(raf); t0 = 0; if (!over && v >= d.zone[0] && v <= d.zone[1]) { S.done = true; S.paid = finishDuty(g, { i: S.i, d }, S.miss); SND.sfx("goal"); } else { S.fail = true; S.miss++; SND.sfx("error"); } render(); };
+      b.addEventListener("pointerdown", e => { e.preventDefault(); t0 = performance.now(); v = 0; SND.sfx("click"); loop(); });
+      ["pointerup", "pointerleave", "pointercancel"].forEach(ev => b.addEventListener(ev, () => stop(false)));
+    }
+  }
 
   // ── Kochi Metro ──
   const MET = () => CITY.metro;
@@ -680,7 +739,7 @@
 
   function phoneSheet() {
     const g = game, P = myParty(), mates = partyHere();
-    const apps = [["goals", "🎯 Life goals", (LF.nextGoal(g) || { t: "All done!" }).t], ["fxnopen", "👗 FXN", "Rent outfits"], ["kin", "👨‍👩‍👧 Family", g.spouse ? g.spouse.name + ((g.kids || []).length ? " + " + g.kids.length : "") : "Single"], ["site:mangalya", "💍 MangalyaMatch", "Matrimony"], ["site:chaidate", "☕ ChaiDate", "Dating"], ["board", "📋 Odd jobs & teams", "Quick money, team tasks"], ...(isKL() ? [["metroapp", "🚇 Kochi Metro", metroTask(g) ? "Task: " + metroTask(g).T.t : "Rides and metro tasks"]] : []), ["garage", "🛵 Garage", g.vehicle ? (g.riding ? "Riding your " : "Your ") + CS.vehicleById(g.vehicle.id).name.toLowerCase() : "Buy a bicycle, scooter or car"], ["career", "💼 Career", "Switch job"], ["status", "🗂️ My papers", "Papers, loans, house"], ["retire", "🌅 Retire", "End this life"]];
+    const apps = [["duties", (JOB_ICON[g.lifeId] || "🧑‍💼") + " Today's duties", (() => { const D = duties(g); return D ? D.done.length + " of " + D.ids.length + " done" : "None"; })()], ["goals", "🎯 Life goals", (LF.nextGoal(g) || { t: "All done!" }).t], ["fxnopen", "👗 FXN", "Rent outfits"], ["kin", "👨‍👩‍👧 Family", g.spouse ? g.spouse.name + ((g.kids || []).length ? " + " + g.kids.length : "") : "Single"], ["site:mangalya", "💍 MangalyaMatch", "Matrimony"], ["site:chaidate", "☕ ChaiDate", "Dating"], ["board", "📋 Odd jobs & teams", "Quick money, team tasks"], ...(isKL() ? [["metroapp", "🚇 Kochi Metro", metroTask(g) ? "Task: " + metroTask(g).T.t : "Rides and metro tasks"]] : []), ["garage", "🛵 Garage", g.vehicle ? (g.riding ? "Riding your " : "Your ") + CS.vehicleById(g.vehicle.id).name.toLowerCase() : "Buy a bicycle, scooter or car"], ["career", "💼 Career", "Switch job"], ["status", "🗂️ My papers", "Papers, loans, house"], ["retire", "🌅 Retire", "End this life"]];
     const party = P ? `<p>Your group: you${mates.length ? ", " + mates.map(m => esc(m.nick)).join(", ") : " (waiting for players to join)"}.</p><button class="btn small ghost" data-act="partyleave">Leave group</button>` : `<p class="hint">Tap a player in the city to invite them to your group (up to 6).</p>`;
     return sheetBox("Phone", `<div class="apps">${apps.map(a => `<button class="app" data-act="${a[0].indexOf("site:") === 0 ? "site" : a[0]}" ${a[0].indexOf("site:") === 0 ? `data-arg="${a[0].slice(5)}"` : ""}><b>${esc(a[1])}</b><span>${esc(a[2])}</span></button>`).join("")}</div><h3 class="sec">Group</h3>${party}`);
   }
@@ -777,6 +836,8 @@
     if (k === "garage") return garageSheet();
     if (k === "rooms") return roomsSheet();
     if (k === "metro") return metroSheet();
+    if (k === "duty") return dutySheet();
+    if (k === "duties") { const D = duties(game); return sheetBox("Today's duties", D ? `<div class="list">${D.ids.map(i => { const d = DUT[game.lifeId][i], ok = D.done.indexOf(i) >= 0; return item((ok ? "✅ " : "⬜ ") + esc(d.t), ok ? "Done" : inr(dutyPay(game, d)), ""); }).join("")}</div><p class="hint">Do all three for a bonus. Do them every day for a streak bonus (up to +50%).</p>` : `<p>No duties in this city.</p>`); }
     if (k === "group") return groupSheet();
     if (k === "player") return playerSheet();
     if (k === "invite") return inviteSheet();
@@ -1095,6 +1156,7 @@
     $app.innerHTML = V();
     if (ui.view === "creator") { bindCreator(); const pv = document.getElementById("pv3d"); if (pv && WORLD.available()) WORLD.preview(pv, ui.draft, null, ui.pvFocus); }
     if (ui.view === "play") mountWorld();
+    if (ui.sheet === "duty") bindDuty(); else clearInterval(dutyTimer);
     const fl = document.getElementById("f-lang"), fs = document.getElementById("f-subs");
     if (fl) fl.addEventListener("change", e => { prefs.lang = e.target.value; save(); });
     if (fs) fs.addEventListener("change", e => { prefs.subs = e.target.checked; save(); });
@@ -1237,6 +1299,27 @@
       case "closesheet": ui.sheet = null; ui.msg = null; ui.venture = false; ui.dateText = null; ui.atShop = false; ui.vcolor = null; render(); refreshGuide(); break;
       case "phone": openSheet("phone"); break;
       case "garage": openSheet("garage", { atShop: false }); break;
+      case "duties": openSheet("duties"); break;
+      case "dretry": { const S = ui.dutyS; S.fail = false; S.count = 0; S.t0 = 0; S.step = 0; S.round = 0; render(); break; }
+      case "dtap": {
+        const g = game, S = ui.dutyS, d = DUT[g.lifeId][S.i]; if (!S || S.done || S.fail) break;
+        if (!S.t0) S.t0 = performance.now(); S.count++;
+        const c = document.getElementById("d-count"); if (c) c.textContent = S.count + " / " + d.n;
+        const t = document.getElementById("d-tap"); if (t) { t.classList.remove("hit"); void t.offsetWidth; t.classList.add("hit"); }
+        if (S.count >= d.n) { clearInterval(dutyTimer); S.done = true; S.paid = finishDuty(g, { i: S.i, d }, 0); SND.sfx("goal"); render(); }
+        break;
+      }
+      case "dseq": {
+        const g = game, S = ui.dutyS, d = DUT[g.lifeId][S.i]; if (+arg === S.step) { S.step++; if (S.step >= d.steps.length) { S.done = true; S.paid = finishDuty(g, { i: S.i, d }, S.miss); SND.sfx("goal"); } }
+        else { S.miss++; SND.sfx("error"); b.classList.add("shake"); setTimeout(() => b.classList.remove("shake"), 400); break; }
+        render(); break;
+      }
+      case "dpick": {
+        const g = game, S = ui.dutyS, d = DUT[g.lifeId][S.i], r = d.rounds[S.round];
+        if (+arg === r.a) { S.round++; if (S.round >= d.rounds.length) { S.done = true; S.paid = finishDuty(g, { i: S.i, d }, S.miss); SND.sfx("goal"); } }
+        else { S.miss++; SND.sfx("error"); b.classList.add("shake", "wrong"); setTimeout(() => b.classList.remove("shake"), 400); break; }
+        render(); break;
+      }
       case "metroapp": openSheet("metro", { station: null }); break;
       case "metrocard": { const g = game, c = CS.money(g, MET().card); if (g.cash < c) break; g.cash -= c; mstate(g).card = true; save(); updateHud(); render(); break; }
       case "mtask": { const M = mstate(game); if (M.task) break; M.task = arg; M.step = 0; save(); ui.sheet = null; render(); refreshGuide(); WORLD.note("🚇 " + MET().tasks.find(t => t.id === arg).t + ": " + MET().tasks.find(t => t.id === arg).steps[0].txt); break; }

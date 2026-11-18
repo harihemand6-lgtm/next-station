@@ -490,3 +490,24 @@ body:has(.play2) { overflow: hidden; }
 .cpane .f { margin-top: 12px; }
 .cpane .chips { flex-wrap: wrap; }
 .cpane .sws { flex-wrap: wrap; }
+
+/* ── v7: daily duties mini-games ── */
+.sheet.duty h2 { font-size: 1.15rem; }
+.duty-big { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; min-height: 120px; margin: 12px 0; border: 0; border-radius: 22px; background: linear-gradient(135deg, var(--accent), #e0802b); color: #1b1830; font-size: 1.5rem; font-weight: 900; box-shadow: 0 10px 24px rgba(244,165,43,.35); touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.duty-big small { font-size: .85rem; font-weight: 800; opacity: .8; }
+.duty-big.hit { animation: dhit .12s; }
+@keyframes dhit { 50% { transform: scale(.96); } }
+.duty-bar { height: 8px; border-radius: 99px; background: rgba(255,255,255,.12); overflow: hidden; }
+.duty-bar i { display: block; height: 100%; background: linear-gradient(90deg, #22b5a6, #f4a52b); transition: width .08s linear; }
+.duty-hold { position: relative; height: 22px; border-radius: 99px; background: rgba(255,255,255,.1); overflow: hidden; margin-top: 10px; }
+.duty-hold .zone { position: absolute; top: 0; bottom: 0; background: rgba(46,204,113,.45); }
+.duty-hold .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(255,255,255,.85); mix-blend-mode: overlay; }
+.duty-opts { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.duty-opts .btn { text-align: left; justify-content: flex-start; }
+.duty-opts .btn.wrong { background: rgba(226,87,76,.25); border-color: #e2574c; }
+.duty-done { margin: 6px 0; padding-left: 0; list-style: none; color: #6fe0b0; font-weight: 700; }
+.duty-q { font-weight: 800; font-size: 1.05rem; }
+.duty-ok { font-size: 1.1rem; font-weight: 800; color: #6fe0b0; }
+.duty-bad { font-weight: 800; color: #ffb4a8; }
+.shake { animation: shake .35s; }
+@keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }

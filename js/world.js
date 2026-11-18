@@ -1304,7 +1304,7 @@ window.AE_WORLD = (function () {
   // ═══ maps: an illustrated city map (roads with names, pins, your route) for the minimap and the full map ═══
   const BP = 20; // base map pixels per tile
   const METRO_KEYS = ["metroKL", "metroMG", "metroES"];
-  const PIN = { metroKL: ["🚇", "#16998c", 3], metroMG: ["🚇", "#16998c", 3], metroES: ["🚇", "#16998c", 3], m: ["💼", "#f4a52b", 3], house: ["🏠", "#8f6bff", 4], f: ["🌳", "#3f9b4a", 2], board: ["📋", "#16998c", 4], station: ["🚉", "#16998c", 3], hall: ["🏛️", "#8a3b3b", 3], fxn: ["👗", "#ff4f9a", 5], office: ["🏢", "#1f6b52", 3], bank: ["🏦", "#1f4e8c", 3], cafe: ["☕", "#8a5a3a", 2], mall: ["🛍️", "#6b4fa0", 2], hospital: ["🏥", "#d84343", 2], food: ["🍵", "#c98a2b", 2], ferryMD: ["⛴️", "#1f73b8", 2], ferryFK: ["⛴️", "#1f73b8", 2], garage: ["🛵", "#e0602b", 3], v: ["🏪", "#ef6a5f", 1], gig: ["📦", "#ff4f9a", 6], odd: ["🔧", "#e0a530", 6], grp: ["👥", "#16998c", 6] };
+  const PIN = { duty: ["⭐", "#f4a52b", 6], metroKL: ["🚇", "#16998c", 3], metroMG: ["🚇", "#16998c", 3], metroES: ["🚇", "#16998c", 3], m: ["💼", "#f4a52b", 3], house: ["🏠", "#8f6bff", 4], f: ["🌳", "#3f9b4a", 2], board: ["📋", "#16998c", 4], station: ["🚉", "#16998c", 3], hall: ["🏛️", "#8a3b3b", 3], fxn: ["👗", "#ff4f9a", 5], office: ["🏢", "#1f6b52", 3], bank: ["🏦", "#1f4e8c", 3], cafe: ["☕", "#8a5a3a", 2], mall: ["🛍️", "#6b4fa0", 2], hospital: ["🏥", "#d84343", 2], food: ["🍵", "#c98a2b", 2], ferryMD: ["⛴️", "#1f73b8", 2], ferryFK: ["⛴️", "#1f73b8", 2], garage: ["🛵", "#e0602b", 3], v: ["🏪", "#ef6a5f", 1], gig: ["📦", "#ff4f9a", 6], odd: ["🔧", "#e0a530", 6], grp: ["👥", "#16998c", 6] };
   let mv = { s: 12, cx: 0, cy: 0 }, route = null, routeT = 0;
   function mapImage() {
     const c = document.createElement("canvas"); c.width = COLS * BP; c.height = ROWS * BP;
@@ -1343,7 +1343,7 @@ window.AE_WORLD = (function () {
   }
   const pinList = () => {
     const out = [];
-    Object.keys(Object.assign({}, spots, extraSpots)).forEach(k => { const P2 = PIN[k]; if (!P2) return; const p = spotPos(k); if (!p) return; const s0 = spots[k] || extraSpots[k]; out.push({ k, x: p.x, z: p.z, icon: P2[0], c: P2[1], pr: P2[2], name: k === "gig" ? "Drop-off" : k === "odd" ? "Odd job" : k === "grp" ? "Team task" : k === "house" ? "Home" : k === "f" && isKochi ? "Subhash Park" : (s0 && s0.label) || "" }); });
+    Object.keys(Object.assign({}, spots, extraSpots)).forEach(k => { const P2 = PIN[k]; if (!P2) return; const p = spotPos(k); if (!p) return; const s0 = spots[k] || extraSpots[k]; out.push({ k, x: p.x, z: p.z, icon: P2[0], c: P2[1], pr: P2[2], name: k === "duty" ? "Duty" : k === "gig" ? "Drop-off" : k === "odd" ? "Odd job" : k === "grp" ? "Team task" : k === "house" ? "Home" : k === "f" && isKochi ? "Subhash Park" : (s0 && s0.label) || "" }); });
     return out.sort((a, b) => b.pr - a.pr);
   };
   function updateRoute(time) {
