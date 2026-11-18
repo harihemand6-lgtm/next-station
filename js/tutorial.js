@@ -3,8 +3,9 @@
 window.AE_TUTOR = (function () {
   "use strict";
   const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const VERSION = 13; // bump when adding a "What's new" entry
+  const VERSION = 14; // bump when adding a "What's new" entry
   const NEWS = [
+    { v: 14, i: "🤝", t: "Team tasks for 3, 4 and 5", d: "Snake-boat races, wedding sadyas, hackathons, fashion shows and more. Everyone plays a role." },
     { v: 13, i: "🌃", t: "FXN light shows", d: "LED skyscrapers, the new FXN Tower and a drone show over the backwaters every night from 7:30 pm." },
     { v: 12, i: "👥", t: "Squads", d: "Share a 6-letter code to play, chat and talk with friends anywhere in the game." },
     { v: 11, i: "🏡", t: "FXN Nagar homes", d: "Rent a flat, rent a house, or buy a plot by the lake and build your own." },
@@ -30,6 +31,8 @@ window.AE_TUTOR = (function () {
     duties: ["Today's duties", ["You get 3 work tasks each day.", "Walk to the ⭐ on the map, then do the quick mini-task.", "Finish all 3 for a bonus. Do it every day for a streak."]],
     duty: ["Doing a duty", ["Follow the instructions on screen: tap, pick or hold.", "Faster and neater work pays more.", "Missed it? Just try again."]],
     goals: ["Life goals", ["A checklist that walks you through the game.", "Each goal pays a reward when done.", "Not sure what to do? Do the next goal."]],
+    group: ["Team tasks", ["Gather your group at the marked spot (friends in your 👥 Squad count).", "Tap Start: everyone gets a role and a 10-second mini-game.", "The team's average sets everyone's pay. Empty roles go to hired helpers."]],
+    team: ["Your part", ["Do your role's mini-game: tap, pick, hold or tap on the beat.", "Your score is added to the team's.", "Wait a moment for your teammates to finish."]],
     board: ["Notice board", ["Odd jobs: quick tasks for fast cash. Walk to the glowing door.", "Team tasks pay more with more players. Invite others or use a squad.", "Empty team spots are filled by hired helpers."]],
     metro: ["Kochi Metro", ["Pick a station and ride. It's faster than walking.", "The Kochi1 card gives a discount on every ride and boat.", "Metro tasks are little city adventures that pay."]],
     water: ["Water Metro", ["Electric boats between jetties.", "Island line: High Court ⇄ Vypeen, Bolgatty, Fort Kochi. Canal line: Vyttila ⇄ Infopark.", "Pick where you're going and enjoy the ride."]],

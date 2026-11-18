@@ -1084,18 +1084,94 @@
         inner = g.odd ? `<p>You're on an odd job: <b>${esc(CITY.oddJobs.find(j => j.id === g.odd.id).t)}</b>. Walk to the glowing door.</p>` : `<p class="hint">Quick jobs around Kochi. ${left} left this ${unitOf(g)}.</p><div class="list">${offers.map(J => item(esc(J.t), inr(CS.oddPay(g, J)), `<button class="btn small primary" data-act="oddtake" data-arg="${J.id}" ${left > 0 ? "" : "disabled"}>Take it</button>`)).join("")}</div>`;
       }
     } else {
-      const list = CITY.groupTasks;
-      inner = `<p class="hint">Team tasks for groups of 2, 4 or 6. Invite players by tapping them in the city. Any empty spots are filled by hired helpers, who take their share of the reward. Tasks in other cities give you a reason to travel there together.</p>
+      const sz = ui.gsize || 0, list = CITY.groupTasks.filter(T => !sz || T.size === sz).sort((a, b) => (b.city === (g.loc || g.stateId)) - (a.city === (g.loc || g.stateId)) || a.size - b.size);
+      inner = `<p class="hint">Team tasks for 2 to 6 players. Everyone gets a role and a quick mini-game; the better the team plays, the more everyone earns. Bring friends with a 👥 Squad code. Empty roles go to hired helpers.</p>
+        <div class="chips">${[0, 2, 3, 4, 5, 6].map(n => `<button class="chip ${sz === n ? "on" : ""}" data-act="gsize" data-arg="${n}">${n ? n + " players" : "All"}</button>`).join("")}</div>
         ${g.group ? `<p class="note">Active: <b>${esc(groupTask(g.group.id).t)}</b> <button class="btn small ghost" data-act="groupdrop">Drop it</button></p>` : ""}
         <div class="list">${list.map(T => item(`${esc(T.t)} <span class="pill">Group of ${T.size}</span>`, `${esc(STATES[T.city].city)} · your share ${inr(CS.groupShare(g, T))}`, `<button class="btn small primary" data-act="grouptake" data-arg="${T.id}" ${g.group ? "disabled" : ""}>Take it</button>`)).join("")}</div>`;
     }
     return sheetBox("Notice Board", `<div class="chips"><button class="chip ${tab === "odd" ? "on" : ""}" data-act="btab" data-arg="odd">Odd jobs</button><button class="chip ${tab === "group" ? "on" : ""}" data-act="btab" data-arg="group">Group tasks</button></div>${inner}`);
   }
+  // ── Team tasks: everyone gets a role and a quick mini-game; the team average sets everyone's pay ──
+  const rolesOf = T => T.roles && T.roles.length >= T.size ? T.roles.slice(0, T.size) : Array.from({ length: T.size }, (_, i) => ({ n: "Helper " + (i + 1), i: "🤝", type: "tap", verb: "Work", taps: 20, secs: 7 }));
+  function teamHere(T) { const g = game, sp = WORLD.spotAt(g.group.key) || { x: 0, z: 0 }; return partyHere().filter(m => Math.hypot(m.x + 0.5 - sp.x, m.y + 0.5 - sp.z) < 6).slice(0, T.size - 1); }
   function groupSheet() {
-    const g = game, T = groupTask(g.group.id), sp = WORLD.spotAt(g.group.key) || { x: 0, z: 0 };
-    const here = partyHere().filter(m => Math.hypot(m.x + 0.5 - sp.x, m.y + 0.5 - sp.z) < 5).slice(0, T.size - 1);
-    const hired = T.size - 1 - here.length, share = CS.groupShare(g, T);
-    return sheetBox("Group task", `<p><b>${esc(T.t)}</b></p><p>Team of ${T.size}: you${here.length ? ", " + here.map(m => esc(m.nick)).join(", ") : ""}${hired ? ` + ${hired} hired helper${hired > 1 ? "s" : ""}` : ""}.</p><p class="hint">Everyone on the team earns ${inr(share)}. ${hired ? "Helpers take their own shares. Bring more friends next time for a bigger team bonus." : "All real players! +5 reputation team bonus."}</p><button class="btn primary" data-act="groupgo">Start the task</button>`);
+    const g = game, T = groupTask(g.group.id), R = rolesOf(T), here = teamHere(T), hired = T.size - 1 - here.length, share = CS.groupShare(g, T);
+    const rows = R.map((r, i) => `<div class="tm-role"><span>${r.i}</span><div><b>${esc(r.n)}</b><small>${i === 0 ? "You" : here[i - 1] ? esc(here[i - 1].nick) : "Hired helper"}</small></div></div>`).join("");
+    return sheetBox("Team task · " + T.size + " people", `<p><b>${esc(T.t)}</b></p><div class="tm-roles">${rows}</div>
+      <p class="hint">Base pay ${inr(share)} each, up to ${inr(Math.round(share * 1.2 * (1 + 0.2 * here.length)))} if the team plays well. ${hired ? hired + " role" + (hired > 1 ? "s go" : " goes") + " to hired helpers. Bring friends (👥 Squad) for +20% each." : "All real players: +5 reputation bonus!"}</p>
+      <button class="btn primary big" data-act="teamgo">Start: everyone plays their part</button>`, "team");
+  }
+  // one role's mini-game, inside the "team" sheet
+  function teamSheet() {
+    const g = game, S = ui.team; if (!S) return "";
+    const T = groupTask(S.task), R = rolesOf(T)[S.role] || rolesOf(T)[0], P = S.p;
+    const head = `<div class="tm-head"><span>${R.i}</span><div><b>${esc(R.n)}</b><small>${esc(T.t)}</small></div></div>`;
+    if (S.stage === "wait") return sheetBox("Team task", head + `<p class="duty-ok">Nice work! Your part: ${Math.round(S.myScore * 100)}%</p><p class="hint">${S.leader ? "Waiting for your team to finish their parts…" : "Waiting for the team leader to wrap up…"}</p><div class="tm-wait"><i></i></div>`, "team");
+    if (S.stage === "done") return "";
+    let body = "";
+    if (R.type === "tap") body = `<p>Tap <b>${esc(R.verb)}</b> ${R.taps} times in ${R.secs} seconds.</p><div class="duty-bar"><i id="t-timer" style="width:100%"></i></div><button class="duty-big" data-act="ttap">${esc(R.verb)}<small id="t-count">${P.count} / ${R.taps}</small></button>`;
+    else if (R.type === "seq") body = `<p>Tap the steps in the right order.</p><ol class="duty-done">${R.steps.slice(0, P.step).map(x => `<li>✓ ${esc(x)}</li>`).join("")}</ol><div class="duty-opts">${P.order.filter(k => k >= P.step).map(k => `<button class="btn" data-act="tseq" data-arg="${k}">${esc(R.steps[k])}</button>`).join("")}</div>`;
+    else if (R.type === "hold") body = `<p>Hold <b>${esc(R.verb)}</b> and let go when the bar is in the green.${P.tries ? " One more try!" : ""}</p><div class="duty-hold"><i class="zone" style="left:62%;width:20%"></i><i class="fill" id="t-fill"></i></div><button class="duty-big" id="t-hold">${esc(R.verb)}</button>`;
+    else if (R.type === "pick") { const q = R.qs[P.i]; body = `<p class="hint">Question ${P.i + 1} of ${R.qs.length}</p><p class="duty-q">${esc(q[0])}</p><div class="duty-opts">${P.order.map(k => `<button class="btn" data-act="tpick" data-arg="${k}">${esc(q[1][k])}</button>`).join("")}</div>`; }
+    else if (R.type === "beat") body = `<p>Tap <b>${esc(R.verb)}</b> each time the ring fills the circle. ${P.n} / 8 beats · ${P.hits} on time</p><div class="tm-beat"><i id="t-ring"></i><b></b></div><button class="duty-big" id="t-beat">${esc(R.verb)}</button>`;
+    return sheetBox("Your part", head + body, "team duty");
+  }
+  let teamTimer = 0, teamRaf = 0;
+  function teamStartRole(S) {
+    const R = rolesOf(groupTask(S.task))[S.role] || { type: "tap", taps: 20, secs: 7 };
+    S.p = R.type === "seq" ? { order: R.steps.map((_, i) => i).sort(() => Math.random() - 0.5), step: 0, miss: 0 } : R.type === "pick" ? { i: 0, right: 0, order: [0, 1, 2].sort(() => Math.random() - 0.5) } : R.type === "beat" ? { n: 0, hits: 0, t0: 0 } : { count: 0, t0: 0, tries: 0 };
+    S.stage = "play";
+  }
+  function teamRoleDone(score) {
+    const S = ui.team; if (!S || S.stage !== "play") return;
+    S.myScore = Math.max(0, Math.min(1, score)); S.stage = "wait"; SND.sfx(score > 0.7 ? "goal" : "notify");
+    clearInterval(teamTimer); cancelAnimationFrame(teamRaf);
+    if (S.leader) { S.scores[NET.myId ? NET.myId() : "me"] = S.myScore; teamMaybeFinish(); }
+    else if (NET.team) NET.team([S.leaderId], { k: "score", sid: S.sid, task: S.task, score: Math.round(S.myScore * 100) });
+    render();
+  }
+  function teamMaybeFinish(force) {
+    const S = ui.team; if (!S || !S.leader || S.stage === "done") return;
+    const got = Object.keys(S.scores).length, need = S.members.length + 1;
+    if (!force && got < need && Date.now() < S.deadline) return;
+    const T = groupTask(S.task), vals = [];
+    vals.push(S.scores[NET.myId ? NET.myId() : "me"] != null ? S.scores[NET.myId ? NET.myId() : "me"] : 0.3);
+    S.members.forEach(id => vals.push(S.scores[id] != null ? S.scores[id] : 0.3));
+    for (let i = vals.length; i < T.size; i++) vals.push(0.7);
+    const team = vals.reduce((a, b) => a + b, 0) / vals.length;
+    if (S.members.length && NET.team) NET.team(S.members, { k: "done", sid: S.sid, task: S.task, score: Math.round(team * 100), real: S.members.length + 1 });
+    teamApply(S.task, S.members.length, team);
+  }
+  function teamApply(taskId, realOthers, team) {
+    const g = game, T = groupTask(taskId); if (!T || !g || g.done) return;
+    clearInterval(teamTimer); cancelAnimationFrame(teamRaf);
+    const r = CS.finishGroup(g, T, realOthers, 0.6 + 0.6 * team);
+    if (realOthers >= T.size - 1) g.r = Math.min(100, g.r + 5);
+    WORLD.setExtraSpot("grp", null); g.min = Math.min(g.min + 120, 23 * 60 + 50); g.energy = Math.max(0, g.energy - 10);
+    const grade = team >= 0.85 ? "🏆 Brilliant teamwork" : team >= 0.6 ? "👍 Solid teamwork" : "😅 Messy, but done";
+    ui.team = null; ui.sheet = null; ui.outcome = { text: grade + " (" + Math.round(team * 100) + "%). " + r.text, d: { cash: r.share, r: T.r } };
+    save(); render(); setTimeout(() => WORLD.react("group"), 1500);
+  }
+  function bindTeam() {
+    clearInterval(teamTimer); cancelAnimationFrame(teamRaf);
+    const S = ui.team; if (!S) return;
+    if (S.stage === "wait") { if (S.leader) teamTimer = setInterval(() => teamMaybeFinish(), 1000); return; }
+    const R = rolesOf(groupTask(S.task))[S.role]; if (!R) return; const P = S.p;
+    if (R.type === "tap") teamTimer = setInterval(() => { if (!P.t0) return; const left = 1 - (performance.now() - P.t0) / (R.secs * 1000), el = document.getElementById("t-timer"); if (el) el.style.width = Math.max(0, left * 100) + "%"; if (left <= 0) teamRoleDone(P.count / R.taps); }, 80);
+    if (R.type === "hold") {
+      const b = document.getElementById("t-hold"), fill = document.getElementById("t-fill"); let t0 = 0, v = 0;
+      const loop = () => { v = (performance.now() - t0) / 1600; fill.style.width = Math.min(100, v * 100) + "%"; if (v >= 1) return stop(true); teamRaf = requestAnimationFrame(loop); };
+      const stop = over => { if (!t0) return; cancelAnimationFrame(teamRaf); t0 = 0; const ok = !over && v >= 0.62 && v <= 0.82; if (ok) teamRoleDone(P.tries ? 0.75 : 1); else if (P.tries) teamRoleDone(0.35); else { P.tries = 1; SND.sfx("error"); render(); } };
+      b.addEventListener("pointerdown", e => { e.preventDefault(); t0 = performance.now(); v = 0; SND.sfx("click"); loop(); });
+      ["pointerup", "pointerleave", "pointercancel"].forEach(ev => b.addEventListener(ev, () => stop(false)));
+    }
+    if (R.type === "beat") {
+      const ring = document.getElementById("t-ring"), btn = document.getElementById("t-beat"), BEAT = 760; P.t0 = P.t0 || performance.now() + 600; let lastIdx = -1;
+      const loop = () => { const t = performance.now() - P.t0, ph = ((t % BEAT) + BEAT) % BEAT / BEAT; if (ring) ring.style.transform = `scale(${0.25 + ph * 0.75})`; const idx = Math.floor(t / BEAT); if (t > 0 && idx !== lastIdx) { lastIdx = idx; if (idx >= 8) return teamRoleDone(P.hits / 8); P.n = Math.min(8, idx); } teamRaf = requestAnimationFrame(loop); };
+      btn.addEventListener("pointerdown", e => { e.preventDefault(); const t = performance.now() - P.t0, ph = ((t % BEAT) + BEAT) % BEAT; const near = ph > BEAT - 170 || ph < 120; if (near && P.lastHit !== Math.round(t / BEAT)) { P.hits++; P.lastHit = Math.round(t / BEAT); SND.sfx("click"); btn.classList.add("ok"); setTimeout(() => btn.classList.remove("ok"), 150); } else { btn.classList.add("bad"); setTimeout(() => btn.classList.remove("bad"), 150); } });
+      loop();
+    }
   }
   function playerSheet() {
     const t = ui.target, p = (NET.peers ? NET.peers() : {})[t.id] || {}, g = game;
@@ -1139,6 +1215,7 @@
     if (k === "duty") return dutySheet();
     if (k === "duties") { const D = duties(game); return sheetBox("Today's duties", D ? `<div class="list">${D.ids.map(i => { const d = DUT[game.lifeId][i], ok = D.done.indexOf(i) >= 0; return item((ok ? "✅ " : "⬜ ") + esc(d.t), ok ? "Done" : inr(dutyPay(game, d)), ""); }).join("")}</div><p class="hint">Do all three for a bonus. Do them every day for a streak bonus (up to +50%).</p>` : `<p>No duties in this city.</p>`); }
     if (k === "group") return groupSheet();
+    if (k === "team") return teamSheet();
     if (k === "player") return playerSheet();
     if (k === "invite") return inviteSheet();
     if (k === "shift") return shiftSheet();
@@ -1306,6 +1383,14 @@
           else if (m.k === "acc" && ui.party && m.pid === ui.party.pid) WORLD.note(nick + " joined your group!");
           else if (m.k === "dec" || m.k === "busy") WORLD.note(nick + (m.k === "busy" ? " is already in a group." : " said no thanks."));
         },
+        onTeam: (id, m) => {
+          const p = NET.peers()[id]; if (!game || game.done) return;
+          if (m.k === "start" && p && ui.party && p.pt === ui.party.pid && groupTask(m.task) && m.roles[NET.myId()] != null && !ui.team) {
+            ui.team = { sid: m.sid, task: m.task, leader: false, leaderId: id, role: m.roles[NET.myId()], members: [], scores: {} }; teamStartRole(ui.team);
+            ui.sheet = "team"; ui.fxn = false; ui.talk = null; render(); WORLD.note("👥 " + p.nick + " started a team task. Play your part!");
+          } else if (m.k === "score" && ui.team && ui.team.leader && ui.team.sid === m.sid) { ui.team.scores[id] = m.score / 100; teamMaybeFinish(); }
+          else if (m.k === "done" && ui.team && !ui.team.leader && ui.team.sid === m.sid) teamApply(m.task, Math.max(0, m.real - 1), m.score / 100);
+        },
         onGroupDone: (id, taskId, real) => { const T = groupTask(taskId); if (!T || !game || game.done) return; const r = CS.finishGroup(game, T, Math.max(0, real - 1)); if (real >= T.size) game.r = Math.min(100, game.r + 5); save(); WORLD.note("Team task done with your group! +" + inr(r.share)); render(); },
         onMove: (id, x, y) => WORLD.moveRemote(id, x, y),
         onSay: (id, t, typed) => WORLD.sayRemote(id, t, typed),
@@ -1462,6 +1547,7 @@
     if (ui.view === "creator") { bindCreator(); const pv = document.getElementById("pv3d"); if (pv && WORLD.available()) WORLD.preview(pv, ui.draft, null, ui.pvFocus); }
     if (ui.view === "play") mountWorld();
     if (ui.sheet === "duty") bindDuty(); else clearInterval(dutyTimer);
+    if (ui.sheet === "team") bindTeam(); else if (!ui.team) { clearInterval(teamTimer); cancelAnimationFrame(teamRaf); }
     const fl = document.getElementById("f-lang"), fs = document.getElementById("f-subs");
     if (fl) fl.addEventListener("change", e => { prefs.lang = e.target.value; save(); });
     if (fs) fs.addEventListener("change", e => { prefs.subs = e.target.checked; save(); });
@@ -1610,7 +1696,8 @@
       case "next": { const o = ui.outcome; ui.outcome = null; ui.eventOpen = false; if (o && o.summary) { ui.payday = game.summary; SND.sfx("payday"); save(); render(); } else { render(); } break; }
       case "aftersummary": game._showSummary = false; save(); go("play"); break;
       case "talk": if (game.shift) break; ui.talk = true; ui.talkRole = null; ui.talkAnswer = null; render(); break;
-      case "closesheet": ui.sheet = null; ui.msg = null; ui.venture = false; ui.dateText = null; ui.atShop = false; ui.vcolor = null; render(); refreshGuide(); break;
+      case "closesheet": if (ui.sheet === "team" && ui.team) { if (ui.team.stage === "play") { teamRoleDone(0.2); break; } if (ui.team.leader) { teamMaybeFinish(true); break; } }
+        ui.sheet = null; ui.msg = null; ui.venture = false; ui.dateText = null; ui.atShop = false; ui.vcolor = null; render(); refreshGuide(); break;
       case "phone": openSheet("phone"); break;
       case "garage": openSheet("garage", { atShop: false }); break;
       case "duties": openSheet("duties"); break;
@@ -1758,16 +1845,19 @@
       case "wed": { const r = CS.wed(game, arg); if (r) { SND.sfx("wedding"); setTimeout(() => WORLD.react("wed"), 1500); LF.checkGoals(game); ui.sheet = null; game.log.push({ c: game.chapter, id: "wedding", t: "Your wedding", l: "Married " + game.spouse.name, r: r.text, d: r.d, alt: [] }); ui.outcome = { text: r.text, d: r.d }; save(); netKey = null; render(); } break; }
       case "btab": ui.btab = arg; render(); break;
       case "oddtake": { const g = game; if (g.odd || (g.oddThis || 0) >= 3) break; g.odd = { id: arg, target: WORLD.randomDoor(AE.rnd(g)) }; WORLD.setExtraSpot("odd", g.odd.target); ui.sheet = null; save(); render(); break; }
+      case "gsize": ui.gsize = +arg; render(); break;
       case "grouptake": { const g = game, T = groupTask(arg); if (g.group) break; const key = T.where === "door" ? "grp" : T.where; g.group = { id: arg, key, target: key === "grp" ? WORLD.randomDoor(AE.rnd(g)) : null }; ui.sheet = null; save(); render(); if (key === "grp" && T.city === (g.loc || g.stateId)) WORLD.setExtraSpot("grp", g.group.target); break; }
       case "groupdrop": game.group = null; WORLD.setExtraSpot("grp", null); save(); render(); break;
-      case "groupgo": {
-        const g = game, T = groupTask(g.group.id), sp = WORLD.spotAt(g.group.key) || { x: 0, z: 0 };
-        const here = partyHere().filter(m => Math.hypot(m.x + 0.5 - sp.x, m.y + 0.5 - sp.z) < 5).slice(0, T.size - 1);
-        const r = CS.finishGroup(g, T, here.length);
-        if (here.length) NET.groupDone(here.map(m => m.id), T.id, here.length + 1);
-        if (!r.hired) g.r = Math.min(100, g.r + 5);
-        WORLD.setExtraSpot("grp", null); ui.sheet = null; ui.outcome = { text: r.text, d: { cash: r.share, r: T.r } }; g.min = Math.min(g.min + 120, 23 * 60 + 50); g.energy = Math.max(0, g.energy - 10); save(); render(); setTimeout(() => WORLD.react("group"), 1500); break;
+      case "groupgo": case "teamgo": {
+        const g = game, T = groupTask(g.group.id), here = teamHere(T), sid = Math.random().toString(36).slice(2, 10), roles = {};
+        here.forEach((m, i) => { roles[m.id] = i + 1; });
+        if (here.length && NET.team) NET.team(here.map(m => m.id), { k: "start", sid, task: T.id, roles });
+        ui.team = { sid, task: T.id, leader: true, role: 0, members: here.map(m => m.id), scores: {}, deadline: Date.now() + 40000 };
+        teamStartRole(ui.team); ui.sheet = "team"; render(); break;
       }
+      case "ttap": { const S = ui.team, R = S && rolesOf(groupTask(S.task))[S.role]; if (!S || S.stage !== "play") break; const P = S.p; if (!P.t0) P.t0 = performance.now(); P.count++; const c = document.getElementById("t-count"); if (c) c.textContent = P.count + " / " + R.taps; if (P.count >= R.taps) teamRoleDone(1); break; }
+      case "tseq": { const S = ui.team, R = S && rolesOf(groupTask(S.task))[S.role]; if (!S || S.stage !== "play") break; const P = S.p; if (+arg === P.step) { P.step++; if (P.step >= R.steps.length) { teamRoleDone(Math.max(0.3, 1 - P.miss * 0.2)); break; } } else { P.miss++; SND.sfx("error"); } render(); break; }
+      case "tpick": { const S = ui.team, R = S && rolesOf(groupTask(S.task))[S.role]; if (!S || S.stage !== "play") break; const P = S.p; if (+arg === 0) { P.right++; SND.sfx("coin"); } else SND.sfx("error"); P.i++; P.order = [0, 1, 2].sort(() => Math.random() - 0.5); if (P.i >= R.qs.length) { teamRoleDone(P.right / R.qs.length); break; } render(); break; }
       case "gift": case "tip": { const g = game, amt = +arg, t = ui.target; if (!t || g.cash < amt) break; if (NET.gift(t.id, amt, act === "tip" ? "tip" : "")) { g.cash -= amt; g.gifts = (g.gifts || 0) + 1; WORLD.react("giftSent"); ui.msg = "Sent " + inr(amt) + " to " + t.nick + "."; save(); render(); } break; }
       case "invite": { if (!ui.party) { ui.party = { pid: Math.random().toString(36).slice(2, 10) }; NET.setState({ pt: ui.party.pid }); } NET.party(ui.target.id, "inv", ui.party.pid); ui.msg = "Invite sent to " + ui.target.nick + "."; render(); break; }
       case "inviteyes": { const v = ui.invite; ui.party = { pid: v.pid }; NET.setState({ pt: v.pid }); NET.party(v.id, "acc", v.pid); ui.sheet = null; render(); WORLD.note("You joined " + v.nick + "'s group."); break; }

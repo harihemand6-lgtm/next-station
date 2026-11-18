@@ -153,6 +153,11 @@ window.AE_NET = (function () {
         const id = from(payload); if (!id || (payload.to && payload.to !== myId)) return;
         handlers.onParty && handlers.onParty(id, { k: String(payload.k || ""), pid: String(payload.pid || "").slice(0, 16), task: String(payload.task || "").slice(0, 24) });
       })
+      .on("broadcast", { event: "team" }, ({ payload: p }) => {
+        const id = from(p); if (!id || !p || !Array.isArray(p.members) || p.members.indexOf(myId) < 0) return;
+        const roles = {}; if (p.roles && typeof p.roles === "object") Object.keys(p.roles).slice(0, 6).forEach(k => { roles[String(k).slice(0, 12)] = int(p.roles[k], 0, 5); });
+        handlers.onTeam && handlers.onTeam(id, { k: String(p.k || "").slice(0, 6), sid: String(p.sid || "").slice(0, 12), task: String(p.task || "").slice(0, 24), roles, score: int(p.score, 0, 100), real: int(p.real, 0, 6), names: Array.isArray(p.names) ? p.names.slice(0, 6).map(n => int(n, 0, 5)) : [] });
+      })
       .on("broadcast", { event: "gdone" }, ({ payload }) => {
         const id = from(payload); if (!id || !Array.isArray(payload.members) || payload.members.indexOf(myId) < 0) return;
         handlers.onGroupDone && handlers.onGroupDone(id, String(payload.task || "").slice(0, 24), int(payload.real, 0, 6));
@@ -171,6 +176,7 @@ window.AE_NET = (function () {
   }
   function gift(to, amt, why) { if (!ch) return false; ch.send({ type: "broadcast", event: "gift", payload: { id: myId, to, amt: Math.round(amt), why: why || "" } }); return true; }
   function party(to, k, pid, task) { if (!ch) return false; ch.send({ type: "broadcast", event: "party", payload: { id: myId, to: to || "", k, pid: pid || "", task: task || "" } }); return true; }
+  function team(members, data) { if (!ch) return; ch.send({ type: "broadcast", event: "team", payload: Object.assign({ id: myId, members }, data) }); }
   function groupDone(members, task, real) { if (!ch) return; ch.send({ type: "broadcast", event: "gdone", payload: { id: myId, members, task, real } }); }
   function setState(patch) { if (!my) return; Object.assign(my, patch); if (ch) { try { ch.track(my); } catch (e) { } } }
   function peerPos(id) { const p = peers[id]; return p ? { x: p.x, y: p.y } : null; }
@@ -328,5 +334,5 @@ window.AE_NET = (function () {
   const squad = () => sq ? { code: sq.code, members: sqMembers(), myId } : null;
   const savedSquad = () => { try { const c = localStorage.getItem("ns.squad"); return c && okCode(c) ? c : null; } catch (e) { return null; } };
 
-  return { squadJoin, squadCreate, squadLeave, squadSay, squadSignal, squadTalk, squadVoice, squadMute, squadReport, squad, savedSquad, phrases: () => PHRASES.slice(), db, cleanNick: n => nickOf(n), myNick, rooms, room: () => ({ city, n: roomN, cap: CAP }), switchRoom, configured, setOutfit, gift, party, groupDone, setState, peerPos, lobby, takenLives, peers: () => peers, myId: () => myId, submitScore, topScores, enabled, join, move, say, sendText, check, mute, report, leave: () => leave(false), PHRASES, EMOTES, nick: () => nickOf(myNick()), heardFrom: id => heard[id] || [] };
+  return { team, squadJoin, squadCreate, squadLeave, squadSay, squadSignal, squadTalk, squadVoice, squadMute, squadReport, squad, savedSquad, phrases: () => PHRASES.slice(), db, cleanNick: n => nickOf(n), myNick, rooms, room: () => ({ city, n: roomN, cap: CAP }), switchRoom, configured, setOutfit, gift, party, groupDone, setState, peerPos, lobby, takenLives, peers: () => peers, myId: () => myId, submitScore, topScores, enabled, join, move, say, sendText, check, mute, report, leave: () => leave(false), PHRASES, EMOTES, nick: () => nickOf(myNick()), heardFrom: id => heard[id] || [] };
 })();

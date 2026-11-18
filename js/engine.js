@@ -451,8 +451,8 @@ window.AE = (function () {
   }
   // team tasks pay well: 2.5x the listed reward split across the team, plus 20% for every real player with you
   function groupShare(g, T) { return money(g, Math.round(T.reward * 2.5 / T.size)); }
-  function finishGroup(g, T, realOthers) {
-    const hired = Math.max(0, T.size - 1 - realOthers), share = Math.round(groupShare(g, T) * (1 + 0.2 * Math.max(0, realOthers)));
+  function finishGroup(g, T, realOthers, mult) {
+    const hired = Math.max(0, T.size - 1 - realOthers), share = Math.round(groupShare(g, T) * (1 + 0.2 * Math.max(0, realOthers)) * (mult || 1));
     g.cash += share; g.r = clamp(g.r + (T.r || 0), 0, 100); if (T.h) g.h = clamp(g.h + T.h, 0, 100);
     g.groupsDone = (g.groupsDone || 0) + 1; g.group = null;
     return { share, hired, text: T.t + ": done! You earned " + inr(share) + (hired ? ". " + hired + " hired helper" + (hired > 1 ? "s" : "") + " took their share." : ". The whole team was real players!") };

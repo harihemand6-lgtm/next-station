@@ -186,18 +186,71 @@ window.AE_CITY = {
   ],
 
   // ── Group tasks (2, 4 or 6 players). Missing players are filled by hired helpers who take their share. ──
+  // Team tasks. Each player (or hired helper) takes a role and plays a quick mini-game; the team's average decides the pay.
+  // role types: tap (tap n times in secs), seq (steps in order), hold (release in the green), pick (2 quick questions), beat (tap on the beat)
   groupTasks: [
-    { id: "fridge", size: 2, t: "Carry a fridge up three floors for a family moving in", city: "KL", where: "door", reward: 2000, r: 3 },
-    { id: "tyre", size: 2, t: "Change a bus tyre at the station before the evening rush", city: "KL", where: "station", reward: 1600, r: 2 },
-    { id: "pandal", size: 4, t: "Set up a wedding pandal at the Town Hall", city: "KL", where: "hall", reward: 6000, r: 4 },
-    { id: "wall", size: 4, t: "Paint a mural on a government school wall", city: "KL", where: "office", reward: 5000, r: 6 },
+    { id: "fridge", size: 2, t: "Carry a fridge up three floors for a family moving in", city: "KL", where: "door", reward: 2000, r: 3,
+      roles: [{ n: "Lift the bottom", i: "💪", type: "hold", verb: "Lift" }, { n: "Guide the top", i: "🧭", type: "seq", steps: ["Tilt it", "Turn at the landing", "Mind the railing", "Set it down"] }] },
+    { id: "tyre", size: 2, t: "Change a bus tyre at the station before the evening rush", city: "KL", where: "station", reward: 1600, r: 2,
+      roles: [{ n: "Jack and wheel", i: "🔧", type: "tap", verb: "Loosen", taps: 18, secs: 6 }, { n: "Fit the new tyre", i: "🛞", type: "seq", steps: ["Line up the bolts", "Hand-tighten", "Lower the jack", "Torque it"] }] },
+    // ── groups of 3 ──
+    { id: "pookalam", size: 3, t: "Win the Onam pookalam contest at the Town Hall", city: "KL", where: "hall", reward: 4500, r: 4, h: 4,
+      roles: [{ n: "Petal sorter", i: "🌼", type: "pick", qs: [["Yellow ring next. Which flower?", ["Marigold (chendumalli)", "Rose", "Tulsi"]], ["Deep purple for the border?", ["Kakkappoovu / vadamalli", "Jasmine", "Hibiscus leaves"]]] },
+        { n: "Designer", i: "✏️", type: "seq", steps: ["Mark the centre", "Draw the rings", "Add the petals pattern", "Outline in white"] },
+        { n: "Arranger", i: "🖐️", type: "tap", verb: "Place petals", taps: 24, secs: 7 }] },
+    { id: "jetty", size: 3, t: "Free a stuck Water Metro boat at the High Court jetty", city: "KL", where: "wmHC", reward: 4200, r: 5,
+      roles: [{ n: "Rope crew", i: "🪢", type: "hold", verb: "Pull" }, { n: "Engine check", i: "⚙️", type: "seq", steps: ["Switch off power", "Clear the propeller", "Check the battery", "Restart"] },
+        { n: "Lookout", i: "👀", type: "tap", verb: "Signal boats", taps: 16, secs: 6 }] },
+    { id: "foodtruck", size: 3, t: "Survive the lunch rush at Infopark Food Street", city: "KL", where: "ipfood", reward: 4000, r: 3,
+      roles: [{ n: "Cook", i: "🍳", type: "tap", verb: "Flip porottas", taps: 22, secs: 7 }, { n: "Cashier", i: "💳", type: "pick", qs: [["Two biriyanis at ₹160 each?", ["₹320", "₹300", "₹360"]], ["A techie pays ₹500 for ₹340. Change?", ["₹160", "₹140", "₹260"]]] },
+        { n: "Packer", i: "🥡", type: "seq", steps: ["Box the rice", "Add the curry", "Seal it", "Stick the order slip"] }] },
+    { id: "popup", size: 3, t: "Run an FXN pop-up store at Riverside Mall", city: "KL", where: "mall", reward: 5000, r: 4,
+      roles: [{ n: "Stylist", i: "👗", type: "pick", qs: [["Customer has a cousin's wedding tonight.", ["Wedding lehenga", "Cricket whites", "Office blazer"]], ["Annual day at Infopark?", ["Office formals (blazer)", "Kasavu mundu", "Party wear"]]] },
+        { n: "Steamer", i: "♨️", type: "hold", verb: "Steam" }, { n: "Cashier", i: "💳", type: "tap", verb: "Scan tags", taps: 20, secs: 6 }] },
+    // ── groups of 4 ──
+    { id: "pandal", size: 4, t: "Set up a wedding pandal at the Town Hall", city: "KL", where: "hall", reward: 6000, r: 4,
+      roles: [{ n: "Poles", i: "🪵", type: "hold", verb: "Raise the pole" }, { n: "Cloth", i: "🎪", type: "seq", steps: ["Unroll the cloth", "Tie the corners", "Pull it tight", "Pin the edges"] },
+        { n: "Lights", i: "💡", type: "tap", verb: "Hang bulbs", taps: 20, secs: 7 }, { n: "Flowers", i: "💐", type: "tap", verb: "Tie garlands", taps: 18, secs: 7 }] },
+    { id: "wall", size: 4, t: "Paint a mural on a government school wall", city: "KL", where: "office", reward: 5000, r: 6,
+      roles: [{ n: "Sketcher", i: "✏️", type: "seq", steps: ["Grid the wall", "Sketch the elephant", "Sketch the boats", "Add the kids"] }, { n: "Painter", i: "🖌️", type: "tap", verb: "Paint", taps: 24, secs: 7 },
+        { n: "Ladder", i: "🪜", type: "hold", verb: "Steady" }, { n: "Colours", i: "🎨", type: "pick", qs: [["Sky blue = white + ?", ["Blue", "Red", "Black"]], ["Green = yellow + ?", ["Blue", "Red", "White"]]] }] },
+    { id: "sadya", size: 4, t: "Serve a 500-guest wedding sadya", city: "KL", where: "hall", reward: 7000, r: 5, h: 4,
+      roles: [{ n: "Leaf layer", i: "🍃", type: "tap", verb: "Lay leaves", taps: 22, secs: 7 }, { n: "Rice server", i: "🍚", type: "tap", verb: "Serve rice", taps: 22, secs: 7 },
+        { n: "Curry order", i: "🥘", type: "seq", steps: ["Salt and banana chips", "Pickles and thoran", "Rice and parippu", "Sambar, then payasam"] }, { n: "Usher", i: "🙏", type: "pick", qs: [["Grandma arrives late. Seat her…", ["Near the front, near family", "At the very back", "Outside"]], ["Someone wants a third payasam?", ["Of course, serve it", "Say no", "Hide the pot"]]] }] },
+    { id: "sandbag", size: 4, t: "Sandbag the canal at Vyttila before the monsoon storm", city: "KL", where: "wmVT", reward: 6500, r: 8,
+      roles: [{ n: "Fill bags", i: "🪣", type: "tap", verb: "Shovel sand", taps: 24, secs: 7 }, { n: "Carry", i: "💪", type: "hold", verb: "Lift" },
+        { n: "Stack", i: "🧱", type: "seq", steps: ["Lay the base row", "Stagger the second row", "Fold the flaps", "Stamp it down"] }, { n: "Warden", i: "📢", type: "tap", verb: "Warn neighbours", taps: 14, secs: 6 }] },
+    { id: "hackathon", size: 4, t: "Win a 24-hour hackathon at Infopark", city: "KL", where: "infopark", reward: 8000, r: 6,
+      roles: [{ n: "Coder", i: "💻", type: "tap", verb: "Type code", taps: 26, secs: 7 }, { n: "Designer", i: "🎨", type: "pick", qs: [["Buttons for an elderly user?", ["Big and high contrast", "Tiny and grey", "Hidden in a menu"]], ["App is slow. First fix?", ["Load less on the first screen", "Add more animations", "Bigger logo"]]] },
+        { n: "Tester", i: "🧪", type: "seq", steps: ["Install the app", "Sign up", "Book a test order", "Report the bug"] }, { n: "Pitcher", i: "🎤", type: "hold", verb: "Deliver the pitch" }] },
+    { id: "fashionshow", size: 4, t: "Put on an FXN fashion show on Marine Drive", city: "KL", where: "board", reward: 8500, r: 6, h: 6,
+      roles: [{ n: "Model", i: "🚶", type: "beat", verb: "Step" }, { n: "Stylist", i: "👗", type: "pick", qs: [["Theme: Kerala bride. Pick the look", ["Kasavu saree set", "Cricket whites", "Party wear"]], ["Theme: monsoon office", ["Office formals (blazer)", "Wedding lehenga", "Swimsuit"]]] },
+        { n: "Lights", i: "💡", type: "seq", steps: ["Dim the house lights", "Spotlight on", "Colour wash", "Strobe for the finale"] }, { n: "DJ", i: "🎧", type: "beat", verb: "Drop" }] },
+    { id: "blrfest", size: 4, t: "Run a stall at a Bengaluru tech-fest", city: "KA", where: "board", reward: 8000, r: 4,
+      roles: [{ n: "Demo", i: "📱", type: "tap", verb: "Demo", taps: 20, secs: 7 }, { n: "Signups", i: "📝", type: "tap", verb: "Sign up", taps: 18, secs: 7 }, { n: "Setup", i: "🧰", type: "seq", steps: ["Table", "Banner", "Screens", "Swag"] }, { n: "Pitch", i: "🎤", type: "hold", verb: "Pitch" }] },
+    { id: "delwed", size: 4, t: "Help run the decorations at a big Delhi wedding", city: "DL", where: "hall", reward: 9000, r: 4,
+      roles: [{ n: "Marigolds", i: "🌼", type: "tap", verb: "Tie", taps: 22, secs: 7 }, { n: "Lights", i: "💡", type: "tap", verb: "Hang", taps: 18, secs: 7 }, { n: "Stage", i: "🎪", type: "seq", steps: ["Frame", "Drapes", "Flowers", "Sofa"] }, { n: "Band baaja", i: "🥁", type: "beat", verb: "Beat" }] },
+    // ── groups of 5 ──
+    { id: "snakeboat", size: 5, t: "Row the snake boat in the Vembanad race", city: "KL", where: "wmHC", reward: 11000, r: 8, h: 8,
+      roles: [{ n: "Captain", i: "📣", type: "beat", verb: "Call" }, { n: "Rower", i: "🚣", type: "beat", verb: "Row" }, { n: "Rower", i: "🚣", type: "beat", verb: "Row" }, { n: "Rower", i: "🚣", type: "beat", verb: "Row" }, { n: "Helmsman", i: "🛶", type: "hold", verb: "Steer" }] },
+    { id: "pooram", size: 5, t: "Run a temple-festival night at Broadway", city: "KL", where: "food", reward: 10000, r: 6, h: 8,
+      roles: [{ n: "Chenda drummer", i: "🥁", type: "beat", verb: "Drum" }, { n: "Ilathalam", i: "🔔", type: "beat", verb: "Clang" }, { n: "Umbrella change", i: "☂️", type: "seq", steps: ["Gold", "Red", "Green", "Rainbow finale"] },
+        { n: "Fireworks", i: "🎆", type: "hold", verb: "Light the fuse" }, { n: "Crowd care", i: "🧍", type: "pick", qs: [["A child is lost. First?", ["Take them to the help desk", "Leave them", "Shout at them"]], ["Rain starts!", ["Open the shelters", "Stop the drums forever", "Run away"]]] }] },
+    { id: "buildhouse", size: 5, t: "Build a house in one day in FXN Nagar", city: "KL", where: "broker", reward: 12000, r: 6,
+      roles: [{ n: "Mason", i: "🧱", type: "tap", verb: "Lay bricks", taps: 26, secs: 8 }, { n: "Carpenter", i: "🪚", type: "seq", steps: ["Measure", "Cut", "Fit the frame", "Hang the door"] }, { n: "Electrician", i: "⚡", type: "pick", qs: [["Which wire is earth?", ["Green", "Red", "Black"]], ["Before touching a wire…", ["Switch off the mains", "Lick your finger", "Hope"]]] },
+        { n: "Painter", i: "🖌️", type: "tap", verb: "Paint", taps: 22, secs: 7 }, { n: "Supervisor", i: "📋", type: "hold", verb: "Check the level" }] },
+    { id: "lakeclean", size: 5, t: "Clean up the backwaters near Subhash Park", city: "KL", where: "f", reward: 9500, r: 9,
+      roles: [{ n: "Picker", i: "🧤", type: "tap", verb: "Pick plastic", taps: 26, secs: 8 }, { n: "Picker", i: "🧤", type: "tap", verb: "Pick plastic", taps: 26, secs: 8 }, { n: "Sorter", i: "♻️", type: "pick", qs: [["Plastic bottle goes to…", ["Recycling", "The lake", "Burning"]], ["Coconut shells?", ["Compost", "Recycling glass", "The lake"]]] },
+        { n: "Boat", i: "🛶", type: "hold", verb: "Reach" }, { n: "Volunteer lead", i: "📣", type: "seq", steps: ["Brief the team", "Hand out gloves", "Split the shore", "Count the bags"] }] },
+    { id: "bomshoot5", size: 5, t: "Crew a music video shoot in Mumbai", city: "MH", where: "station", reward: 12000, r: 4, h: 6,
+      roles: [{ n: "Dancer", i: "💃", type: "beat", verb: "Step" }, { n: "Dancer", i: "🕺", type: "beat", verb: "Step" }, { n: "Camera", i: "🎥", type: "hold", verb: "Track" }, { n: "Lights", i: "💡", type: "seq", steps: ["Key light", "Fill light", "Back light", "Action!"] }, { n: "Clapper", i: "🎬", type: "tap", verb: "Clap", taps: 12, secs: 5 }] },
+    // ── groups of 6 ──
     { id: "beach", size: 6, t: "Clean up the shore after the festival weekend", city: "KL", where: "f", reward: 9000, r: 8 },
     { id: "boatrace", size: 6, t: "Practise rowing for the snake-boat race team", city: "KL", where: "board", reward: 10000, r: 8, h: 6 },
-    { id: "blrfest", size: 4, t: "Run a stall at a Bengaluru tech-fest", city: "KA", where: "board", reward: 8000, r: 4 },
     { id: "hydfood", size: 2, t: "Help a Hyderabad caterer serve biryani at a big Iftar", city: "TG", where: "hall", reward: 3000, r: 3 },
-    { id: "bomshoot", size: 6, t: "Work as extras for a film shoot in Mumbai", city: "MH", where: "station", reward: 12000, r: 3, h: 6 },
-    { id: "delwed", size: 4, t: "Help run the decorations at a big Delhi wedding", city: "DL", where: "hall", reward: 9000, r: 4 }
+    { id: "bomshoot", size: 6, t: "Work as extras for a film shoot in Mumbai", city: "MH", where: "station", reward: 12000, r: 3, h: 6 }
   ],
+
 
   // ── FXN rider shifts ──
   rider: { pay: 180, drops: 3, minAvg: 3, tipMax: 60 },
