@@ -97,6 +97,7 @@ window.AE_LIFE = (function () {
     { id: "rent", t: "Rent an outfit on FXN", hint: "Open the FXN app and rent something", ok: g => (g.rented || 0) >= 1, reward: 500 },
     { id: "paper", t: "Get your address proof", hint: "Apply at the Government Office", ok: g => (g.papers || []).indexOf("id") >= 0, reward: 500 },
     { id: "ride", t: "Buy your first vehicle", hint: "Walk to Vyttila Motors (south-east, 🛵 on the map)", ok: g => !!g.vehicle, reward: 500 },
+    { id: "metro", t: "Ride the Kochi Metro", hint: "Walk to a 🚇 station on MG Road", ok: g => !!(g.metro && g.metro.rides), reward: 200 },
     { id: "home", t: "Move out of your rented room", hint: "Upgrade your house from Home", ok: g => g.house && g.house.lvl >= 1, reward: 1000 },
     { id: "match", t: "Find someone special", hint: "Use MangalyaMatch or ChaiDate on your phone", ok: g => !!(g.romance || g.spouse), reward: 500 },
     { id: "wed", t: "Get married", hint: "Date, meet the families, then the wedding", ok: g => !!g.spouse, reward: 2000 },

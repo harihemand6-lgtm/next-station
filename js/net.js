@@ -35,11 +35,9 @@ window.AE_NET = (function () {
 
   const int = (v, a, b) => { v = Math.round(+v); return isFinite(v) ? Math.max(a, Math.min(b, v)) : a; };
   const nickOf = n => (Array.isArray(n) ? ADJ[int(n[0], 0, ADJ.length - 1)] + " " + NOUN[int(n[1], 0, NOUN.length - 1)] + " " + int(n[2], 10, 99) : "Traveller");
-  function packAv(c) { return [c.skin, c.height, c.weight, HAIR.indexOf(c.hair), c.hairColor, TOP.indexOf(c.top), c.outfit, ACC.indexOf(c.acc)]; }
-  function unpackAv(a) {
-    if (!Array.isArray(a)) a = [];
-    return { skin: int(a[0], 0, 7), height: int(a[1], 140, 200), weight: int(a[2], 40, 120), hair: HAIR[int(a[3], 0, 5)], hairColor: int(a[4], 0, 6), top: TOP[int(a[5], 0, 2)], outfit: int(a[6], 0, 7), acc: ACC[int(a[7], 0, 4)] };
-  }
+  // avatars travel as a short array of indices (js/people.js); old-format arrays are still understood
+  function packAv(c) { return window.AE_PEOPLE ? window.AE_PEOPLE.pack(c) : []; }
+  function unpackAv(a) { return window.AE_PEOPLE ? window.AE_PEOPLE.unpack(a) : {}; }
   function myNick() {
     try { const s = JSON.parse(localStorage.getItem("ns.nick")); if (Array.isArray(s)) return s; } catch (e) { }
     const n = [Math.floor(Math.random() * ADJ.length), Math.floor(Math.random() * NOUN.length), 10 + Math.floor(Math.random() * 90)];

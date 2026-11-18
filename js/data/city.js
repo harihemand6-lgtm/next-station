@@ -38,6 +38,18 @@ window.AE_CITY = {
     { id: "car", name: "Hatchback car", icon: "🚗", type: "car", price: 150000, fuel: 1800, blurb: "Rain-proof, family-proof. Parking is your problem now." },
     { id: "suv", name: "SUV", icon: "🚙", type: "suv", price: 350000, fuel: 3000, blurb: "Big car energy. Relatives will ask to borrow it." }
   ],
+  // ── Kochi Metro: fares by number of stops, the Kochi1 card (discount), and metro tasks ──
+  metro: {
+    fares: [0, 20, 30], card: 150, cardOff: 0.2,
+    tasks: [
+      { id: "first", t: "First metro ride", d: "Take Kochi Metro to any station.", steps: [{ ride: true, txt: "Ride the metro to any station" }], pay: 100, mood: 4 },
+      { id: "e2e", t: "End to end", d: "Ride the whole line between Kaloor and Ernakulam South.", steps: [{ ride: true, pair: ["metroKL", "metroES"], txt: "Ride from Kaloor to Ernakulam South (or back)" }], pay: 150 },
+      { id: "bag", t: "Ammachi's lost bag", d: "An ammachi left her bag on the train. Collect it at MG Road station and take it back to her at Kaloor.", steps: [{ visit: "metroMG", txt: "Collect the bag at MG Road station", note: "Got the bag! Ammachi is waiting at Kaloor station." }, { arrive: "metroKL", txt: "Take the metro to Kaloor and return the bag" }], pay: 200, rep: 4 },
+      { id: "tourist", t: "Show a tourist around", d: "A tourist is lost at MG Road station. Meet them and ride together to Ernakulam South.", steps: [{ visit: "metroMG", txt: "Meet the tourist at MG Road station", note: "Found the tourist! Ride with them to Ernakulam South." }, { arrive: "metroES", txt: "Ride the metro to Ernakulam South" }], pay: 180, mood: 3 },
+      { id: "fxn", t: "FXN metro express", d: "A bride needs her outfit fast. Pick it up at the FXN store and deliver it by metro to Kaloor.", steps: [{ visit: "fxn", txt: "Pick up the outfit at the FXN store", note: "Outfit packed! Take the metro to Kaloor." }, { arrive: "metroKL", txt: "Ride the metro to Kaloor and hand it over" }], pay: 250, rep: 3 },
+      { id: "night", t: "Night lights", d: "Ride the metro after 7 pm and see Kochi lit up.", steps: [{ ride: true, night: true, txt: "Ride the metro after 7 pm" }], pay: 0, mood: 12 }
+    ]
+  },
   vehicleColors: [["Red", 0], ["Blue", 1], ["White", 2], ["Black", 3], ["Yellow", 4], ["Green", 5], ["Purple", 6], ["Pink", 7]],
   houseLevels: [
     { name: "Rented room", cost: 0, upkeep: 0, h: 0, floors: 1 },

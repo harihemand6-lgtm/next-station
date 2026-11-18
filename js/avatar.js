@@ -1,7 +1,10 @@
 // Player avatar drawn as SVG. Appearance is cosmetic only: it never changes any game outcome.
 window.AE_AVATAR = (function () {
-  const SKIN = ["#f6d9c4", "#ecc09c", "#d9a37e", "#c58964", "#a96f4b", "#8a5638", "#6b3f28", "#4b2b1b"];
-  const HAIR = ["#16110e", "#3b2416", "#6b4127", "#a8723f", "#8f8f96", "#b8473f", "#3f5fc4"];
+  // Old indices keep their colours (saved games and other players depend on them); new tones are appended.
+  // SKIN_ORDER lists them light to dark for the colour picker.
+  const SKIN = ["#f6d9c4", "#ecc09c", "#d9a37e", "#c58964", "#a96f4b", "#8a5638", "#6b3f28", "#4b2b1b", "#fbe6d6", "#e3b48e", "#b97c55", "#7a4a2e"];
+  const SKIN_ORDER = [8, 0, 1, 9, 2, 3, 10, 4, 5, 11, 6, 7];
+  const HAIR = ["#16110e", "#3b2416", "#6b4127", "#a8723f", "#8f8f96", "#b8473f", "#3f5fc4", "#e9e5dc", "#c9a36b", "#7a1f3d", "#d65f9a"];
   const OUTFIT = ["#f4a52b", "#22b5a6", "#e2574c", "#7b8cff", "#f3efe6", "#2f9e5b", "#c64fa0", "#2b2a44"];
   const STYLES = { hair: ["short", "long", "bun", "curly", "buzz", "bald"], top: ["tee", "shirt", "kurta"], acc: ["none", "specs", "moustache", "beard", "cap"] };
 
@@ -13,6 +16,9 @@ window.AE_AVATAR = (function () {
 
   function svg(p, size) {
     p = Object.assign({ skin: 3, height: 168, weight: 62, hair: "short", hairColor: 0, top: "tee", outfit: 0, acc: "none" }, p || {});
+    // newer 3D-only options map onto the simple SVG fallback
+    p.hair = { crew: "buzz", sidepart: "short", spiky: "short", quiff: "short", wavy: "short", afro: "curly", bob: "long", ponytail: "long", braid: "long" }[p.hair] || p.hair;
+    if (p.facial && p.facial !== "none" && p.facial !== "stubble") p.acc = p.facial === "kerala" || p.facial === "moustache" ? "moustache" : "beard"; else if (p.glasses && p.glasses !== "none") p.acc = "specs"; else if (p.hat === "cap") p.acc = "cap";
     const B = window.AE_FXN ? window.AE_FXN.basics : { top: "#8f8d9e", bottom: "#2a2742", style: "tee" };
     const look = p.o || B;
     const skin = SKIN[p.skin] || SKIN[3], hc = HAIR[p.hairColor] || HAIR[0], oc = look.top;
@@ -62,5 +68,5 @@ window.AE_AVATAR = (function () {
     s += `</svg>`;
     return s;
   }
-  return { svg, SKIN, HAIR, OUTFIT, STYLES };
+  return { svg, SKIN, SKIN_ORDER, HAIR, OUTFIT, STYLES };
 })();

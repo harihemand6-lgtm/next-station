@@ -157,30 +157,38 @@
     </main>${footer()}`;
   }
 
-  // ── CHARACTER CREATOR ──
+  // ── CHARACTER CREATOR ── (all cosmetic: nothing here changes how the game plays)
+  const PPL = window.AE_PEOPLE;
+  const CTABS = [["body", "Body"], ["face", "Face"], ["hair", "Hair"], ["clothes", "Clothes"], ["extras", "Extras"]];
   function vCreator() {
-    const d = ui.draft;
-    const sw = (key, arr) => arr.map((c, i) => `<button class="sw ${d[key] === i ? "on" : ""}" style="background:${c}" data-act="set" data-k="${key}" data-v="${i}" aria-label="Colour ${i + 1}"></button>`).join("");
-    const chips = (key, arr, labels) => arr.map((v, i) => `<button class="chip ${d[key] === v ? "on" : ""}" data-act="set" data-k="${key}" data-v="${v}">${labels ? labels[i] : v}</button>`).join("");
-    return `<main class="wrap creator2">
+    const d = ui.draft = PPL.normalize(ui.draft), tab = ui.ctab || "body";
+    const sw = (key, arr, order) => (order || arr.map((_, i) => i)).map(i => `<button class="sw ${d[key] === i ? "on" : ""}" style="background:${arr[i]}" data-act="set" data-k="${key}" data-v="${i}" aria-label="Colour ${i + 1}"></button>`).join("");
+    const chips = key => PPL.O[key].map(([v, label]) => `<button class="chip ${d[key] === v ? "on" : ""}" data-act="set" data-k="${key}" data-v="${v}">${label}</button>`).join("");
+    const row = (label, inner) => `<div class="f"><span>${label}</span>${inner}</div>`;
+    const C = PPL.CLOTH;
+    const panes = {
+      body: row("Skin tone", `<div class="sws">${sw("skin", AV.SKIN, AV.SKIN_ORDER)}</div>`) +
+        `<label class="f"><span>Height: <b id="hv">${d.height} cm</b></span><input type="range" id="f-height" min="140" max="200" value="${d.height}"></label>` +
+        `<label class="f"><span>Weight: <b id="wv">${d.weight} kg</b></span><input type="range" id="f-weight" min="40" max="120" value="${d.weight}"></label>` +
+        row("Body shape", `<div class="chips">${chips("body")}</div>`),
+      face: row("Face shape", `<div class="chips">${chips("face")}</div>`) + row("Eyes", `<div class="chips">${chips("eyes")}</div>`) + row("Eye colour", `<div class="sws">${sw("eyeC", PPL.EYE)}</div>`) +
+        row("Eyebrows", `<div class="chips">${chips("brows")}</div>`) + row("Nose", `<div class="chips">${chips("nose")}</div>`) + row("Lips", `<div class="chips">${chips("lips")}</div>`) + row("Lip colour", `<div class="sws">${sw("lipC", PPL.LIP)}</div>`),
+      hair: row("Hairstyle", `<div class="chips">${chips("hair")}</div>`) + row("Hair colour", `<div class="sws">${sw("hairColor", AV.HAIR)}</div>`) + row("Beard & moustache", `<div class="chips">${chips("facial")}</div>`),
+      clothes: row("Top", `<div class="chips">${chips("top")}</div>`) + row("Top colour", `<div class="sws">${sw("topC", C)}</div>`) + row("Bottom", `<div class="chips">${chips("bottom")}</div>`) + row("Bottom colour", `<div class="sws">${sw("botC", C)}</div>`) + row("Footwear", `<div class="chips">${chips("shoes")}</div>`) +
+        `<p class="hint">These are your everyday clothes. Rent party, wedding and office looks from the FXN app in the game.</p>`,
+      extras: row("Glasses", `<div class="chips">${chips("glasses")}</div>`) + row("Headwear & flowers", `<div class="chips">${chips("hat")}</div>`) + (d.hat !== "none" && d.hat !== "jasmine" ? row("Headwear colour", `<div class="sws">${sw("hatC", C)}</div>`) : "") +
+        row("Forehead", `<div class="chips">${chips("bindi")}</div>`) + row("Earrings", `<div class="chips">${chips("ears")}</div>`) + row("Nose", `<div class="chips">${chips("noseJ")}</div>`)
+    };
+    return `<main class="wrap creator2 cr3">
       <button class="icon-btn back" data-act="home" aria-label="Back">←</button>
       <h1 class="h1s">Who are you in Kochi?</h1>
-      <div class="cr-top"><div class="pv3d" id="pv3d">${WORLD.available() ? "" : `<div id="avatar">${AV.svg(d, 150)}</div>`}</div>
-        <div class="cr-quick">
-          <label class="f"><span>Your name</span><input id="f-name" maxlength="18" value="${esc(d.name)}" placeholder="e.g. Arjun" autocomplete="off"></label>
-          <div class="f"><span>Pronouns</span><div class="chips">${chips("pronoun", ["he", "she", "they"], ["He", "She", "They"])}</div></div>
-          <button class="btn glass small" data-act="randomlook">🎲 Random look</button>
-        </div></div>
-      <details class="more" ${ui.moreLook ? "open" : ""}><summary data-act="morelook">Customise your look</summary>
-        <div class="f"><span>Skin tone</span><div class="sws">${sw("skin", AV.SKIN)}</div></div>
-        <label class="f"><span>Height: <b id="hv">${d.height} cm</b></span><input type="range" id="f-height" min="140" max="200" value="${d.height}"></label>
-        <label class="f"><span>Build: <b id="wv">${d.weight} kg</b></span><input type="range" id="f-weight" min="40" max="120" value="${d.weight}"></label>
-        <div class="f"><span>Hair</span><div class="chips">${chips("hair", AV.STYLES.hair)}</div></div>
-        <div class="f"><span>Hair colour</span><div class="sws">${sw("hairColor", AV.HAIR)}</div></div>
-        <div class="f"><span>Extras</span><div class="chips">${chips("acc", AV.STYLES.acc)}</div></div>
-        ${langPicker()}
-      </details>
-      <p class="hint">Everyone starts in plain clothes. Rent outfits from the FXN app in the game.</p>
+      <div class="pv-wrap"><div class="pv3d big" id="pv3d">${WORLD.available() ? "" : `<div id="avatar">${AV.svg(d, 150)}</div>`}</div>
+        <div class="pv-tools"><button class="chip ${ui.pvFocus === "face" ? "" : "on"}" data-act="pvfocus" data-arg="body">Full body</button><button class="chip ${ui.pvFocus === "face" ? "on" : ""}" data-act="pvfocus" data-arg="face">Face</button><button class="chip" data-act="randomlook">🎲 Surprise me</button></div>
+        <p class="hint pv-hint">Drag to turn around</p></div>
+      <label class="f"><span>Your name</span><input id="f-name" maxlength="18" value="${esc(d.name)}" placeholder="e.g. Arjun" autocomplete="off"></label>
+      <div class="f"><span>Pronouns</span><div class="chips">${["he", "she", "they"].map((v, i) => `<button class="chip ${d.pronoun === v ? "on" : ""}" data-act="set" data-k="pronoun" data-v="${v}">${["He", "She", "They"][i]}</button>`).join("")}</div></div>
+      <nav class="ctabs" role="tablist">${CTABS.map(([k, l]) => `<button role="tab" class="${tab === k ? "on" : ""}" data-act="ctab" data-arg="${k}">${l}</button>`).join("")}</nav>
+      <section class="cpane">${panes[tab]}${tab === "extras" ? langPicker() : ""}</section>
       <button class="btn primary big" data-act="savechar">Next: pick a job →</button>
     </main>`;
   }
@@ -384,6 +392,8 @@
     const walk = !WORLD.available(), go = k => walk ? [["goto:" + k, "Go there"]] : [];
     const hints = sideHints(g), loc = g.loc || g.stateId;
     if (ui.courier) return { text: "🛵 " + ui.courier + " from FXN is on the way", sub: "Bringing your outfit from the dark store", key: "courier" };
+    const MT = metroTask(g);
+    if (MT && loc === "KL") { const st = MT.T.steps[MT.step], key = st.visit || st.arrive || nearestStation(); return { text: "🚇 " + MT.T.t + ": " + st.txt, sub: st.arrive || st.ride ? "Walk to a 🚇 station on MG Road and take the metro" : "Walk to the marked spot", key }; }
     if (ui.guideTo === "garage") return { text: "Walk to " + (loc === "KL" ? "Vyttila Motors" : "City Motors"), sub: "Buy a bicycle, scooter, bike or car", key: "garage" };
     if (g.shift) return { text: "FXN delivery: take the parcel to " + g.shift.cust, sub: g.shift.left + " of " + CITY.rider.drops + " left" + (g.shift.ratings.length ? " · rating " + avgOf(g.shift.ratings) + "★" : ""), key: "gig", actions: go("gig") };
     if (g.odd) { const J = CITY.oddJobs.find(j => j.id === g.odd.id); return { text: "Odd job: " + J.t, sub: "Walk to the glowing door · " + inr(CS.oddPay(g, J)), key: "odd", actions: go("odd") }; }
@@ -415,6 +425,7 @@
   function onArrive(k) {
     const g = game; if (!g || g.done || ui.outcome || ui.mscene || ui.cityEv || ui.sheet) return;
     if (k === "garage" && ui.guideTo === "garage") { ui.guideTo = null; openSheet("garage"); return; }
+    if (metroStep(g, "visit", k)) return;
     if (g.shift) { if (k === "gig") riderDrop(); return; }
     if (k === "odd" && g.odd) { WORLD.setExtraSpot("odd", null); const r = CS.finishOdd(g); WORLD.note(r.text); WORLD.react("odd"); g.min = Math.min(g.min + 60, 23 * 60 + 50); save(); render(); return; }
     const mg = AE.missionGuide(g);
@@ -453,6 +464,7 @@
     if (k === "s") return g.spouse ? "💑 " + g.spouse.name : null;
     if (k === "board") return "Notice Board: jobs and group tasks";
     if (k === "garage") return "🛵 " + (isKL() ? "Vyttila Motors" : "City Motors") + ": buy a ride";
+    if (/^metro/.test(k)) { const st = (WORLD.metroSpots() || []).find(m => m.key === k); return "🚇 " + (st ? st.name : "Metro") + " station: ride"; }
     return null;
   }
   function onSpot(k) {
@@ -472,8 +484,44 @@
     if (k === "s") return openSheet("kin");
     if (k === "board") return openSheet("board");
     if (k === "garage") { ui.guideTo = null; return openSheet("garage", { atShop: true }); }
+    if (/^metro/.test(k)) return openSheet("metro", { station: k });
   }
   const isKL = () => (game.loc || game.stateId) === "KL";
+
+  // ── Kochi Metro ──
+  const MET = () => CITY.metro;
+  const mstate = g => (g.metro = g.metro || { card: false, rides: 0, done: [], task: null, step: 0 });
+  function metroTask(g) { const M = g.metro; if (!M || !M.task) return null; const T = MET().tasks.find(t => t.id === M.task); return T ? { T, step: M.step } : null; }
+  function nearestStation() { const p = WORLD.position ? WORLD.position() : null, list = WORLD.metroSpots ? WORLD.metroSpots() : []; if (!p || !list.length) return "metroMG"; return list.slice().sort((a, b) => Math.abs(a.z - p.y) - Math.abs(b.z - p.y))[0].key; }
+  function metroFare(g, from, to) { const list = WORLD.metroSpots(), i = list.findIndex(s => s.key === from), j = list.findIndex(s => s.key === to); const base = MET().fares[Math.min(2, Math.abs(i - j))] || 20; return Math.round(CS.money(g, base) * (mstate(g).card ? 1 - MET().cardOff : 1)); }
+  // advance the active metro task; returns true when a step finished
+  function metroStep(g, kind, key, from) {
+    const MT = metroTask(g); if (!MT) return false;
+    const st = MT.T.steps[MT.step]; let ok = false;
+    if (kind === "visit" && st.visit === key) ok = true;
+    if (kind === "metro") {
+      if (st.arrive === key || st.visit === key) ok = true;
+      if (st.ride && (!st.pair || (st.pair.indexOf(from) >= 0 && st.pair.indexOf(key) >= 0 && from !== key)) && (!st.night || LF.hour(g) >= 19 || LF.hour(g) < 5)) ok = true;
+    }
+    if (!ok) return false;
+    const M = mstate(g);
+    if (MT.step + 1 < MT.T.steps.length) { M.step++; WORLD.note(st.note || "Done! Next: " + MT.T.steps[M.step].txt); }
+    else {
+      const T = MT.T, pay = T.pay ? CS.money(g, T.pay) : 0; g.cash += pay; g.h = Math.min(100, g.h + (T.mood || 2)); if (T.rep) g.r = Math.min(100, g.r + T.rep);
+      M.done.push(T.id); M.task = null; M.step = 0;
+      WORLD.note("🚇 " + T.t + " complete!" + (pay ? " +" + inr(pay) : "") + (T.mood ? " 😊" : ""));
+      setTimeout(() => WORLD.react("metro"), 600);
+    }
+    save(); afterAction(); refreshGuide(); updateHud(); return true;
+  }
+  function metroSheet() {
+    const g = game, M = mstate(g), at = ui.station, list = WORLD.metroSpots ? WORLD.metroSpots() : [], here = list.find(s => s.key === at), MT = metroTask(g);
+    const rides = here ? list.filter(s => s.key !== at).map(s => { const f = metroFare(g, at, s.key); return item("→ " + s.name, inr(f) + (M.card ? " with Kochi1 card" : ""), `<button class="btn small primary" data-act="metroride" data-arg="${s.key}" ${g.cash >= f ? "" : "disabled"}>Ride</button>`); }).join("") : `<p class="hint">Walk to a 🚇 station on MG Road (Kaloor, MG Road or Ernakulam South) to ride.</p>`;
+    const card = M.card ? `<p class="hint">💳 Kochi1 card: ${Math.round(MET().cardOff * 100)}% off every ride.</p>` : item("💳 Kochi1 card", Math.round(MET().cardOff * 100) + "% off every ride", `<button class="btn small" data-act="metrocard" ${g.cash >= CS.money(g, MET().card) ? "" : "disabled"}>Buy ${inr(CS.money(g, MET().card))}</button>`);
+    const tasks = MET().tasks.map(T => { const done = M.done.indexOf(T.id) >= 0, act = M.task === T.id;
+      return item((done ? "✅ " : act ? "▶️ " : "") + T.t, act ? "Now: " + T.steps[M.step].txt : T.d + (T.pay ? " · " + inr(CS.money(g, T.pay)) : " · mood boost"), done ? "" : act ? `<button class="btn small" data-act="mtaskquit">Stop</button>` : `<button class="btn small primary" data-act="mtask" data-arg="${T.id}" ${M.task ? "disabled" : ""}>Start</button>`); }).join("");
+    return sheetBox(here ? "🚇 " + here.name + " Metro" : "🚇 Kochi Metro", `${here ? `<p class="hint">Trains every few minutes. Pick where you're going.</p><div class="list">${rides}</div>` : rides}${card}<h3 class="sec">Metro tasks</h3><div class="list">${tasks}</div>`);
+  }
 
   // ── vehicles ──
   const VCOLS = () => WORLD.VCOL || ["#c0392b"];
@@ -629,7 +677,7 @@
 
   function phoneSheet() {
     const g = game, P = myParty(), mates = partyHere();
-    const apps = [["goals", "🎯 Life goals", (LF.nextGoal(g) || { t: "All done!" }).t], ["fxnopen", "👗 FXN", "Rent outfits"], ["kin", "👨‍👩‍👧 Family", g.spouse ? g.spouse.name + ((g.kids || []).length ? " + " + g.kids.length : "") : "Single"], ["site:mangalya", "💍 MangalyaMatch", "Matrimony"], ["site:chaidate", "☕ ChaiDate", "Dating"], ["board", "📋 Odd jobs & teams", "Quick money, team tasks"], ["garage", "🛵 Garage", g.vehicle ? (g.riding ? "Riding your " : "Your ") + CS.vehicleById(g.vehicle.id).name.toLowerCase() : "Buy a bicycle, scooter or car"], ["career", "💼 Career", "Switch job"], ["status", "🗂️ My papers", "Papers, loans, house"], ["retire", "🌅 Retire", "End this life"]];
+    const apps = [["goals", "🎯 Life goals", (LF.nextGoal(g) || { t: "All done!" }).t], ["fxnopen", "👗 FXN", "Rent outfits"], ["kin", "👨‍👩‍👧 Family", g.spouse ? g.spouse.name + ((g.kids || []).length ? " + " + g.kids.length : "") : "Single"], ["site:mangalya", "💍 MangalyaMatch", "Matrimony"], ["site:chaidate", "☕ ChaiDate", "Dating"], ["board", "📋 Odd jobs & teams", "Quick money, team tasks"], ...(isKL() ? [["metroapp", "🚇 Kochi Metro", metroTask(g) ? "Task: " + metroTask(g).T.t : "Rides and metro tasks"]] : []), ["garage", "🛵 Garage", g.vehicle ? (g.riding ? "Riding your " : "Your ") + CS.vehicleById(g.vehicle.id).name.toLowerCase() : "Buy a bicycle, scooter or car"], ["career", "💼 Career", "Switch job"], ["status", "🗂️ My papers", "Papers, loans, house"], ["retire", "🌅 Retire", "End this life"]];
     const party = P ? `<p>Your group: you${mates.length ? ", " + mates.map(m => esc(m.nick)).join(", ") : " (waiting for players to join)"}.</p><button class="btn small ghost" data-act="partyleave">Leave group</button>` : `<p class="hint">Tap a player in the city to invite them to your group (up to 6).</p>`;
     return sheetBox("Phone", `<div class="apps">${apps.map(a => `<button class="app" data-act="${a[0].indexOf("site:") === 0 ? "site" : a[0]}" ${a[0].indexOf("site:") === 0 ? `data-arg="${a[0].slice(5)}"` : ""}><b>${esc(a[1])}</b><span>${esc(a[2])}</span></button>`).join("")}</div><h3 class="sec">Group</h3>${party}`);
   }
@@ -725,6 +773,7 @@
     if (k === "board") return boardSheet();
     if (k === "garage") return garageSheet();
     if (k === "rooms") return roomsSheet();
+    if (k === "metro") return metroSheet();
     if (k === "group") return groupSheet();
     if (k === "player") return playerSheet();
     if (k === "invite") return inviteSheet();
@@ -845,7 +894,7 @@
     const key = [g.seed, g.lifeId, loc, isBase ? g.house.lvl + "." + g.house.wall : "", isBase && g.spouse ? g.spouse.name : "", kidsHere.map(k => k.name + (k.age < 12 ? "s" : "b")).join(",")].join(":");
     WORLD.mount(slot, {
       key, stateId: loc, lifeId: g.lifeId, hue: here.hue, cast: here.cast, avatar: char || g.player, meLabel: (char || g.player).name, outfit: outfitLook(g),
-      base: isBase, house: isBase ? g.house : null, wallColor: CITY.walls[g.house.wall || 0][1], spouse: isBase && g.spouse ? g.spouse.name : null,
+      base: isBase, house: isBase ? g.house : null, wallColor: CITY.walls[g.house.wall || 0][1], spouse: isBase && g.spouse ? g.spouse.name : null, spouseFem: g.spouse ? ((CITY.profiles.find(p => p.id === g.spouse.pid) || {}).g || "w") === "w" : true,
       words: { stall: here.food.stall, city: here.city, v: here.cast.v },
       kids: kidsHere, startPos: g.pos && g.pos.loc === loc ? g.pos : null,
       hour: () => LF.hour(game), langMode: () => prefs.lang === "en" ? "en" : prefs.subs ? "ml" : "mlonly",
@@ -862,7 +911,8 @@
       onChatOpen: () => { if (prefs.adult === true) return true; if (prefs.adult === false) { WORLD.note("Typed chat is for 18+. Use Say… phrases instead."); return false; } ui.ageGate = true; render(); return false; },
       onType: v => { const r = NET.sendText(v); if (r.ok) { WORLD.meSay(r.text, true); return true; } WORLD.note(r.reason); return false; },
       onRemoteTap: (id, nick) => { const p = NET.peers()[id]; openSheet("player", { target: { id, nick: p ? p.nick : nick } }); },
-      onRoomTap: () => openSheet("rooms")
+      onRoomTap: () => openSheet("rooms"),
+      onMetro: to => { const g = game; mstate(g).rides++; g.min = Math.min((g.min || 0) + 12, 23 * 60 + 50); if (!metroStep(g, "metro", to, ui.metroFrom)) { save(); afterAction(); } updateHud(); }
     });
     applyRide();
     WORLD.setExtraSpot("gig", g.shift ? g.shift.target : null);
@@ -1040,17 +1090,18 @@
   function render() {
     const V = { leaders: vLeaders, rules: vRules, home: vHome, state: vLife, life: vLife, intro: vIntro, creator: vCreator, play: vPlay, summary: vSummary, profile: vProfile }[ui.view] || vHome;
     $app.innerHTML = V();
-    if (ui.view === "creator") { bindCreator(); const pv = document.getElementById("pv3d"); if (pv && WORLD.available()) WORLD.preview(pv, ui.draft, null); }
+    if (ui.view === "creator") { bindCreator(); const pv = document.getElementById("pv3d"); if (pv && WORLD.available()) WORLD.preview(pv, ui.draft, null, ui.pvFocus); }
     if (ui.view === "play") mountWorld();
     const fl = document.getElementById("f-lang"), fs = document.getElementById("f-subs");
     if (fl) fl.addEventListener("change", e => { prefs.lang = e.target.value; save(); });
     if (fs) fs.addEventListener("change", e => { prefs.subs = e.target.checked; save(); });
   }
   function bindCreator() {
-    const d = ui.draft, upd = () => { const av = document.getElementById("avatar"); if (av) av.innerHTML = AV.svg(d, 150); const pv = document.getElementById("pv3d"); if (pv && WORLD.available()) WORLD.preview(pv, d, null); const hv = document.getElementById("hv"); if (hv) hv.textContent = d.height + " cm"; const wv = document.getElementById("wv"); if (wv) wv.textContent = d.weight + " kg"; };
+    const d = ui.draft, upd = () => { const av = document.getElementById("avatar"); if (av) av.innerHTML = AV.svg(d, 150); const pv = document.getElementById("pv3d"); if (pv && WORLD.available()) WORLD.preview(pv, d, null, ui.pvFocus); const hv = document.getElementById("hv"); if (hv) hv.textContent = d.height + " cm"; const wv = document.getElementById("wv"); if (wv) wv.textContent = d.weight + " kg"; };
     document.getElementById("f-name").addEventListener("input", e => { d.name = e.target.value.replace(/[<>]/g, "").slice(0, 18); upd(); });
-    document.getElementById("f-height").addEventListener("input", e => { d.height = +e.target.value; upd(); });
-    document.getElementById("f-weight").addEventListener("input", e => { d.weight = +e.target.value; upd(); });
+    const fh = document.getElementById("f-height"), fw = document.getElementById("f-weight");
+    if (fh) fh.addEventListener("input", e => { d.height = +e.target.value; upd(); });
+    if (fw) fw.addEventListener("input", e => { d.weight = +e.target.value; upd(); });
   }
   function startGame(stateId, lifeId, opts) {
     game = AE.newGame(char, lifeId, stateId, opts);
@@ -1089,7 +1140,9 @@
       case "newlifeyes": game = null; store.del("ns.game"); ui.confirmNew = false; if (!char) { go("creator", { draft: defaultDraft() }); } else { go("creator", { draft: Object.assign({}, char) }); } break;
       case "newlifeno": ui.confirmNew = false; render(); break;
       case "surprise": { const taken = NET.takenLives ? NET.takenLives() : {}; const ids = LIVES.filter(L => !L.mature && !taken[L.id]).map(L => L.id); startGame("KL", ids[Math.floor(Math.random() * ids.length)], {}); break; }
-      case "randomlook": { const d = ui.draft, r = n => Math.floor(Math.random() * n); Object.assign(d, { skin: r(AV.SKIN.length), height: 150 + r(40), weight: 50 + r(40), hair: AV.STYLES.hair[r(AV.STYLES.hair.length)], hairColor: r(AV.HAIR.length), acc: AV.STYLES.acc[r(AV.STYLES.acc.length)] }); render(); break; }
+      case "randomlook": { const d = ui.draft, fem = d.pronoun === "she" ? true : d.pronoun === "he" ? false : undefined; ui.draft = Object.assign(PPL.random(Date.now() + Math.random(), { fem }), { name: d.name, pronoun: d.pronoun, lang: d.lang }); render(); break; }
+      case "ctab": ui.ctab = arg; ui.pvFocus = arg === "face" || arg === "hair" || arg === "extras" ? "face" : "body"; render(); break;
+      case "pvfocus": ui.pvFocus = arg; render(); break;
       case "morelook": ui.moreLook = !ui.moreLook; break;
       case "later": ui.eventOpen = false; render(); break;
       case "welcomeok": game.welcomed = true; ui.welcome = false; save(); render(); break;
@@ -1111,7 +1164,7 @@
       case "tolife": go("life", { stateId: ui.stateId || "KL", daily: null }); break;
       case "picklife": { const L = lifeById(arg); if (L.mature && !ui.matureOk) { ui.matureOk = true; alertNote("The Trader is a mature life about the real risks of options trading. No real money is involved. Tap it again to start."); break; } startGame("KL", arg, {}); break; }
       case "start": if ((NET.takenLives ? NET.takenLives() : {})[ui.lifeId] && !ui.daily) { go("life", { stateId: "KL" }); break; } startGame("KL", ui.lifeId, ui.daily ? { seed: AE.dailyPick(ui.daily).seed, daily: ui.daily } : {}); break;
-      case "set": { const k = b.dataset.k, v = b.dataset.v; ui.draft[k] = isNaN(+v) ? v : +v; render(); break; }
+      case "set": { const k = b.dataset.k, v = b.dataset.v; ui.draft[k] = isNaN(+v) ? v : +v; if (k === "pronoun" && !ui.bodyPicked) ui.draft.body = v === "he" ? "straight" : v === "she" ? "curvy" : "balanced"; if (k === "body") ui.bodyPicked = true; render(); break; }
       case "savechar": {
         const nm = (document.getElementById("f-name").value || "").replace(/[<>]/g, "").trim().slice(0, 18);
         ui.draft.name = nm || "Player"; char = Object.assign({}, ui.draft); save();
@@ -1180,6 +1233,15 @@
       case "closesheet": ui.sheet = null; ui.msg = null; ui.venture = false; ui.dateText = null; ui.atShop = false; ui.vcolor = null; render(); refreshGuide(); break;
       case "phone": openSheet("phone"); break;
       case "garage": openSheet("garage", { atShop: false }); break;
+      case "metroapp": openSheet("metro", { station: null }); break;
+      case "metrocard": { const g = game, c = CS.money(g, MET().card); if (g.cash < c) break; g.cash -= c; mstate(g).card = true; save(); updateHud(); render(); break; }
+      case "mtask": { const M = mstate(game); if (M.task) break; M.task = arg; M.step = 0; save(); ui.sheet = null; render(); refreshGuide(); WORLD.note("🚇 " + MET().tasks.find(t => t.id === arg).t + ": " + MET().tasks.find(t => t.id === arg).steps[0].txt); break; }
+      case "mtaskquit": { const M = mstate(game); M.task = null; M.step = 0; save(); render(); refreshGuide(); break; }
+      case "metroride": {
+        const g = game, from = ui.station, f = metroFare(g, from, arg); if (g.cash < f) break;
+        if (!WORLD.startMetro(from, arg)) break;
+        g.cash -= f; ui.metroFrom = from; ui.sheet = null; ui.station = null; save(); render(); updateHud(); setTimeout(() => WORLD.react("metro"), 1500); break;
+      }
       case "rooms": openSheet("rooms"); break;
       case "vcolor": ui.vcolor = +arg; if (game.vehicle && !ui.atShop) break; render(); break;
       case "vgo": ui.guideTo = "garage"; ui.sheet = null; render(); refreshGuide(); break;
@@ -1269,7 +1331,7 @@
     }
   });
   function selectShare() { const el = document.getElementById("sharetext"); if (!el) return; const r = document.createRange(); r.selectNodeContents(el); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); }
-  function defaultDraft() { return { name: "", pronoun: "they", skin: 3, height: 168, weight: 62, hair: "short", hairColor: 0, acc: "none" }; }
+  function defaultDraft() { return window.AE_PEOPLE.normalize({ name: "", pronoun: "they", skin: 3, height: 168, weight: 62, hair: "short", hairColor: 0 }); }
 
   // old saves from before the Kochi update can't continue
   if (game && (!STATES[game.stateId] || !lifeById(game.lifeId) || !STATES[game.loc || game.stateId])) { game = null; store.del("ns.game"); }

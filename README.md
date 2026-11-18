@@ -13,7 +13,10 @@ Static web game: no accounts, ₹0 running cost. Optional live players and chat 
 - Map: illustrated Kochi map with real street names (Shanmugham Road, MG Road, Banerji Road, Princess Street…), the Kochi Metro line, pins, your route to the next goal, pinch-zoom and pan; tap a pin to walk there
 - Clock: 1 real second = 1.5 game minutes (a day lasts about 16 minutes); kids grow a year per game day
 - Multiplayer rooms: each city is split into rooms of 8 (ROOM_SIZE in js/config.js). Players fill Room 1, then Room 2… Tap the room pill to see rooms and join friends. Movement sends where you're heading (about 1 message per tap, at most ~1/s while steering), so the free Supabase plan (100 messages/s, 200 connections) holds roughly 100+ live players
-- Character creator (cosmetic only), endings, badges, XP, daily challenge, leaderboard
+- People: realistic proportions, painted faces (eyes, brows, lips), 15 hairstyles, beards and moustaches, glasses, headwear (cap, beanie, turban, hijab, jasmine), bindi/chandanam, earrings, nose jewellery, 3 body shapes, 7 tops, 6 bottoms (incl. mundu with kasavu border), 5 footwear types; townsfolk each get a typical Kochi look (chaya chettan, auto driver in khaki, ammachi in settu-mundu, aunty in saree)
+- Kochi Metro: stations at Kaloor, MG Road and Ernakulam South; ride along the elevated line (fares ₹20–30, Kochi1 card for 20% off) and do 6 metro tasks (lost bag, lost tourist, FXN metro express, night ride…)
+- World look: sky with sun glow and drifting clouds, sky reflections on water and glass, detailed asphalt, interlocking pavers, painted kerbs, floor ledges and parapets, Mangalore-tile roofs, rooftop water tanks, coconut palms, rain trees, hibiscus bushes, KSEB power poles and wires
+- Character creator (cosmetic only) with tabs: Body, Face, Hair, Clothes, Extras; endings, badges, XP, daily challenge, leaderboard
 - Saves live in the player's own browser (localStorage). Only leaderboard scores and chat reports go to Supabase.
 
 ## Files
@@ -27,6 +30,7 @@ js/data/lives2.js   lives 11–20
 js/data/city.js     papers, loans, house, matrimony profiles, odd jobs, team tasks, FXN rider settings
 js/data/common.js   shared events, dialogue, chat answers, badges
 js/engine.js        game rules (deterministic, seeded)
+js/people.js        avatar options, network packing, random townsfolk, 3D person builder (faces are canvas textures)
 js/life.js          second-life layer: clock, energy, hunger, sleep, food, family, children, life goals
 js/data/mallu.js    Manglish lines for people in the city and reactions (native speakers: edit here)
 js/avatar.js        character drawing

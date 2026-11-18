@@ -131,6 +131,8 @@ window.AE_WORLD = (function () {
     spots.food = { x: 37, y: 28, label: "Chayakkada" };
     spots.ferryMD = { x: K.ferry.MD[0], y: K.ferry.MD[1], label: "Boat Jetty", ride: "ferryFK", rideLabel: "Take the ferry to Fort Kochi" };
     spots.ferryFK = { x: K.ferry.FK[0], y: K.ferry.FK[1], label: "Boat Jetty", ride: "ferryMD", rideLabel: "Take the ferry to Marine Drive" };
+    // Kochi Metro: stairs down to MG Road under each station
+    K.metro.stations.forEach(([z, name], i) => { const k = METRO_KEYS[i]; spots[k] = { x: K.metro.x - 1, y: Math.floor(z), label: name + " Metro", metro: i, z }; });
     K.palms.forEach(([x0, y0, x1, y1, p]) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if ((at(x, y) === SAND || at(x, y) === SIDE || at(x, y) === PLAZA) && R() < p && !nearSpot(x, y)) palmsList.push({ x: x + 0.2 + R() * 0.6, z: y + 0.2 + R() * 0.6, s: 0.8 + R() * 0.5, r: R() * 6.3 }); });
     areaLabels = K.areas;
   }
@@ -252,38 +254,48 @@ window.AE_WORLD = (function () {
     x.putImageData(img, 0, 0); return c;
   }
 
-  // ── ground texture: asphalt, lane markings, pavers, grass, sand; water is transparent so the animated water shows through ──
+  // ── ground texture: asphalt with wear, kerbs, interlocking pavers, grass, sand, contact shadows at building bases ──
+  function tileCanvas(size, draw) { const c = document.createElement("canvas"); c.width = c.height = size; draw(c.getContext("2d"), size); return c; }
   function groundTexture() {
-    const Pp = 16, c = document.createElement("canvas"); c.width = COLS * Pp; c.height = ROWS * Pp;
+    const Pp = 32, c = document.createElement("canvas"); c.width = COLS * Pp; c.height = ROWS * Pp;
     const x = c.getContext("2d"), R = rng(11);
-    const pat = (base, amp, seed) => x.createPattern(noiseCanvas(64, base, amp, seed), "repeat");
-    const fills = { [ROAD]: pat("#43464d", 26, 1), [SIDE]: pat("#b8b2a6", 14, 2), [PLAZA]: pat("#cdb994", 16, 3), [GRASS]: pat("#5d8c3c", 40, 4), [BLD]: pat("#7c766c", 10, 5), [TREE]: pat("#5d8c3c", 40, 6), [JETTY]: pat("#8a6a45", 22, 7), [SAND]: pat("#e3cf9c", 26, 8), [BRIDGE]: pat("#9c9a92", 16, 9) };
+    const pat = (cv, k) => { const p2 = x.createPattern(cv, "repeat"); if (k && p2.setTransform) p2.setTransform(new DOMMatrix().scale(k)); return p2; };
+    const asphalt = tileCanvas(128, (g, S) => { g.drawImage(noiseCanvas(128, "#3f4249", 30, 1), 0, 0); const r = rng(41); for (let i = 0; i < 260; i++) { g.fillStyle = r() < 0.5 ? "rgba(255,255,255,.05)" : "rgba(0,0,0,.08)"; g.fillRect(r() * S, r() * S, 1 + r() * 2, 1 + r() * 2); } g.strokeStyle = "rgba(0,0,0,.25)"; g.lineWidth = 1; for (let i = 0; i < 3; i++) { g.beginPath(); let px = r() * S, py = r() * S; g.moveTo(px, py); for (let k = 0; k < 6; k++) { px += (r() - 0.5) * 22; py += (r() - 0.5) * 22; g.lineTo(px, py); } g.stroke(); } g.fillStyle = "rgba(20,20,24,.25)"; g.beginPath(); g.ellipse(r() * S, r() * S, 18, 10, r(), 0, 7); g.fill(); });
+    const pavers = (base, line) => tileCanvas(64, (g, S) => { g.drawImage(noiseCanvas(64, base, 16, 2), 0, 0); g.strokeStyle = line; g.lineWidth = 1.2; for (let yy = 0; yy < S; yy += 16) for (let xx = 0; xx < S; xx += 16) { const o2 = (yy / 16) % 2 ? 8 : 0; g.beginPath(); g.moveTo(xx + o2, yy); g.lineTo(xx + o2 + 6, yy + 4); g.lineTo(xx + o2 + 10, yy); g.lineTo(xx + o2 + 16, yy + 4); g.stroke(); g.strokeRect(xx + 0.5, yy + 0.5, 16, 16); } });
+    const grass = tileCanvas(64, (g, S) => { g.drawImage(noiseCanvas(64, "#5f8e3c", 46, 4), 0, 0); const r = rng(9); for (let i = 0; i < 160; i++) { g.strokeStyle = r() < 0.5 ? "rgba(140,190,90,.6)" : "rgba(40,80,30,.5)"; g.beginPath(); const px = r() * S, py = r() * S; g.moveTo(px, py); g.lineTo(px + (r() - 0.5) * 3, py - 3 - r() * 3); g.stroke(); } for (let i = 0; i < 6; i++) { g.fillStyle = ["#f2e35b", "#ffffff", "#e8628a"][i % 3]; g.fillRect(r() * S, r() * S, 2, 2); } });
+    const sand = tileCanvas(64, (g, S) => { g.drawImage(noiseCanvas(64, "#e2cc97", 30, 8), 0, 0); g.strokeStyle = "rgba(160,130,80,.18)"; for (let yy = 4; yy < S; yy += 9) { g.beginPath(); g.moveTo(0, yy); for (let xx = 0; xx <= S; xx += 8) g.quadraticCurveTo(xx + 4, yy + 3, xx + 8, yy); g.stroke(); } });
+    const fills = { [ROAD]: pat(asphalt), [SIDE]: pat(pavers("#b9b2a5", "rgba(80,70,60,.22)"), 0.5), [PLAZA]: pat(pavers("#d4bf98", "rgba(120,90,50,.24)"), 0.5), [GRASS]: pat(grass), [BLD]: pat(noiseCanvas(64, "#77716a", 10, 5)), [TREE]: pat(grass), [JETTY]: pat(noiseCanvas(64, "#8a6a45", 22, 7)), [SAND]: pat(sand), [BRIDGE]: pat(noiseCanvas(64, "#8f8d86", 16, 9)) };
     for (let y = 0; y < ROWS; y++) for (let xx = 0; xx < COLS; xx++) {
       const t = at(xx, y); if (t === WATER) continue;
       x.fillStyle = fills[t]; x.fillRect(xx * Pp, y * Pp, Pp, Pp);
-      if (t === SIDE || t === PLAZA) { x.strokeStyle = "rgba(0,0,0,.08)"; x.lineWidth = 1; x.strokeRect(xx * Pp + .5, y * Pp + .5, Pp / 2, Pp / 2); x.strokeRect(xx * Pp + Pp / 2 + .5, y * Pp + Pp / 2 + .5, Pp / 2 - 1, Pp / 2 - 1); }
-      if (t === JETTY) { x.strokeStyle = "rgba(0,0,0,.25)"; for (let i = 3; i < Pp; i += 4) { x.beginPath(); x.moveTo(xx * Pp + i, y * Pp); x.lineTo(xx * Pp + i, y * Pp + Pp); x.stroke(); } }
-      // shoreline: darker stone edge against water
-      [[0, -1], [0, 1], [-1, 0], [1, 0]].forEach(([dx, dy]) => { if (at(xx + dx, y + dy) === WATER && xx + dx >= 0 && y + dy >= 0 && xx + dx < COLS && y + dy < ROWS) { x.fillStyle = t === SAND ? "rgba(255,255,255,.35)" : "#6d6a63"; if (dx) x.fillRect(xx * Pp + (dx > 0 ? Pp - 3 : 0), y * Pp, 3, Pp); else x.fillRect(xx * Pp, y * Pp + (dy > 0 ? Pp - 3 : 0), Pp, 3); } });
+      if (t === JETTY) { x.strokeStyle = "rgba(0,0,0,.25)"; for (let i = 4; i < Pp; i += 6) { x.beginPath(); x.moveTo(xx * Pp + i, y * Pp); x.lineTo(xx * Pp + i, y * Pp + Pp); x.stroke(); } }
+      [[0, -1], [0, 1], [-1, 0], [1, 0]].forEach(([dx, dy]) => { const n = at(xx + dx, y + dy), inside = xx + dx >= 0 && y + dy >= 0 && xx + dx < COLS && y + dy < ROWS; if (!inside) return;
+        if (n === WATER) { x.fillStyle = t === SAND ? "rgba(255,255,255,.4)" : "#5f5c55"; if (dx) x.fillRect(xx * Pp + (dx > 0 ? Pp - 5 : 0), y * Pp, 5, Pp); else x.fillRect(xx * Pp, y * Pp + (dy > 0 ? Pp - 5 : 0), Pp, 5); }
+        // contact shadow where pavement meets a building
+        if (n === BLD && t !== BLD) { const g2 = dx ? x.createLinearGradient(xx * Pp + (dx > 0 ? Pp : 0), 0, xx * Pp + (dx > 0 ? Pp - 12 : 12), 0) : x.createLinearGradient(0, y * Pp + (dy > 0 ? Pp : 0), 0, y * Pp + (dy > 0 ? Pp - 12 : 12)); g2.addColorStop(0, "rgba(0,0,0,.32)"); g2.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = g2; x.fillRect(xx * Pp, y * Pp, Pp, Pp); }
+        // kerb: black-and-white painted edge where pavement meets road
+        if ((t === SIDE || t === PLAZA) && n === ROAD) { for (let k = 0; k < 4; k++) { x.fillStyle = (xx + y + k) % 2 ? "#f1efe8" : "#2a2a2c"; if (dx) x.fillRect(xx * Pp + (dx > 0 ? Pp - 4 : 0), y * Pp + k * 8, 4, 8); else x.fillRect(xx * Pp + k * 8, y * Pp + (dy > 0 ? Pp - 4 : 0), 8, 4); } }
+      });
+      if (t === ROAD && R() < 0.035) { x.fillStyle = "#2f3136"; x.beginPath(); x.arc(xx * Pp + 16, y * Pp + 16, 5, 0, 7); x.fill(); x.strokeStyle = "rgba(255,255,255,.15)"; x.stroke(); }
     }
-    // lane markings and zebra crossings
+    // lane markings, junction boxes and zebra crossings
     const isR = (a, b) => at(a, b) === ROAD || at(a, b) === BRIDGE;
     for (let y = 0; y < ROWS; y++) for (let xx = 0; xx < COLS; xx++) {
       if (!isR(xx, y)) continue;
       const horiz = isR(xx, y + 1) && !isR(xx, y - 1) && !isR(xx, y + 2), vert = isR(xx + 1, y) && !isR(xx - 1, y) && !isR(xx + 2, y);
-      x.fillStyle = "rgba(245,240,225,.85)";
-      if (horiz && !vert && (xx % 2 === 0)) x.fillRect(xx * Pp + 2, (y + 1) * Pp - 1, Pp - 6, 2);
-      if (vert && !horiz && (y % 2 === 0)) x.fillRect((xx + 1) * Pp - 1, y * Pp + 2, 2, Pp - 6);
-      if (horiz && vert) { x.fillStyle = "rgba(245,240,225,.55)"; for (let i = 0; i < 4; i++) x.fillRect(xx * Pp - 6 + i * 4, y * Pp - 6, 2, 4); }
-      if (at(xx, y) === BRIDGE) { x.fillStyle = "rgba(255,255,255,.12)"; x.fillRect(xx * Pp, y * Pp, Pp, 1); }
+      x.fillStyle = "rgba(245,240,225,.9)";
+      if (horiz && !vert && (xx % 2 === 0)) x.fillRect(xx * Pp + 4, (y + 1) * Pp - 1.5, Pp - 10, 3);
+      if (vert && !horiz && (y % 2 === 0)) x.fillRect((xx + 1) * Pp - 1.5, y * Pp + 4, 3, Pp - 10);
+      if (horiz && vert) { x.fillStyle = "rgba(245,240,225,.7)"; for (let i = 0; i < 6; i++) { x.fillRect(xx * Pp - 14 + i * 7, y * Pp - 12, 4, 9); x.fillRect(xx * Pp - 14 + i * 7, (y + 2) * Pp + 3, 4, 9); } }
+      if (at(xx, y) === BRIDGE) { x.fillStyle = "rgba(255,255,255,.15)"; x.fillRect(xx * Pp, y * Pp, Pp, 1); }
     }
     const t = srgbTex(c); t.anisotropy = 8; return t;
   }
 
   // ── building facades: one bay × one floor, repeated with baked UVs; lit windows at night via emissiveMap ──
   function facade(kind) {
-    const S = 64, c = document.createElement("canvas"), e = document.createElement("canvas"); c.width = c.height = e.width = e.height = S;
-    const x = c.getContext("2d"), y = e.getContext("2d");
+    const S = 64, c = document.createElement("canvas"), e = document.createElement("canvas"); c.width = c.height = e.width = e.height = S * 2;
+    const x = c.getContext("2d"), y = e.getContext("2d"); x.scale(2, 2); y.scale(2, 2);
     y.fillStyle = "#000"; y.fillRect(0, 0, S, S);
     const wall = { res: "#f2eee6", shop: "#ece6da", tower: "#e4e6e8", colonial: "#f4ead2", warehouse: "#c9c2b4", kerala: "#f6f1e6", glass: "#9fb6c6" }[kind] || "#eeeae2";
     x.fillStyle = wall; x.fillRect(0, 0, S, S);
@@ -294,6 +306,13 @@ window.AE_WORLD = (function () {
     else if (kind === "colonial") { x.fillStyle = "#3f6b4f"; x.beginPath(); x.moveTo(18, 52); x.lineTo(18, 24); x.arc(32, 24, 14, Math.PI, 0); x.lineTo(46, 52); x.closePath(); x.fill(); x.fillStyle = "#2a3a40"; x.fillRect(22, 24, 20, 26); y.fillStyle = "#ffd58a"; y.fillRect(22, 24, 20, 26); x.fillStyle = "#3f6b4f"; x.fillRect(31, 24, 2, 26); x.fillStyle = "#cbb88f"; x.fillRect(0, 58, S, 6); }
     else if (kind === "kerala" || kind === "res") { win(18, 18, 28, 26, "#6b4a2f", "#2e3b45"); x.fillStyle = "#3f7a5a"; x.fillRect(10, 18, 7, 26); x.fillRect(47, 18, 7, 26); x.fillStyle = "#cfc6b4"; x.fillRect(12, 10, 40, 4); if (kind === "res") { x.fillStyle = "#9a9384"; x.fillRect(4, 50, 56, 3); for (let i = 6; i < 60; i += 6) x.fillRect(i, 50, 2, 12); } }
     else { win(14, 14, 36, 30, "#5b5f66", "#355266"); x.fillStyle = "#d0c9bc"; x.fillRect(10, 8, 44, 4); x.fillStyle = "#b7b0a2"; x.fillRect(44, 48, 12, 8); }
+    // monsoon weathering: soft streaks under sills and a darker band at the floor line
+    if (kind !== "tower" && kind !== "glass") {
+      const r = rng(kind.length * 7);
+      for (let i = 0; i < 5; i++) { const sx2 = 8 + r() * 48, g = x.createLinearGradient(0, 44, 0, 64); g.addColorStop(0, "rgba(70,65,55,.14)"); g.addColorStop(1, "rgba(70,65,55,0)"); x.fillStyle = g; x.fillRect(sx2, 44, 2 + r() * 4, 20); }
+      const gb = x.createLinearGradient(0, 56, 0, 64); gb.addColorStop(0, "rgba(0,0,0,0)"); gb.addColorStop(1, "rgba(60,55,45,.18)"); x.fillStyle = gb; x.fillRect(0, 56, 64, 8);
+      if (kind !== "warehouse") { x.fillStyle = "rgba(255,255,255,.35)"; x.fillRect(10, 8, 44, 2); x.fillStyle = "rgba(0,0,0,.16)"; x.fillRect(12, 12, 40, 3); }
+    }
     x.fillStyle = wall; x.fillRect(0, 0, 3, 3);
     const map = srgbTex(c, true), em = srgbTex(e, true);
     const m = new THREE.MeshStandardMaterial({ map, emissiveMap: em, emissive: 0xffffff, emissiveIntensity: 0, vertexColors: true, roughness: 0.88, metalness: kind === "tower" ? 0.15 : 0 });
@@ -311,79 +330,20 @@ window.AE_WORLD = (function () {
   function hipRoof(w, d, h) { const g = new THREE.ConeGeometry(Math.SQRT1_2, 1, 4, 1); g.rotateY(Math.PI / 4); g.scale(w * 1.12, h, d * 1.12); g.translate(0, h / 2, 0); return g; }
 
   // ═══ People ═══
+  // People are built by js/people.js (realistic proportions, textured faces, many hair and clothing styles).
+  const PEOPLE = window.AE_PEOPLE;
   function personLook(av, outfit) {
-    const B = window.AE_FXN ? window.AE_FXN.basics : { top: "#8f8d9e", bottom: "#2a2742", style: "tee" };
-    return { skin: SKIN[av.skin] || SKIN[3], height: av.height || 165, weight: av.weight || 60, hair: av.hair || "short", hairC: HAIRC[av.hairColor] || HAIRC[0], acc: av.acc || "none", o: outfit || B, small: av.small };
+    const a = PEOPLE.normalize(av || {});
+    return { a, skin: SKIN[a.skin] || SKIN[3], hairC: HAIRC[a.hairColor] || HAIRC[0], height: a.height, weight: a.weight, small: !!(av && av.small), o: outfit || PEOPLE.basics(a), shoeAccent: PEOPLE.CLOTH[a.topC] };
   }
-  // Each body part is one merged mesh with vertex colours, so a person is ~10 draw calls and still animates at hips, knees, shoulders and elbows.
-  function person(look) {
-    const g = new THREE.Group(), o = look.o, sk = col(look.skin), top = col(o.top), bot = col(o.bottom), trim = col(o.trim || o.top), hairC = col(look.hairC), shoe = col("#2a221c");
-    const H = (look.small ? 0.36 : 0.56) + (Math.max(140, Math.min(200, look.height)) - 140) / 60 * (look.small ? 0.04 : 0.14);
-    const bmi = look.weight / Math.pow(look.height / 100, 2), wf = Math.max(0.85, Math.min(1.35, 0.9 + (bmi - 20) / 14 * 0.45));
-    const legL = H * 0.47, thigh = legL * 0.5, shin = legL * 0.5, torsoL = H * 0.3, headR = H * 0.068;
-    const draped = ["saree", "lehenga", "gown", "mundu"].indexOf(o.style) >= 0, longTop = o.style === "kurta" || o.style === "suit" || o.style === "gown";
-    const longSleeve = o.style === "suit" || o.style === "kurta", mk = (parts) => { const m = new THREE.Mesh(mergeGeos(parts), vcMat); m.castShadow = true; return m; };
-    const legs = [], knees = [], arms = [], elbows = [];
-    [-1, 1].forEach(sd => {
-      const hip = new THREE.Group(); hip.position.set(sd * 0.042 * H * wf * 1.6, legL, 0);
-      hip.add(mk([P(new THREE.CapsuleGeometry(0.036 * H * wf * 1.5, thigh - 0.02, 3, 8), bot, 0, -thigh / 2, 0)]));
-      const knee = new THREE.Group(); knee.position.y = -thigh;
-      knee.add(mk([P(new THREE.CapsuleGeometry(0.03 * H * 1.5, shin - 0.03, 3, 8), draped && o.style !== "mundu" ? sk : bot, 0, -shin / 2, 0), P(new THREE.BoxGeometry(0.05 * H * 1.5, 0.028 * H * 1.5, 0.11 * H * 1.5), shoe, 0, -shin + 0.006, 0.018)]));
-      hip.add(knee); g.add(hip); legs.push(hip); knees.push(knee);
-    });
-    const tw = 0.105 * H * wf * 1.5, ty = legL + torsoL / 2;
-    const body = [
-      P(new THREE.CapsuleGeometry(tw, torsoL * 0.5, 4, 12), top, 0, ty, 0, 0, 0, 0, 1, torsoL * 1.05 / (torsoL * 0.5 + 2 * tw), 0.62),
-      P(new THREE.CylinderGeometry(tw * 0.92, tw * 0.85, torsoL * 0.22, 12), longTop ? top : bot, 0, legL + 0.01, 0, 0, 0, 0, 1, 1, 0.66),
-      P(new THREE.CylinderGeometry(0.028 * H * 1.5, 0.032 * H * 1.5, H * 0.05, 8), sk, 0, legL + torsoL + 0.01, 0)
-    ];
-    if (longTop) body.push(P(new THREE.CylinderGeometry(tw * 0.95, tw * 1.08, legL * 0.42, 12), top, 0, legL - legL * 0.19, 0, 0, 0, 0, 1, 1, 0.7));
-    if (draped) { const r1 = o.style === "mundu" ? tw * 1.0 : tw * 1.35; body.push(P(new THREE.CylinderGeometry(tw * 0.9, r1, legL * 0.98, 14), bot, 0, legL * 0.5, 0, 0, 0, 0, 1, 1, 0.8)); body.push(P(new THREE.CylinderGeometry(r1 + 0.003, r1 + 0.003, legL * 0.06, 14), trim, 0, legL * 0.04, 0, 0, 0, 0, 1, 1, 0.8)); }
-    if (o.style === "saree") body.push(P(new THREE.BoxGeometry(0.035, torsoL * 1.15, tw * 1.3), trim, tw * 0.45, ty + 0.01, 0, 0, 0, 0.55));
-    if (o.style === "suit") body.push(P(new THREE.BoxGeometry(0.018, torsoL * 0.65, 0.01), trim, 0, ty + torsoL * 0.08, tw * 0.62));
-    if (o.style === "sport") body.push(P(new THREE.BoxGeometry(tw * 2.02, 0.02, tw * 1.27), trim, 0, ty + torsoL * 0.2, 0));
-    const torso = mk(body); g.add(torso);
-    [-1, 1].forEach(sd => {
-      const sh = new THREE.Group(); sh.position.set(sd * (tw + 0.018), legL + torsoL * 0.88, 0);
-      const ua = torsoL * 0.48, fa = torsoL * 0.46;
-      sh.add(mk([P(new THREE.CapsuleGeometry(0.026 * H * 1.5, ua - 0.03, 3, 8), (o.style === "saree" || o.style === "gown") ? sk : top, 0, -ua / 2, 0)]));
-      const el2 = new THREE.Group(); el2.position.y = -ua;
-      el2.add(mk([P(new THREE.CapsuleGeometry(0.022 * H * 1.5, fa - 0.03, 3, 8), longSleeve ? top : sk, 0, -fa / 2, 0), P(new THREE.SphereGeometry(0.026 * H * 1.5, 8, 6), sk, 0, -fa, 0, 0, 0, 0, 0.9, 1.1, 0.8)]));
-      sh.add(el2); g.add(sh); arms.push(sh); elbows.push(el2);
-    });
-    const hy = legL + torsoL + H * 0.04 + headR;
-    const head = [P(new THREE.SphereGeometry(headR, 18, 14), sk, 0, hy, 0, 0, 0, 0, 0.92, 1.08, 1)];
-    [-1, 1].forEach(sd => {
-      head.push(P(new THREE.SphereGeometry(headR * 0.16, 8, 6), "#f6f4ee", sd * headR * 0.36, hy + headR * 0.12, headR * 0.83, 0, 0, 0, 1, 0.8, 0.5));
-      head.push(P(new THREE.SphereGeometry(headR * 0.09, 8, 6), "#2a1a12", sd * headR * 0.36, hy + headR * 0.11, headR * 0.9, 0, 0, 0, 1, 1, 0.5));
-      head.push(P(new THREE.BoxGeometry(headR * 0.36, headR * 0.06, headR * 0.06), hairC, sd * headR * 0.36, hy + headR * 0.36, headR * 0.86, 0, 0, sd * -0.12));
-      head.push(P(new THREE.SphereGeometry(headR * 0.2, 8, 6), sk.clone().multiplyScalar(0.92), sd * headR * 0.95, hy + headR * 0.02, 0, 0, 0, 0, 0.5, 1, 0.8));
-    });
-    head.push(P(new THREE.ConeGeometry(headR * 0.13, headR * 0.3, 6), sk.clone().multiplyScalar(0.9), 0, hy - headR * 0.08, headR * 0.98, Math.PI / 2 * 0.95));
-    head.push(P(new THREE.BoxGeometry(headR * 0.42, headR * 0.07, headR * 0.05), "#8a3b3b", 0, hy - headR * 0.42, headR * 0.86));
-    if (look.hair !== "bald") {
-      const capR = headR * (look.hair === "curly" ? 1.13 : look.hair === "buzz" ? 1.02 : 1.06);
-      head.push(P(new THREE.SphereGeometry(capR, 16, 10, 0, Math.PI * 2, 0, Math.PI * (look.hair === "buzz" ? 0.42 : 0.52)), hairC, 0, hy + headR * 0.06, -headR * 0.04, -0.28, 0, 0, 0.95, 1.05, 1.02));
-      if (look.hair === "long") { head.push(P(new THREE.CapsuleGeometry(headR * 0.85, headR * 1.6, 4, 10), hairC, 0, hy - headR * 0.8, -headR * 0.55, 0, 0, 0, 1.05, 1, 0.45)); if (o.style === "saree" || o.style === "lehenga") for (let i = -2; i <= 2; i++) head.push(P(new THREE.SphereGeometry(headR * 0.1, 6, 4), "#fbfbf5", i * headR * 0.22, hy + headR * 0.5 - Math.abs(i) * headR * 0.12, -headR * 0.92)); }
-      if (look.hair === "bun") { head.push(P(new THREE.SphereGeometry(headR * 0.45, 10, 8), hairC, 0, hy + headR * 0.35, -headR * 0.95)); for (let i = 0; i < 6; i++) head.push(P(new THREE.SphereGeometry(headR * 0.09, 6, 4), "#fbfbf5", Math.cos(i) * headR * 0.42, hy + headR * 0.35 + Math.sin(i) * headR * 0.42, -headR * 1.15)); }
-      if (look.hair === "curly") for (let i = 0; i < 9; i++) head.push(P(new THREE.SphereGeometry(headR * 0.3, 8, 6), hairC, Math.cos(i * 0.7) * headR * 0.8, hy + headR * (0.45 + (i % 3) * 0.12), Math.sin(i * 0.7) * headR * 0.6 - headR * 0.2));
-    }
-    if (look.acc === "specs") [-1, 1].forEach(sd => head.push(P(new THREE.TorusGeometry(headR * 0.24, headR * 0.035, 6, 14), "#1a1418", sd * headR * 0.36, hy + headR * 0.12, headR * 0.98)));
-    if (look.acc === "cap") { head.push(P(new THREE.SphereGeometry(headR * 1.1, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), trim, 0, hy + headR * 0.08, 0)); head.push(P(new THREE.BoxGeometry(headR * 1.5, headR * 0.08, headR * 1.0), trim, 0, hy + headR * 0.18, headR * 0.95)); }
-    if (look.acc === "beard") head.push(P(new THREE.SphereGeometry(headR * 0.95, 12, 8, 0, Math.PI * 2, Math.PI * 0.55, Math.PI * 0.45), hairC, 0, hy, headR * 0.1, 0, 0, 0, 1, 1, 0.95));
-    if (look.acc === "moustache" || look.acc === "beard") head.push(P(new THREE.BoxGeometry(headR * 0.7, headR * 0.13, headR * 0.08), hairC, 0, hy - headR * 0.28, headR * 0.93));
-    const headMesh = mk(head); headMesh.userData.pivotY = hy; g.add(headMesh);
-    const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.12 * wf * (H / 0.6), 16), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false }));
-    shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.012; g.add(shadow);
-    return { group: g, legs, knees, arms, elbows, torso, head: headMesh, H: hy + headR * 1.2, legL, shadow };
-  }
+  function person(look, hi) { return PEOPLE.build({ THREE, P, mergeGeos, col, vcMat, srgbTex }, look, !!hi); }
 
   function addFig(id, kind, av, outfit, name, x, z) {
     const lab = document.createElement("div"); lab.className = "lab " + kind;
     lab.innerHTML = `<div class="bub" hidden></div><span>${esc(name)}</span>`;
     labelLayer.appendChild(lab);
     const f = { id, kind, av, outfit, name, x, z, path: [], heading: 0, ph: Math.random() * 6, moving: false, lab, H: 0.7 };
-    if (ok3d) { f.mesh = person(personLook(av, outfit)); f.mesh.group.userData.figId = id; f.H = f.mesh.H; scene.add(f.mesh.group); place(f); }
+    if (ok3d) { f.mesh = person(personLook(av, outfit), id === "me"); f.mesh.group.userData.figId = id; f.H = f.mesh.H; scene.add(f.mesh.group); place(f); }
     figs[id] = f; return f;
   }
   function removeFig(id) { const f = figs[id]; if (!f) return; if (f.mesh && f.mesh.group.parent) f.mesh.group.parent.remove(f.mesh.group); if (f.veh) scene.remove(f.veh.group); if (f.parked) scene.remove(f.parked.group); if (f.box && f.box.parent) f.box.parent.remove(f.box); f.lab.remove(); delete figs[id]; }
@@ -392,7 +352,7 @@ window.AE_WORLD = (function () {
     f.av = av || f.av; f.outfit = outfit;
     if (!ok3d) return;
     const parent = f.mesh.group.parent || scene; parent.remove(f.mesh.group);
-    f.mesh = person(personLook(f.av, outfit)); f.mesh.group.userData.figId = id; f.H = f.mesh.H;
+    f.mesh = person(personLook(f.av, outfit), id === "me"); f.mesh.group.userData.figId = id; f.H = f.mesh.H;
     parent.add(f.mesh.group); if (f.veh) seatPerson(f); f.H = figH(f); place(f);
   }
   function place(f) {
@@ -470,14 +430,36 @@ window.AE_WORLD = (function () {
 
   // ═══ Scene ═══
   function makeSky() {
-    skyU = { top: { value: col("#4f8fd8") }, bot: { value: col("#f6dcae") }, off: { value: 10 }, exp: { value: 0.7 } };
+    skyU = { top: { value: col("#4f8fd8") }, bot: { value: col("#f6dcae") }, off: { value: 10 }, exp: { value: 0.7 }, sunDir: { value: new THREE.Vector3(0.3, 0.6, 0.4).normalize() }, sunC: { value: col("#fff1d8") }, sunK: { value: 1 } };
     const m = new THREE.ShaderMaterial({ uniforms: skyU, side: THREE.BackSide, depthWrite: false, fog: false,
       vertexShader: "varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }",
-      fragmentShader: "uniform vec3 top; uniform vec3 bot; uniform float off; uniform float exp; varying vec3 vW; void main(){ float h = normalize(vW - cameraPosition + vec3(0.0, off, 0.0)).y; gl_FragColor = vec4(mix(bot, top, max(pow(max(h, 0.0), exp), 0.0)), 1.0); }" });
-    sky = new THREE.Mesh(new THREE.SphereGeometry(180, 24, 12), m); sky.renderOrder = -1; scene.add(sky);
+      fragmentShader: "uniform vec3 top; uniform vec3 bot; uniform float off; uniform float exp; uniform vec3 sunDir; uniform vec3 sunC; uniform float sunK; varying vec3 vW; void main(){ vec3 d = normalize(vW - cameraPosition + vec3(0.0, off, 0.0)); float h = d.y; vec3 c = mix(bot, top, max(pow(max(h, 0.0), exp), 0.0)); float s = max(dot(d, sunDir), 0.0); c += sunC * (pow(s, 900.0) * 6.0 + pow(s, 12.0) * 0.35 + pow(s, 3.0) * 0.12) * sunK; c = mix(c, bot * 0.92, smoothstep(0.0, -0.25, h)); gl_FragColor = vec4(c, 1.0); }" });
+    sky = new THREE.Mesh(new THREE.SphereGeometry(180, 32, 16), m); sky.renderOrder = -1; scene.add(sky);
+    makeClouds();
     const sp = new Float32Array(600 * 3), R = rng(5); for (let i = 0; i < 600; i++) { const t = R() * 6.28, p = R() * 1.3; sp[i * 3] = Math.cos(t) * Math.cos(p) * 170; sp[i * 3 + 1] = Math.sin(p) * 170 + 5; sp[i * 3 + 2] = Math.sin(t) * Math.cos(p) * 170; }
     const sg = new THREE.BufferGeometry(); sg.setAttribute("position", new THREE.BufferAttribute(sp, 3));
     stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 0.9, sizeAttenuation: true, transparent: true, opacity: 0, fog: false, depthWrite: false })); scene.add(stars);
+  }
+  // soft cumulus clouds drifting over the backwaters (sprites, tinted by the time of day)
+  let clouds = [], cloudMat = null;
+  function makeClouds() {
+    const c = document.createElement("canvas"); c.width = 256; c.height = 128; const x = c.getContext("2d"), R = rng(31);
+    for (let i = 0; i < 26; i++) { const cx = 40 + R() * 176, cy = 70 - R() * 30 + Math.abs(cx - 128) * 0.12, r = 18 + R() * 30, g = x.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, "rgba(255,255,255,.95)"); g.addColorStop(0.55, "rgba(255,255,255,.55)"); g.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = g; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill(); }
+    const g2 = x.createLinearGradient(0, 40, 0, 110); g2.addColorStop(0, "rgba(0,0,0,0)"); g2.addColorStop(1, "rgba(120,130,160,.35)"); x.globalCompositeOperation = "source-atop"; x.fillStyle = g2; x.fillRect(0, 0, 256, 128);
+    const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding;
+    cloudMat = new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false, fog: false, opacity: 0.92 });
+    const R2 = rng(57);
+    for (let i = 0; i < 16; i++) { const s = new THREE.Sprite(cloudMat); const a = R2() * 6.28, d = 70 + R2() * 80, sc = 22 + R2() * 30; s.position.set(COLS / 2 + Math.cos(a) * d, 26 + R2() * 26, ROWS / 2 + Math.sin(a) * d); s.scale.set(sc, sc * 0.45, 1); s.renderOrder = -0.5; scene.add(s); clouds.push(s); }
+  }
+  // image-based light: the sky is rendered into an environment map so water, glass, cars and skin pick up its colour
+  let pmrem = null, envScene = null, envRT = null, envHour = -9;
+  function updateEnv(h) {
+    if (!renderer || Math.abs(h - envHour) < 0.75 && envHour >= 0) return; envHour = h;
+    try {
+      if (!pmrem) { pmrem = new THREE.PMREMGenerator(renderer); envScene = new THREE.Scene(); const sk = new THREE.Mesh(new THREE.SphereGeometry(50, 32, 16), sky.material); envScene.add(sk); const gr = new THREE.Mesh(new THREE.CircleGeometry(48, 24), new THREE.MeshBasicMaterial({ color: 0x6f6a5c })); gr.rotation.x = -Math.PI / 2; gr.position.y = -2; envScene.add(gr); envScene.userData.ground = gr; }
+      envScene.userData.ground.material.color.copy(hemi.groundColor).multiplyScalar(0.6 + sun.intensity * 0.15);
+      const old = envRT; envRT = pmrem.fromScene(envScene, 0.02); scene.environment = envRT.texture; if (old) old.dispose();
+    } catch (e) { pmrem = null; }
   }
   function makeWater() {
     const c = document.createElement("canvas"); c.width = c.height = 128; const x = c.getContext("2d"), img = x.createImageData(128, 128), R = rng(3);
@@ -485,7 +467,7 @@ window.AE_WORLD = (function () {
     for (let y = 0; y < 128; y++) for (let xx = 0; xx < 128; xx++) { const hx = hgt[y * 128 + (xx + 1) % 128] - hgt[y * 128 + (xx + 127) % 128], hy = hgt[((y + 1) % 128) * 128 + xx] - hgt[((y + 127) % 128) * 128 + xx], i = (y * 128 + xx) * 4; img.data[i] = 128 + hx * 60; img.data[i + 1] = 128 + hy * 60; img.data[i + 2] = 255; img.data[i + 3] = 255; }
     x.putImageData(img, 0, 0);
     waterTex = new THREE.CanvasTexture(c); waterTex.wrapS = waterTex.wrapT = THREE.RepeatWrapping; waterTex.repeat.set(60, 60);
-    water = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: isKochi ? 0x1e6a6e : 0x2a6f8a, roughness: 0.18, metalness: 0.05, normalMap: waterTex, normalScale: new THREE.Vector2(0.7, 0.7) }));
+    water = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: isKochi ? 0x14545a : 0x1f5f78, roughness: 0.06, metalness: 0.1, envMapIntensity: 1.25, normalMap: waterTex, normalScale: new THREE.Vector2(0.55, 0.55) }));
     water.rotation.x = -Math.PI / 2; water.position.set(COLS / 2, -0.07, ROWS / 2); water.receiveShadow = true; scene.add(water);
   }
   function makeOuterLand(o) {
@@ -503,7 +485,9 @@ window.AE_WORLD = (function () {
     }
     const sky2 = new THREE.Mesh(mergeGeos(parts), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 })); scene.add(sky2);
   }
+  let lmParts = [];
   function renderCity(o) {
+    lmParts = [];
     const fac = {}, getFac = k => fac[k] || (fac[k] = { mat: facade(k), parts: [] }), roofParts = [], propParts = [];
     const R = rng(hashNum(o.stateId + "paint"));
     const pastel = ["#f3e6d2", "#e9d7c4", "#d9e6dd", "#e6dcef", "#f1e0b5", "#dbe9f3", "#f2d6cf", "#e8e4dc"];
@@ -515,13 +499,21 @@ window.AE_WORLD = (function () {
       const tint = col(style === "tower" ? "#ffffff" : pastel[Math.floor(b.tint * pastel.length)]);
       getFac(style).parts.push(P(facadeBox(w, h, d, 0.8, 1.0), tint, cx, h / 2, cz));
       if (b.style === "shop" || (b.style === "res" && b.floors >= 3)) getFac("shopfront").parts.push(P(facadeBox(w + 0.04, 0.9, d + 0.04, 0.8, 0.9), col(["#c84b3c", "#2f6f8f", "#e0a530", "#4b8b3b", "#7a3f8f"][Math.floor(b.tint * 5)]), cx, 0.45, cz));
+      const ledge = tint.clone().multiplyScalar(0.86);
+      for (let k = 1; k < Math.round(h); k++) propParts.push(P(new THREE.BoxGeometry(w + 0.06, 0.035, d + 0.06), ledge, cx, k * 1.0, cz));
       if (b.roof) roofParts.push(P(hipRoof(w, d, 0.55 + b.w * 0.08), col(["#b5532f", "#a8472a", "#c0613a", "#8f3f26"][Math.floor(b.tint * 4)]), cx, h, cz));
-      else { if (R() < 0.55) propParts.push(P(new THREE.CylinderGeometry(0.16, 0.16, 0.32, 10), col("#2b2b2b"), cx + (R() - 0.5) * w * 0.6, h + 0.16, cz + (R() - 0.5) * d * 0.6)); propParts.push(P(new THREE.BoxGeometry(w, 0.12, d), col("#bdb6a8"), cx, h + 0.06, cz, 0, 0, 0, 1.0, 1, 1)); }
+      else {
+        propParts.push(P(new THREE.BoxGeometry(w - 0.02, 0.05, d - 0.02), col("#8f897e"), cx, h + 0.025, cz));
+        [[0, d / 2], [0, -d / 2], [w / 2, 0], [-w / 2, 0]].forEach(([ox, oz]) => propParts.push(P(new THREE.BoxGeometry(ox ? 0.06 : w + 0.06, 0.2, oz ? 0.06 : d + 0.06), ledge, cx + ox, h + 0.1, cz + oz)));
+        if (R() < 0.65) { const tx = cx + (R() - 0.5) * w * 0.5, tz = cz + (R() - 0.5) * d * 0.5; propParts.push(P(new THREE.CylinderGeometry(0.17, 0.17, 0.34, 14), col("#1e1e1e"), tx, h + 0.22, tz), P(new THREE.CylinderGeometry(0.08, 0.17, 0.06, 14), col("#2a2a2a"), tx, h + 0.42, tz), P(new THREE.BoxGeometry(0.3, 0.05, 0.3), col("#7d776c"), tx, h + 0.05, tz)); }
+        if (R() < 0.3) propParts.push(P(new THREE.BoxGeometry(0.3, 0.22, 0.2), col("#d9d9d4"), cx + (R() - 0.5) * w * 0.5, h + 0.16, cz + (R() - 0.5) * d * 0.5));
+        if (R() < 0.25) propParts.push(P(new THREE.CylinderGeometry(0.16, 0.02, 0.06, 12), col("#e8e8e8"), cx + (R() - 0.5) * w * 0.4, h + 0.35, cz + (R() - 0.5) * d * 0.4, 0.6, 0, 0));
+      }
     });
     Object.keys(fac).forEach(k => { if (k === "shopfront") return; const m = new THREE.Mesh(mergeGeos(fac[k].parts), fac[k].mat); m.castShadow = m.receiveShadow = true; scene.add(m); });
     if (fac.shopfront) { const sm = facadeShop(); const m = new THREE.Mesh(mergeGeos(fac.shopfront.parts), sm); m.receiveShadow = true; scene.add(m); }
     if (roofParts.length) { const m = new THREE.Mesh(mergeGeos(roofParts), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, map: roofTex() })); m.castShadow = true; m.receiveShadow = true; scene.add(m); }
-    if (propParts.length) { const m = new THREE.Mesh(mergeGeos(propParts), vcMatRough); m.castShadow = true; scene.add(m); }
+    if (propParts.length || lmParts.length) { const m = new THREE.Mesh(mergeGeos(propParts.concat(lmParts)), vcMatRough); m.castShadow = true; m.receiveShadow = true; scene.add(m); }
   }
   function facadeShop() {
     const S = 64, c = document.createElement("canvas"), e = document.createElement("canvas"); c.width = c.height = e.width = e.height = S;
@@ -532,7 +524,8 @@ window.AE_WORLD = (function () {
     const m = new THREE.MeshStandardMaterial({ map: srgbTex(c, true), emissiveMap: srgbTex(e, true), emissive: 0xffffff, emissiveIntensity: 0, vertexColors: true, roughness: 0.8 });
     facadeMats.push(m); return m;
   }
-  function roofTex() { const c = document.createElement("canvas"); c.width = c.height = 64; const x = c.getContext("2d"); x.fillStyle = "#ffffff"; x.fillRect(0, 0, 64, 64); x.fillStyle = "rgba(0,0,0,.18)"; for (let i = 0; i < 64; i += 8) x.fillRect(0, i, 64, 2); for (let j = 0; j < 64; j += 8) for (let i = 0; i < 64; i += 16) x.fillRect(i + (j % 16 ? 8 : 0), j, 2, 8); const t = srgbTex(c, true); t.repeat.set(4, 4); return t; }
+  // Mangalore-tile roof: curved clay rows with soft shading and moss
+  function roofTex() { const c = document.createElement("canvas"); c.width = c.height = 128; const x = c.getContext("2d"), r = rng(23); x.fillStyle = "#ffffff"; x.fillRect(0, 0, 128, 128); for (let j = 0; j < 128; j += 12) for (let i = 0; i < 128; i += 14) { const o = (j / 12) % 2 ? 7 : 0, g = x.createLinearGradient(i + o, 0, i + o + 14, 0); g.addColorStop(0, "rgba(0,0,0,.22)"); g.addColorStop(0.5, "rgba(255,255,255,.08)"); g.addColorStop(1, "rgba(0,0,0,.2)"); x.fillStyle = g; x.fillRect(i + o, j, 14, 12); x.fillStyle = "rgba(0,0,0,.28)"; x.fillRect(i + o, j + 10, 14, 2); if (r() < 0.06) { x.fillStyle = "rgba(60,90,40,.35)"; x.fillRect(i + o, j, 14, 12); } } const t = srgbTex(c, true); t.repeat.set(3, 3); return t; }
 
   // Landmark buildings get their own shape and a signboard
   function landmark(b, cx, cz, w, d, h, o) {
@@ -552,7 +545,7 @@ window.AE_WORLD = (function () {
     } else {
       const main = add(facadeBox(w, h, d, 0.8, 1.0), null, cx, h / 2, cz, fm);
       if (b.roof) { const r = add(hipRoof(w, d, 0.7 + w * 0.05), null, cx, h, cz, new THREE.MeshStandardMaterial({ color: kind === "church" ? 0x9c4a30 : 0xb5532f, roughness: 0.8, map: roofTex() })); }
-      else add(new THREE.BoxGeometry(w + 0.08, 0.14, d + 0.08), "#cfc8ba", cx, h + 0.07, cz);
+      else { const pc = col(wallC).multiplyScalar(0.88); lmParts.push(P(new THREE.BoxGeometry(w - 0.02, 0.06, d - 0.02), col("#8f897e"), cx, h + 0.03, cz), P(new THREE.BoxGeometry(w + 0.06, 0.22, 0.07), pc, cx, h + 0.11, cz + d / 2), P(new THREE.BoxGeometry(w + 0.06, 0.22, 0.07), pc, cx, h + 0.11, cz - d / 2), P(new THREE.BoxGeometry(0.07, 0.22, d + 0.06), pc, cx + w / 2, h + 0.11, cz), P(new THREE.BoxGeometry(0.07, 0.22, d + 0.06), pc, cx - w / 2, h + 0.11, cz)); for (let k = 1; k < Math.round(h); k++) lmParts.push(P(new THREE.BoxGeometry(w + 0.06, 0.035, d + 0.06), pc, cx, k, cz)); }
       if (kind === "hall" || kind === "office") for (let i = -2; i <= 2; i++) { const px = fp[0] + (face === "s" || face === "n" ? i * fw * 0.18 : (face === "w" ? -0.25 : 0.25)), pz = fp[1] + (face === "s" ? 0.25 : face === "n" ? -0.25 : i * fw * 0.18); add(new THREE.CylinderGeometry(0.09, 0.1, Math.min(h, 2) * 0.95, 10), "#fbf9f4", px, Math.min(h, 2) * 0.475, pz); }
       if (kind === "church") { const gable = add(new THREE.ConeGeometry(fw * 0.4, 1.4, 3), "#f7f5ef", fp[0], h + 0.7, fp[1]); gable.rotation.y = fp[2]; add(new THREE.BoxGeometry(0.08, 0.6, 0.08), "#444", fp[0], h + 1.7, fp[1]); add(new THREE.BoxGeometry(0.35, 0.08, 0.08), "#444", fp[0], h + 1.75, fp[1]); }
       if (kind === "cafe") { const aw = add(new THREE.BoxGeometry(fw * 0.95, 0.06, 0.7), null, 0, 0, 0, new THREE.MeshStandardMaterial({ map: stripes("#e05a47", "#f7efe2"), roughness: 0.9 })); aw.position.set(fp[0] + (face === "w" ? -0.35 : face === "e" ? 0.35 : 0), 1.0, fp[1] + (face === "s" ? 0.35 : face === "n" ? -0.35 : 0)); aw.rotation.y = fp[2]; aw.rotation.x = 0.25 * (face === "s" ? 1 : -1); }
@@ -582,23 +575,41 @@ window.AE_WORLD = (function () {
   }
 
   // ── nature and street life ──
+  // coconut palm: curved ringed trunk, feathered drooping fronds, coconuts
+  let palmGeoC = null, rainGeoC = null;
   function palmGeometry() {
-    const parts = [], trunk = col("#7a5b3e"), leaf = col("#3f7d34"), leaf2 = col("#5a9640");
-    for (let i = 0; i < 6; i++) parts.push(P(new THREE.CylinderGeometry(0.045 - i * 0.004, 0.055 - i * 0.004, 0.5, 7), trunk.clone().multiplyScalar(0.9 + (i % 2) * 0.1), i * 0.035, 0.25 + i * 0.48, 0, 0, 0, -0.07));
-    const topY = 3.0, topX = 0.21;
-    for (let i = 0; i < 9; i++) {
-      const a = i / 9 * Math.PI * 2, fr = new THREE.PlaneGeometry(0.22, 1.25, 1, 4), p = fr.attributes.position;
-      for (let k = 0; k < p.count; k++) { const yy = p.getY(k) + 0.625; p.setY(k, yy); p.setZ(k, -yy * yy * 0.35); p.setX(k, p.getX(k) * (1 - yy / 1.6)); }
-      fr.computeVertexNormals(); fr.rotateX(-1.05); fr.rotateY(a); fr.translate(topX, topY, 0);
-      parts.push({ geo: fr, color: i % 2 ? leaf : leaf2 });
+    if (palmGeoC) return palmGeoC;
+    const parts = [], trunk = col("#7a5b3e"), R = rng(19);
+    let tx = 0;
+    for (let i = 0; i < 8; i++) { tx = i * i * 0.006; parts.push(P(new THREE.CylinderGeometry(0.043 - i * 0.0025, 0.05 - i * 0.0025, 0.4, 8), trunk.clone().multiplyScalar(0.82 + (i % 2) * 0.16), tx, 0.2 + i * 0.37, 0, 0, 0, -0.04 - i * 0.012)); }
+    const topY = 3.0, topX = tx + 0.03;
+    for (let f = 0; f < 13; f++) {
+      const a = f / 13 * Math.PI * 2 + R() * 0.3, len = 1.05 + R() * 0.35, droop = 0.5 + R() * 0.35, pos = [], seg = 9;
+      const leafC = col("#3f7d34").lerp(col("#7fae4a"), R() * 0.6);
+      for (let k = 0; k < seg; k++) {
+        const t0 = k / seg, t1 = (k + 1) / seg, pt = t => [t * len, -t * t * droop * len + t * 0.18, 0];
+        const p0 = pt(t0), p1 = pt(t1), w = 0.17 * Math.sin(Math.PI * Math.min(1, t0 * 1.15 + 0.1));
+        [-1, 1].forEach(sd => pos.push(p0[0], p0[1], p0[2], p1[0], p1[1], p1[2], p0[0] + 0.06, p0[1] - 0.09, sd * w));
+      }
+      const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.computeVertexNormals();
+      g.setAttribute("uv", new THREE.Float32BufferAttribute(new Array(pos.length / 3 * 2).fill(0), 2));
+      g.rotateY(a); g.translate(topX, topY, 0); parts.push({ geo: g, color: leafC });
     }
-    for (let i = 0; i < 3; i++) parts.push(P(new THREE.SphereGeometry(0.07, 6, 5), col("#6b5b2a"), topX + Math.cos(i * 2.1) * 0.08, topY - 0.08, Math.sin(i * 2.1) * 0.08));
-    return mergeGeos(parts);
+    for (let i = 0; i < 4; i++) parts.push(P(new THREE.SphereGeometry(0.075, 8, 6), col("#7a6a2a").lerp(col("#4f6a24"), i % 2), topX + Math.cos(i * 1.6) * 0.09, topY - 0.1, Math.sin(i * 1.6) * 0.09));
+    return (palmGeoC = mergeGeos(parts));
   }
+  // rain tree: forked trunk, lumpy canopy, darker underneath
   function rainTreeGeometry() {
-    const parts = [P(new THREE.CylinderGeometry(0.08, 0.12, 1.1, 8), col("#6b4a2f"), 0, 0.55, 0)];
-    [[0, 1.35, 0, 0.75], [0.45, 1.2, 0.2, 0.5], [-0.4, 1.25, -0.2, 0.55], [0.1, 1.55, -0.35, 0.45]].forEach(([x, y, z, r]) => parts.push(P(new THREE.IcosahedronGeometry(r, 1), col("#4a8a3a").lerp(col("#2f6b2a"), Math.abs(x)), x, y, z, 0, 0, 0, 1.2, 0.8, 1.2)));
-    return mergeGeos(parts);
+    if (rainGeoC) return rainGeoC;
+    const parts = [P(new THREE.CylinderGeometry(0.07, 0.12, 0.9, 8), col("#5e4430"), 0, 0.45, 0)], R = rng(29);
+    [[0.25, 0.4], [-0.25, -0.3], [0.05, 2.3]].forEach(([lean, rot]) => parts.push(P(new THREE.CylinderGeometry(0.035, 0.06, 0.6, 6), col("#5e4430"), Math.sin(rot) * 0.15, 1.05, Math.cos(rot) * 0.15, lean, rot, 0)));
+    const blobs = [[0, 1.5, 0, 0.62], [0.5, 1.35, 0.2, 0.48], [-0.45, 1.4, -0.15, 0.5], [0.15, 1.75, -0.35, 0.45], [-0.2, 1.7, 0.35, 0.44], [0.35, 1.25, -0.45, 0.4], [-0.4, 1.2, 0.45, 0.4]];
+    blobs.forEach(([x, y, z, r]) => {
+      const g = new THREE.IcosahedronGeometry(r, 2), q = g.attributes.position, cl = [];
+      for (let i = 0; i < q.count; i++) { const k = 1 + (R() - 0.5) * 0.22; q.setXYZ(i, q.getX(i) * k * 1.25, q.getY(i) * k * 0.78, q.getZ(i) * k * 1.25); const ny = q.getY(i) / (r * 0.8), c = col("#2f6b2a").lerp(col("#6ea84a"), Math.max(0, Math.min(1, 0.45 + ny * 0.5 + (R() - 0.5) * 0.2))); cl.push(c.r, c.g, c.b); }
+      g.translate(x, y, z); g.computeVertexNormals(); g.setAttribute("color", new THREE.Float32BufferAttribute(cl, 3)); parts.push({ geo: g, color: col("#4a8a3a") });
+    });
+    return (rainGeoC = mergeGeos(parts));
   }
   function plantTrees() {
     const pm = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, side: THREE.DoubleSide });
@@ -718,14 +729,14 @@ window.AE_WORLD = (function () {
         scene.fog = new THREE.Fog(0xf6dcae, 22, 70);
         camera = new THREE.PerspectiveCamera(55, 1, 0.05, 260);
         ray = new THREE.Raycaster();
-        hemi = new THREE.HemisphereLight(0xcfe2ff, 0x6b5a3a, 0.65); scene.add(hemi);
+        hemi = new THREE.HemisphereLight(0xcfe2ff, 0x6b5a3a, 0.55); scene.add(hemi);
         sun = new THREE.DirectionalLight(0xffe2b8, 2.2); sun.castShadow = true;
         sun.shadow.mapSize.set(1024, 1024); const sc = sun.shadow.camera; sc.left = sc.bottom = -13; sc.right = sc.top = 13; sc.near = 1; sc.far = 80; sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.02;
         scene.add(sun); scene.add(sun.target);
         makeSky(); makeWater(); makeOuterLand(o);
         groundMesh = new THREE.Mesh(new THREE.PlaneGeometry(COLS, ROWS), new THREE.MeshStandardMaterial({ map: groundTexture(), roughness: 0.95, alphaTest: 0.5 }));
         groundMesh.rotation.x = -Math.PI / 2; groundMesh.position.set(COLS / 2, 0, ROWS / 2); groundMesh.receiveShadow = true; scene.add(groundMesh);
-        renderCity(o); plantTrees(); streetLamps(); spawnTraffic();
+        renderCity(o); plantTrees(); streetLamps(); spawnTraffic(); powerLines(); bushes();
         if (isKochi) { fishingNets(); bridgesRails(); chayaStall(36.45, 29.35); metro(); streetSigns(); busStops(); roadPalms(); }
         labels.forEach(l => { const s = textSprite(l.t, l.c, 0.42); s.position.set(l.x, l.h + 0.7, l.y); scene.add(s); });
         const bd = spots.board;
@@ -744,8 +755,8 @@ window.AE_WORLD = (function () {
       const st = o.startPos && walk(o.startPos.x, o.startPos.y) ? o.startPos : (isKochi ? { x: K.start[0], y: K.start[1] } : { x: 8, y: 18 });
       me = addFig("me", "me", o.avatar, o.outfit, o.meLabel || "You", st.x + 0.5, st.y + 0.5);
       ["m", "f", "v", "p"].forEach(r => { const s = spots[r]; if (s) { const f = addFig("npc_" + r, "npc", npcLook(o.stateId, r), null, o.cast[r], s.x + 0.5 + (r === "f" ? 0.6 : 0), s.y + 0.5); f.role = r; f.heading = Math.PI; place(f); } });
-      if (o.spouse && spots.house) { const f = addFig("npc_s", "npc", npcLook(o.spouse, "s"), o.spouseOutfit || null, o.spouse, spots.house.x + 0.5, spots.house.y + 0.5); f.role = "s"; f.heading = Math.PI; place(f); }
-      (o.kids || []).forEach((k, i) => { if (!spots.house) return; const av = npcLook(k.name, "k"); av.small = k.age < 12; av.height = 140 + Math.min(40, k.age * 3); const f = addFig("kid_" + i, "walker", av, { top: ["#f4a52b", "#22b5a6", "#e0638a"][i % 3], bottom: "#2a2742", style: "tee" }, k.name, spots.house.x + 1.2 + i * 0.5, spots.house.y + 0.9); f.home = { x: spots.house.x, y: spots.house.y }; f.amb = "kid"; f.kid = true; place(f); });
+      if (o.spouse && spots.house) { const f = addFig("npc_s", "npc", npcLook(o.spouse, "s", o.spouseFem), o.spouseOutfit || null, o.spouse, spots.house.x + 0.5, spots.house.y + 0.5); f.role = "s"; f.heading = Math.PI; place(f); }
+      (o.kids || []).forEach((k, i) => { if (!spots.house) return; const av = PEOPLE.random(k.name + "|kid", { kid: true, set: { height: 140 + Math.min(40, k.age * 3) } }); av.small = k.age < 12; const f = addFig("kid_" + i, "walker", av, null, k.name, spots.house.x + 1.2 + i * 0.5, spots.house.y + 0.9); f.home = { x: spots.house.x, y: spots.house.y }; f.amb = "kid"; f.kid = true; place(f); });
       townsfolk(o);
       bindInput();
       mapBase = mapImage(); mini = el.querySelector(".minimap"); miniCtx = mini.getContext("2d");
@@ -775,11 +786,11 @@ window.AE_WORLD = (function () {
   }
   // ── Kochi Metro: an elevated line over MG Road with three stations and a train that shuttles along it ──
   function metro() {
-    const M = K.metro, X = M.x, deckY = 2.3, parts = [], conc = col("#d9d5cc"), conc2 = col("#c4bfb4");
+    const M = K.metro, X = M.x, deckY = 2.3, parts = [], conc = col("#bdb7ab"), conc2 = col("#a7a196");
     parts.push(P(new THREE.BoxGeometry(0.95, 0.2, ROWS + 8), conc, X, deckY - 0.1, ROWS / 2));
     [-1, 1].forEach(sd => parts.push(P(new THREE.BoxGeometry(0.06, 0.18, ROWS + 8), conc2, X + sd * 0.45, deckY + 0.09, ROWS / 2)));
     const junction = z => [[8, 10], [21, 23], [36, 38], [45, 47]].some(([a, b]) => z >= a && z <= b);
-    for (let z = -2.5; z < ROWS + 4; z += 3) if (!junction(z)) { parts.push(P(new THREE.CylinderGeometry(0.11, 0.13, deckY - 0.2, 10), conc2, X, (deckY - 0.2) / 2, z)); parts.push(P(new THREE.BoxGeometry(0.75, 0.16, 0.3), conc2, X, deckY - 0.27, z)); }
+    for (let z = -2.5; z < ROWS + 4; z += 3) if (!junction(z)) { parts.push(P(new THREE.CylinderGeometry(0.085, 0.1, deckY - 0.2, 12), conc2, X, (deckY - 0.2) / 2, z)); parts.push(P(new THREE.BoxGeometry(0.75, 0.16, 0.3), conc2, X, deckY - 0.27, z)); }
     M.stations.forEach(([z]) => {
       parts.push(P(new THREE.BoxGeometry(1.9, 0.14, 3.4), conc, X, deckY - 0.08, z));
       parts.push(P(new THREE.CylinderGeometry(1.05, 1.05, 3.4, 16, 1, true, -Math.PI / 2, Math.PI), col("#9fd8d2"), X, deckY + 0.45, z, Math.PI / 2, 0, 0, 1, 0.42, 1));
@@ -837,6 +848,37 @@ window.AE_WORLD = (function () {
     m.userData.sign = true; facadeMats.push(m);
     return new THREE.Mesh(new THREE.PlaneGeometry(w, h), m);
   }
+  // KSEB power poles with sagging wires: the most Kerala thing on any street
+  function powerLines() {
+    const poles = [];
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      if (at(x, y) !== SIDE || nearSpot(x, y) || doors.some(d => Math.abs(d.x - x) <= 1 && Math.abs(d.y - y) <= 1)) continue;
+      const vRoad = at(x + 1, y) === ROAD || at(x - 1, y) === ROAD, hRoad = at(x, y + 1) === ROAD || at(x, y - 1) === ROAD;
+      if ((vRoad && y % 6 === 2) || (hRoad && !vRoad && x % 6 === 4)) poles.push({ x: x + (at(x + 1, y) === ROAD ? 0.85 : at(x - 1, y) === ROAD ? 0.15 : 0.5), z: y + (at(x, y + 1) === ROAD ? 0.85 : at(x, y - 1) === ROAD ? 0.15 : 0.5), v: vRoad });
+    }
+    if (!poles.length) return;
+    const parts = [], H = 2.1, pts = [];
+    poles.forEach(p => { parts.push(P(new THREE.BoxGeometry(0.07, H, 0.07), col("#a9a59c"), p.x, H / 2, p.z, 0, 0, 0, 1, 1, 1), P(new THREE.BoxGeometry(p.v ? 0.05 : 0.5, 0.05, p.v ? 0.5 : 0.05), col("#6d6a64"), p.x, H - 0.12, p.z)); });
+    const m = new THREE.Mesh(mergeGeos(parts), vcMatRough); m.castShadow = true; scene.add(m);
+    poles.forEach((p, i) => {
+      const q = poles.find((o2, j) => j > i && o2.v === p.v && (p.v ? Math.abs(o2.x - p.x) < 0.2 && o2.z > p.z && o2.z - p.z < 7.5 : Math.abs(o2.z - p.z) < 0.2 && o2.x > p.x && o2.x - p.x < 7.5));
+      if (!q) return;
+      [-0.2, 0.2].forEach(off => { const ax = p.x + (p.v ? 0 : 0), az = p.z, ox = p.v ? off : 0, oz = p.v ? 0 : off; for (let k = 0; k < 8; k++) { const t0 = k / 8, t1 = (k + 1) / 8, sag = t => Math.sin(Math.PI * t) * 0.22; pts.push(ax + ox + (q.x - p.x) * t0, H - 0.1 - sag(t0), az + oz + (q.z - p.z) * t0, ax + ox + (q.x - p.x) * t1, H - 0.1 - sag(t1), az + oz + (q.z - p.z) * t1); } });
+    });
+    const lg = new THREE.BufferGeometry(); lg.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+    scene.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0x1d1d1f, transparent: true, opacity: 0.75 })));
+  }
+  function bushes() {
+    const R = rng(88), list = [];
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) { const t = at(x, y); if ((t === GRASS && R() < 0.22) || (t === PLAZA && at(x - 1, y) !== WATER && at(x + 1, y) === ROAD && y % 4 === 1)) if (!nearSpot(x, y)) list.push([x + 0.2 + R() * 0.6, y + 0.2 + R() * 0.6, 0.7 + R() * 0.6, R() * 6]); }
+    if (!list.length) return;
+    const parts = [], R2 = rng(5);
+    for (let i = 0; i < 5; i++) parts.push(P(new THREE.IcosahedronGeometry(0.16, 1), col("#2f6b2a").lerp(col("#4f8a3a"), R2()), (R2() - 0.5) * 0.25, 0.14 + R2() * 0.08, (R2() - 0.5) * 0.25, 0, 0, 0, 1.1, 0.85, 1.1));
+    for (let i = 0; i < 7; i++) parts.push(P(new THREE.SphereGeometry(0.03, 6, 4), col(i % 3 ? "#e0283a" : "#f2a33b"), (R2() - 0.5) * 0.36, 0.18 + R2() * 0.12, (R2() - 0.5) * 0.36));
+    const im = new THREE.InstancedMesh(mergeGeos(parts), vcMat, list.length), m4 = new THREE.Matrix4();
+    list.forEach(([x, z, sc, r], i) => { m4.compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, r, 0)), new THREE.Vector3(sc, sc, sc)); im.setMatrixAt(i, m4); });
+    im.castShadow = true; scene.add(im);
+  }
   // coconut palms along the mainland's pavements
   function roadPalms() {
     const R = rng(404), list = [];
@@ -860,16 +902,33 @@ window.AE_WORLD = (function () {
     list.forEach(([nm, amb, stat], i) => {
       let t = stat && fixed[amb] ? { x: fixed[amb][0], y: fixed[amb][1] } : randomDoor(R());
       t = nearestWalk(t) || t;
-      const av = npcLook(o.stateId + nm + i, "t");
-      const outfit = amb === "delivery" ? { top: "#ff4f9a", bottom: "#2a2742", style: "sport", trim: "#ffffff" } : amb === "ammachi" ? { top: "#f7f3e8", bottom: "#f7f3e8", style: "mundu", trim: "#c9a227" } : amb === "uncle" || amb === "fisher" || amb === "chaya" ? { top: ["#f7f3e8", "#7aa6c9", "#e8d9b5"][i % 3], bottom: "#f7f3e8", style: "mundu", trim: "#c9a227" } : amb === "aunty" ? { top: "#2a7f62", bottom: "#2a7f62", style: "saree", trim: "#d4af37" } : { top: ["#e0638a", "#7b8cff", "#f4a52b", "#22b5a6", "#efe4cf", "#3f8f55", "#c0392b"][i % 7], bottom: ["#2a2742", "#3b4a6b", "#5a4630"][i % 3], style: i % 3 === 0 ? "kurta" : "tee" };
-      if (amb === "ammachi") { av.hair = "bun"; av.hairColor = 5; } if (amb === "uncle") { av.acc = "moustache"; av.hairColor = 4; }
+      // each type of townsperson has a typical Kochi look; everything else (face, hair, colours) is random
+      const T = {
+        chaya: [false, true, { facial: "kerala", top: "tank" }, { top: "#f4f1e8", bottom: "#f4f1e8", style: "mundu", trim: "#c9a227" }],
+        auto: [false, false, { top: "shirt", topC: 14, bottom: "trousers", botC: 14, facial: "moustache", shoes: "chappal" }],
+        ammachi: [true, true, { hair: "bun", hairColor: 7, glasses: "round" }, { top: "#f7f3e8", bottom: "#f7f3e8", style: "mundu", trim: "#c9a227" }],
+        lottery: [false, true, { top: "shirt", glasses: "square", shoes: "chappal" }, { top: "#e8d9b5", bottom: "#f4f1e8", style: "mundu", trim: "#c9a227" }],
+        fisher: [false, false, { top: "tank", facial: "stubble", shoes: "chappal", hat: "none" }, { top: "#e8d9b5", bottom: "#2f6db0", style: "mundu", trim: "#1e4f86" }],
+        student: [undefined, false, { shoes: "sneakers", bottom: "jeans", facial: "none", top: "tee" }],
+        techie: [undefined, false, { top: "polo", bottom: "trousers", shoes: "sneakers" }],
+        tourist: [undefined, false, { top: "tee", bottom: "shorts", hat: "cap", glasses: "shades", shoes: "sandals", skin: 8, hairColor: 8 }],
+        uncle: [false, true, { facial: "kerala", hairColor: 4, top: "shirt" }, { top: ["#f7f3e8", "#7aa6c9", "#e8d9b5"][i % 3], bottom: "#f7f3e8", style: "mundu", trim: "#c9a227" }],
+        aunty: [true, false, { hair: "braid", hat: "jasmine", bindi: "red" }, { top: ["#2a7f62", "#9b1c2c", "#e2574c"][i % 3], bottom: ["#2a7f62", "#9b1c2c", "#e2574c"][i % 3], style: "saree", trim: "#d4af37" }],
+        fishseller: [true, false, { hair: "bun", ears: "studs" }, { top: "#3f5fc4", bottom: "#3f5fc4", style: "saree", trim: "#f4a52b" }],
+        delivery: [false, false, { hat: "cap", hatC: 6 }, { top: "#ff4f9a", bottom: "#2a2742", style: "sport", trim: "#ffffff" }],
+        jogger: [undefined, false, { shoes: "sneakers", hat: "none" }, { top: ["#22b5a6", "#e2574c"][i % 2], bottom: "#1b1b1f", style: "sport", trim: "#ffffff" }]
+      }[amb] || [undefined, false, {}];
+      const av = PEOPLE.random(o.stateId + nm + i, { fem: T[0], old: T[1], set: T[2] });
+      const outfit = T[3] || null;
       const f = addFig("town_" + i, "walker", av, outfit, nm, t.x + 0.5, t.y + 0.5);
       f.amb = amb; f.stat = !!stat; f.cool = 0; f.heading = R() * 6; place(f);
     });
   }
-  function npcLook(stateId, role) {
-    const R = rng(hashNum(stateId + role));
-    return { skin: 2 + Math.floor(R() * 5), height: 155 + Math.floor(R() * 25), weight: 52 + Math.floor(R() * 28), hair: role === "p" ? "bun" : ["short", "curly", "long", "buzz", "short"][Math.floor(R() * 5)], hairColor: role === "p" || role === "m" ? 4 : Math.floor(R() * 3), acc: role === "m" ? "specs" : role === "v" ? "cap" : R() < 0.25 ? "moustache" : "none" };
+  // cast roles: m/v are men, f (friend) and p (mother) are women; townsfolk vary
+  function npcLook(seed, role, fem) {
+    const F = fem != null ? fem : role === "f" || role === "p" ? true : role === "m" || role === "v" ? false : undefined;
+    const set = role === "m" ? { glasses: "square", top: "shirt" } : role === "v" ? { hat: "cap", hatC: 10 } : role === "p" ? { hair: "bun" } : {};
+    return PEOPLE.random(seed + "|" + role, { fem: F, old: role === "p", set });
   }
   function resize() {
     if (!el || !el.isConnected || !ok3d) return;
@@ -1037,6 +1096,30 @@ window.AE_WORLD = (function () {
     }
   }
 
+  // ── Kochi Metro ride: you board at the station above MG Road and the camera rides along on the viaduct ──
+  let mride = null;
+  function startMetro(fromKey, toKey) {
+    if (!metroTrain || mride || ride || !spots[fromKey] || !spots[toKey]) return false;
+    const A = spots[fromKey].z, B = spots[toKey].z, D = Math.abs(B - A);
+    mride = { A, B, t: 0, dur: 2.5 + D / 4.2, to: toKey, d0: dist, p0: pitch };
+    setVehicle(null); me.path = []; actBtn.hidden = true; if (me.mesh) me.mesh.group.visible = false; me.lab.style.visibility = "hidden";
+    const cap = el.querySelector(".ride-cap"); cap.textContent = "🚇 Kochi Metro → " + spots[toKey].label.replace(" Metro", ""); cap.hidden = false;
+    metroTrain.wait = 0; metroTrain.m.position.z = A; metroTrain.z = A;
+    return true;
+  }
+  function stepMetroRide(dt) {
+    const R2 = mride; R2.t += dt / R2.dur; const t = Math.min(1, R2.t), e = t * t * (3 - 2 * t), z = R2.A + (R2.B - R2.A) * e;
+    metroTrain.z = z; metroTrain.m.position.z = z; metroTrain.dir = R2.B > R2.A ? 1 : -1;
+    me.x = K.metro.x; me.z = z; me.ride = metroTrain.y + 0.05; me.moving = false; me.heading = R2.B > R2.A ? 0 : Math.PI;
+    dist += (6.5 - dist) * Math.min(1, dt * 1.5); pitch += (0.42 - pitch) * Math.min(1, dt * 1.5); const side = Math.sin(me.heading + 0.95) > 0 ? 0.95 : -0.95; yaw += angDiff(yaw, me.heading + side) * Math.min(1, dt * 1.5); // camera on the backwaters side, above the rooftops
+    if (t >= 1) {
+      const d = spots[R2.to]; me.x = d.x + 0.5; me.z = d.y + 0.5; me.ride = 0; inside[R2.to] = true; dist = R2.d0; pitch = R2.p0;
+      if (me.mesh) me.mesh.group.visible = true; me.lab.style.visibility = ""; el.querySelector(".ride-cap").hidden = true;
+      metroTrain.last = R2.B; metroTrain.wait = 3; mride = null; sendMe(true);
+      if (opts.onMetro) opts.onMetro(R2.to);
+    }
+  }
+
   // ── day and night ──
   const KEYS = [[0, "#0b1430", "#1c2340", 0.0, 0.18, "#2a3355"], [5, "#1c2a55", "#7a5a6a", 0.1, 0.25, "#556"], [6.5, "#5d86c8", "#f5b38a", 1.2, 0.5, "#f5b38a"], [9, "#4f8fd8", "#cfe3f4", 2.4, 0.7, "#dfe9f1"], [16, "#4f8fd8", "#e9e6da", 2.3, 0.7, "#ece5d3"], [18, "#3b5f9e", "#f7a96a", 1.4, 0.5, "#f2b98a"], [19.2, "#1c2a55", "#b5677a", 0.3, 0.3, "#7a5a72"], [21, "#0b1430", "#1c2340", 0.0, 0.18, "#2a3355"], [24, "#0b1430", "#1c2340", 0.0, 0.18, "#2a3355"]];
   let lastHour = -1;
@@ -1045,21 +1128,25 @@ window.AE_WORLD = (function () {
     let i = 0; while (i < KEYS.length - 2 && KEYS[i + 1][0] <= h) i++;
     const a = KEYS[i], b = KEYS[i + 1], t = (h - a[0]) / Math.max(0.001, b[0] - a[0]);
     skyU.top.value.copy(col(a[1])).lerp(col(b[1]), t); skyU.bot.value.copy(col(a[2])).lerp(col(b[2]), t);
-    sun.intensity = a[3] + (b[3] - a[3]) * t; hemi.intensity = a[4] + (b[4] - a[4]) * t + 0.15;
+    sun.intensity = a[3] + (b[3] - a[3]) * t; hemi.intensity = (a[4] + (b[4] - a[4]) * t) * 0.7 + 0.08;
     scene.fog.color.copy(col(a[5])).lerp(col(b[5]), t);
     const ang = (h - 6) / 12 * Math.PI; sun.userData.dir = new THREE.Vector3(-Math.cos(ang) * 0.8, Math.max(0.15, Math.sin(ang)), 0.45).normalize();
     sun.color.set(h < 8 || h > 16.5 ? "#ffc58a" : "#fff1d8");
+    skyU.sunDir.value.set(-Math.cos(ang) * 0.8, Math.sin(ang), 0.45).normalize(); skyU.sunC.value.copy(sun.color); skyU.sunK.value = h > 5.5 && h < 19 ? 1 : 0;
     const night = h < 6 || h > 18.6 ? 1 : h < 7 ? 1 - (h - 6) : h > 17.8 ? (h - 17.8) / 0.8 : 0;
     facadeMats.forEach(m => { m.emissiveIntensity = m.userData.sign ? 0.15 + night * 0.8 : night * 0.9; });
     if (lampMat) lampMat.emissiveIntensity = night * 2.2;
     stars.material.opacity = night * 0.85;
-    renderer.toneMappingExposure = 1.05 + night * 0.35;
+    renderer.toneMappingExposure = 0.94 + night * 0.4;
+    if (cloudMat) { cloudMat.color.copy(col("#ffffff")).lerp(scene.fog.color, 0.35).lerp(col("#2a3050"), night * 0.75); cloudMat.opacity = 0.92 - night * 0.45; }
+    updateEnv(h);
   }
 
   function tick(time) {
     const dt = Math.min(0.05, (time - last) / 1000); last = time;
     me.free = false;
     if (ride) stepRide(dt);
+    else if (mride) stepMetroRide(dt);
     else if (me.lock && time < me.lock) { me.path = []; me.moving = false; }
     else if (!freeMove(dt)) stepPath(me, dt, SPEED * vehMult(me.vehType));
     if (me.twirlT) { me.twirlT = Math.max(0, me.twirlT - dt); me.twirl = (1 - me.twirlT / 0.9) * Math.PI * 2; if (!me.twirlT) me.twirl = 0; }
@@ -1092,8 +1179,9 @@ window.AE_WORLD = (function () {
       boats.forEach(b => { b.t += b.sp * dt * b.dir; if (b.t > 1 || b.t < 0) { b.dir *= -1; b.t = Math.max(0, Math.min(1, b.t)); } b.m.position.set(b.a[0] + (b.b[0] - b.a[0]) * b.t, Math.sin(time / 600 + b.t * 9) * 0.03, b.a[1] + (b.b[1] - b.a[1]) * b.t); b.m.rotation.y = b.dir > 0 ? 0 : Math.PI; });
       if (ferry && !ride) ferry.m.position.y = Math.sin(time / 550) * 0.025;
       spinners.forEach(g => { g.rotation.y += dt * 0.5; });
-      if (metroTrain) stepMetro(dt);
+      if (metroTrain && !mride) stepMetro(dt);
       waterTex.offset.set(time * 0.000012, time * 0.000008);
+      clouds.forEach((c, i) => { c.position.x += dt * (0.25 + (i % 3) * 0.1); if (c.position.x > COLS / 2 + 160) c.position.x -= 320; });
       const fx = Math.sin(yaw), fz = Math.cos(yaw), hz = Math.cos(pitch) * dist, vy = Math.sin(pitch) * dist;
       const ty = 0.42 + (me.y || 0) + (me.veh ? (me.veh.spec.car ? 0.15 : 0.06) : 0);
       camera.position.set(me.x - fx * hz, ty + vy, me.z - fz * hz);
@@ -1112,7 +1200,7 @@ window.AE_WORLD = (function () {
       projectLabels();
     }
     let best = null, bd = 1.6;
-    if (!ride) Object.keys(Object.assign({}, spots, extraSpots)).forEach(k => { const p = spotPos(k); if (!p) return; const d = Math.hypot(p.x - me.x, p.z - me.z); if (d < bd) { bd = d; best = k; } });
+    if (!ride && !mride) Object.keys(Object.assign({}, spots, extraSpots)).forEach(k => { const p = spotPos(k); if (!p) return; const d = Math.hypot(p.x - me.x, p.z - me.z); if (d < bd) { bd = d; best = k; } });
     if (best !== nearKey) { nearKey = best; const s = best && spots[best]; const lbl = best ? ((opts.spotLabel && opts.spotLabel(best)) || (s && s.rideLabel) || null) : null; actBtn.hidden = !lbl; if (lbl) actBtn.textContent = lbl; }
     if (!ride) [guide && guide.key, sceneMarker].forEach(k => {
       if (!k) return; const p = spotPos(k); if (!p) return;
@@ -1196,7 +1284,8 @@ window.AE_WORLD = (function () {
   }
   // ═══ maps: an illustrated city map (roads with names, pins, your route) for the minimap and the full map ═══
   const BP = 20; // base map pixels per tile
-  const PIN = { m: ["💼", "#f4a52b", 3], house: ["🏠", "#8f6bff", 4], f: ["🌳", "#3f9b4a", 2], board: ["📋", "#16998c", 4], station: ["🚉", "#16998c", 3], hall: ["🏛️", "#8a3b3b", 3], fxn: ["👗", "#ff4f9a", 5], office: ["🏢", "#1f6b52", 3], bank: ["🏦", "#1f4e8c", 3], cafe: ["☕", "#8a5a3a", 2], mall: ["🛍️", "#6b4fa0", 2], hospital: ["🏥", "#d84343", 2], food: ["🍵", "#c98a2b", 2], ferryMD: ["⛴️", "#1f73b8", 2], ferryFK: ["⛴️", "#1f73b8", 2], garage: ["🛵", "#e0602b", 3], v: ["🏪", "#ef6a5f", 1], gig: ["📦", "#ff4f9a", 6], odd: ["🔧", "#e0a530", 6], grp: ["👥", "#16998c", 6] };
+  const METRO_KEYS = ["metroKL", "metroMG", "metroES"];
+  const PIN = { metroKL: ["🚇", "#16998c", 3], metroMG: ["🚇", "#16998c", 3], metroES: ["🚇", "#16998c", 3], m: ["💼", "#f4a52b", 3], house: ["🏠", "#8f6bff", 4], f: ["🌳", "#3f9b4a", 2], board: ["📋", "#16998c", 4], station: ["🚉", "#16998c", 3], hall: ["🏛️", "#8a3b3b", 3], fxn: ["👗", "#ff4f9a", 5], office: ["🏢", "#1f6b52", 3], bank: ["🏦", "#1f4e8c", 3], cafe: ["☕", "#8a5a3a", 2], mall: ["🛍️", "#6b4fa0", 2], hospital: ["🏥", "#d84343", 2], food: ["🍵", "#c98a2b", 2], ferryMD: ["⛴️", "#1f73b8", 2], ferryFK: ["⛴️", "#1f73b8", 2], garage: ["🛵", "#e0602b", 3], v: ["🏪", "#ef6a5f", 1], gig: ["📦", "#ff4f9a", 6], odd: ["🔧", "#e0a530", 6], grp: ["👥", "#16998c", 6] };
   let mv = { s: 12, cx: 0, cy: 0 }, route = null, routeT = 0;
   function mapImage() {
     const c = document.createElement("canvas"); c.width = COLS * BP; c.height = ROWS * BP;
@@ -1367,27 +1456,45 @@ window.AE_WORLD = (function () {
 
   // ═══ character preview (creator screen) ═══
   let pv = null;
-  function preview(slot, av, outfit) {
+  // Character creator preview: drag to turn, "face" focus zooms in on the head.
+  function preview(slot, av, outfit, focus) {
     if (!window.THREE) return false;
     THREE = window.THREE;
     try {
       if (!pv) {
         const r = new THREE.WebGLRenderer({ antialias: true, alpha: true }); if (!r.getContext()) return false;
         if (THREE.ColorManagement) THREE.ColorManagement.legacyMode = false;
-        r.outputEncoding = THREE.sRGBEncoding; r.toneMapping = THREE.ACESFilmicToneMapping; r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-        const s = new THREE.Scene(), c = new THREE.PerspectiveCamera(30, 0.75, 0.05, 20);
-        s.add(new THREE.HemisphereLight(0xfff4e6, 0x404060, 1.0)); const d = new THREE.DirectionalLight(0xffffff, 1.6); d.position.set(1, 2, 2); s.add(d);
+        r.outputEncoding = THREE.sRGBEncoding; r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05; r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+        r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
+        const s = new THREE.Scene(), c = new THREE.PerspectiveCamera(28, 0.75, 0.02, 20);
+        s.add(new THREE.HemisphereLight(0xfff1e0, 0x3a3550, 0.95));
+        const key = new THREE.DirectionalLight(0xfff0dc, 1.7); key.position.set(1.2, 2.2, 2.4); key.castShadow = true; key.shadow.mapSize.set(1024, 1024); Object.assign(key.shadow.camera, { left: -1, right: 1, top: 1, bottom: -1 }); s.add(key);
+        const rim = new THREE.DirectionalLight(0xa9c8ff, 0.9); rim.position.set(-2, 1.6, -1.8); s.add(rim);
+        const fill = new THREE.DirectionalLight(0xffd6b0, 0.35); fill.position.set(-1.5, 0.6, 1.5); s.add(fill);
+        const floor = new THREE.Mesh(new THREE.CircleGeometry(0.5, 40), new THREE.ShadowMaterial({ opacity: 0.25 })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; s.add(floor);
         vcMat = vcMat || new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7 });
-        pv = { r, s, c, m: null, raf: 0, rot: 0.6 };
-        const loop = () => { if (!pv) return; if (pv.m) { pv.rot += 0.008; pv.m.group.rotation.y = pv.rot; } pv.r.render(pv.s, pv.c); pv.raf = requestAnimationFrame(loop); }; loop();
+        pv = { r, s, c, m: null, raf: 0, rot: 0.5, auto: true, cam: null, camT: null };
+        const el2 = r.domElement; el2.style.touchAction = "none";
+        let dx = null;
+        el2.addEventListener("pointerdown", e => { dx = e.clientX; pv.auto = false; try { el2.setPointerCapture(e.pointerId); } catch (er) { } });
+        el2.addEventListener("pointermove", e => { if (dx == null) return; pv.rot += (e.clientX - dx) * 0.012; dx = e.clientX; });
+        const end = () => { dx = null; }; el2.addEventListener("pointerup", end); el2.addEventListener("pointercancel", end);
+        const loop = () => {
+          if (!pv) return;
+          if (pv.m) { if (pv.auto) pv.rot += 0.006; pv.m.group.rotation.y = pv.rot; pv.t = (pv.t || 0) + 0.016; const k = Math.sin(pv.t * 1.4) * 0.006; pv.m.torso.scale.set(1 + k, 1 + k, 1 + k); pv.m.arms[0].rotation.z = -0.08; pv.m.arms[1].rotation.z = 0.08; }
+          if (pv.camT) { pv.cam = pv.cam || pv.camT.slice(); for (let i = 0; i < 4; i++) pv.cam[i] += (pv.camT[i] - pv.cam[i]) * 0.15; pv.c.position.set(0, pv.cam[0], pv.cam[1]); pv.c.lookAt(0, pv.cam[2], 0); pv.c.fov = pv.cam[3]; pv.c.updateProjectionMatrix(); }
+          pv.r.render(pv.s, pv.c); pv.raf = requestAnimationFrame(loop);
+        }; loop();
       }
       if (pv.m) pv.s.remove(pv.m.group);
-      pv.m = person(personLook(av, outfit)); pv.s.add(pv.m.group);
-      const H = pv.m.H; pv.c.position.set(0, H * 0.62, H * 3.3); pv.c.lookAt(0, H * 0.52, 0);
+      pv.m = person(personLook(av, outfit), true); pv.m.group.traverse(o => { if (o.isMesh) o.castShadow = true; }); pv.m.shadow.visible = false; pv.s.add(pv.m.group);
+      const H = pv.m.H, hy = pv.m.headY;
+      if (pv.focus !== focus) { pv.focus = focus; pv.rot = 0.35; pv.auto = focus !== "face"; }
+      pv.camT = focus === "face" ? [hy + pv.m.headR * 0.3, pv.m.headR * 8.5, hy - pv.m.headR * 0.35, 26] : [H * 0.58, H * 2.55, H * 0.49, 28];
       const w = slot.clientWidth || 180, h = Math.round(w / 0.75); pv.r.setSize(w, h); pv.c.aspect = w / h; pv.c.updateProjectionMatrix();
       if (pv.r.domElement.parentNode !== slot) slot.appendChild(pv.r.domElement);
       return true;
-    } catch (e) { return false; }
+    } catch (e) { console.warn(e); return false; }
   }
 
   // ═══ public API ═══
@@ -1562,12 +1669,14 @@ window.AE_WORLD = (function () {
   function destroy() {
     cancelAnimationFrame(raf); window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku); window.removeEventListener("resize", resize);
     if (renderer) { try { renderer.dispose(); if (renderer.forceContextLoss) renderer.forceContextLoss(); } catch (e) { } }
-    if (el) el.remove(); el = null; fx = []; burst.tex = null; parkedHome = null; parkedKey = ""; cine = null; boxTexMat = null; wheelGeo = null; figs = {}; extraSpots = {}; guide = null; sceneMarker = null; renderer = null; vehicles = []; boats = []; facadeMats = []; tapFx = null;
+    if (el) el.remove(); el = null; fx = []; burst.tex = null; mride = null; clouds = []; palmGeoC = null; rainGeoC = null; cloudMat = null; if (pmrem) { pmrem.dispose(); pmrem = null; } if (envRT) { envRT.dispose(); envRT = null; } envScene = null; envHour = -9; lastHour = -1; parkedHome = null; parkedKey = ""; cine = null; boxTexMat = null; wheelGeo = null; figs = {}; extraSpots = {}; guide = null; sceneMarker = null; renderer = null; vehicles = []; boats = []; facadeMats = []; tapFx = null;
   }
   // test hook: place camera and clock
   let dbgHour = null;
   function __dbg(x, z, y, p, d, h) { me.x = x + 0.5; me.z = z + 0.5; yaw = y; pitch = p; dist = d; dbgHour = h; me.path = []; }
   // test hook: pan the open map to a point and return where it is on screen
   function mapPoint(x, z) { if (!mapEl || mapEl.hidden) return null; mv.cx = x; mv.cy = z; clampMap(); drawFull(performance.now()); const { tx, ty } = mapToScreen(), r = mapCv.getBoundingClientRect(); return { x: r.left + tx(x), y: r.top + ty(z) }; }
-  return { __figs: () => Object.values(figs).filter(f => f.kind === "remote" || f.kind === "me").map(f => ({ id: f.id, x: +f.x.toFixed(1), z: +f.z.toFixed(1), veh: f.vehType || "" })), mapPoint, setVehicle, setParked, vehicleRemote, VEH, VCOL, __dbg, mount, setGuide, setMarker, setExtraSpot, randomDoor, npcSay, meSay, note, react, upsertRemote, moveRemote, sayRemote, removeRemote, clearRemotes, setOnline, spawnCourier, courierSay, setLook: (av, outfit) => setLookFig("me", av, outfit), teleport, position, destroy, available: can3d, preview, spotAt: k => { const p = spotPos(k); return p ? { x: p.x, z: p.z } : null; }, guideKey: () => guide && guide.key, mapOpen: () => !!(mapEl && !mapEl.hidden), cols: () => COLS, rows: () => ROWS, riding: () => !!ride };
+  const metroSpots = () => METRO_KEYS.filter(k => spots[k]).map(k => ({ key: k, name: spots[k].label.replace(" Metro", ""), z: spots[k].z }));
+  const __stats = () => renderer ? { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures } : null;
+  return { __stats, startMetro, metroSpots, metroRiding: () => !!mride, __figs: () => Object.values(figs).filter(f => f.kind === "remote" || f.kind === "me").map(f => ({ id: f.id, x: +f.x.toFixed(1), z: +f.z.toFixed(1), veh: f.vehType || "" })), mapPoint, setVehicle, setParked, vehicleRemote, VEH, VCOL, __dbg, mount, setGuide, setMarker, setExtraSpot, randomDoor, npcSay, meSay, note, react, upsertRemote, moveRemote, sayRemote, removeRemote, clearRemotes, setOnline, spawnCourier, courierSay, setLook: (av, outfit) => setLookFig("me", av, outfit), teleport, position, destroy, available: can3d, preview, spotAt: k => { const p = spotPos(k); return p ? { x: p.x, z: p.z } : null; }, guideKey: () => guide && guide.key, mapOpen: () => !!(mapEl && !mapEl.hidden), cols: () => COLS, rows: () => ROWS, riding: () => !!ride };
 })();
