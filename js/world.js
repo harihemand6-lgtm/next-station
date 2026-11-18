@@ -67,7 +67,7 @@ window.AE_WORLD = (function () {
   };
   const CITY_MONUMENT = { KA: "Vidhana Soudha", TG: "Charminar", MH: "Gateway of India", DL: "India Gate" };
 
-  let THREE, el, renderer, scene, camera, ray, groundMesh, grid, blds, trees, labels, spots, doors, figs = {}, me, raf = 0, last = 0, opts = {}, yaw = 0, lastDrag = 0, keys = {}, joy = { x: 0, y: 0, on: false }, nearKey = null, sceneMarker = null, guide = null, beacon, beaconRing, bang, labelLayer, banner, actBtn, logEl, ok3d = false, lastMoveSent = 0, extraSpots = {}, inside = {}, pitch = 0.42, dist = 2.9, follow = true, spin = 0, mini, miniCtx, mapEl, mapCv, mapBase, miniT = 0, pointers = {};
+  let THREE, el, renderer, scene, camera, ray, groundMesh, grid, blds, trees, labels, spots, doors, figs = {}, me, raf = 0, last = 0, opts = {}, yaw = 0, lastDrag = 0, keys = {}, joy = { x: 0, y: 0, on: false }, nearKey = null, sceneMarker = null, guide = null, beacon, beaconRing, bang, labelLayer, banner, actBtn, logEl, toastQ = [], toastCur = null, toastT = 0, msgHist = [], msgUnread = 0, msgEl = null, msgTab = "all", ok3d = false, lastMoveSent = 0, extraSpots = {}, inside = {}, pitch = 0.42, dist = 2.9, follow = true, spin = 0, mini, miniCtx, mapEl, mapCv, mapBase, miniT = 0, pointers = {};
   let spinners = [], metroTrain = null, cine = null, sun, hemi, sky, skyU, stars, water, waterTex, facadeMats = [], lampMat, vehicles = [], boats = [], ferry, ride = null, areaLabels = [], ambientT = 0, lastAmb = 0, isKochi = false, palmsList = [];
 
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -724,14 +724,15 @@ window.AE_WORLD = (function () {
       el.innerHTML = `<div class="w-banner" hidden><span class="arrow" aria-hidden="true">➤</span><div class="w-banner-t"><b></b><span></span></div><div class="w-banner-a"></div></div>
         <div class="w3-view"><div class="w-labels"></div><div class="joy" aria-label="Joystick: drag to walk"><i></i></div>
           <canvas class="minimap" width="150" height="112" aria-label="City map. Tap to open."></canvas>
-          <div class="cam-btns"><button class="w-btn small cam-spin" title="Look all around" aria-label="Look all around">⟳</button><button class="w-btn small cam-zoom" title="Zoom" aria-label="Zoom out">⤢</button><button class="w-btn small cam-snd" title="Sound: music and effects, effects only, or off" aria-label="Sound">${window.AE_SOUND ? window.AE_SOUND.icon() : "🔊"}</button></div>
+          <div class="cam-btns"><button class="w-btn small cam-spin" title="Look all around" aria-label="Look all around">⟳</button><button class="w-btn small cam-zoom" title="Zoom" aria-label="Zoom out">⤢</button><button class="w-btn small cam-snd" title="Sound: music and effects, effects only, or off" aria-label="Sound">${window.AE_SOUND ? window.AE_SOUND.icon() : "🔊"}</button><button class="w-btn small cam-msg" title="Messages" aria-label="Messages">💬<i hidden></i></button></div>
           <div class="map-full" hidden><div class="map-top"><div><b>${isKochi ? "Kochi 2030" : esc(o.words.city) + " 2030"}</b><span></span></div><button class="w-btn small map-close">Close</button></div><div class="map-area"><canvas></canvas><div class="map-zoom"><button class="mz-in" aria-label="Zoom in">+</button><button class="mz-out" aria-label="Zoom out">−</button><button class="mz-me" aria-label="Centre on me">◎</button></div></div><p class="map-hint">Tap a pin or any street to walk there · drag to move · pinch to zoom</p></div>
           <div class="w-ui"><button class="w-btn act" hidden></button><button class="w-btn say" hidden>Say…</button><button class="w-btn chat" hidden>Chat</button><span class="w-online" hidden></span></div>
           <div class="say-panel" hidden></div>
           <div class="ride-cap" hidden>On the ferry…</div>
-          <div class="chat-log" aria-live="polite"></div></div>
+          <div class="w-toast" aria-live="polite" hidden></div>
+          <div class="msg-panel" hidden><div class="map-top"><div><b>Messages</b><span>Last 60 · tap a tab to filter</span></div><button class="w-btn small msg-close">Close</button></div><div class="msg-tabs"><button data-mt="all" class="on">All</button><button data-mt="game">Updates</button><button data-mt="chat">Players</button><button data-mt="town">Townsfolk</button></div><div class="msg-list"></div></div></div>
         <form class="chat-row" hidden><input maxlength="80" placeholder="Type a message (no numbers, links or handles)" aria-label="Chat message"><button class="w-btn">Send</button></form>`;
-      labelLayer = el.querySelector(".w-labels"); banner = el.querySelector(".w-banner"); actBtn = el.querySelector(".act"); logEl = el.querySelector(".chat-log");
+      labelLayer = el.querySelector(".w-labels"); banner = el.querySelector(".w-banner"); actBtn = el.querySelector(".act"); logEl = el.querySelector(".w-toast"); toastQ = []; toastCur = null; clearTimeout(toastT);
       figs = {}; spinners = []; metroTrain = null; extraSpots = {}; inside = {}; guide = null; sceneMarker = null; nearKey = null; yaw = Math.PI; pitch = 0.42; dist = 2.9; follow = true; spin = 0; vehicles = []; boats = []; facadeMats = []; ride = null; ferry = null;
       ok3d = false;
       try { if (THREE) { renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" }); ok3d = !!renderer.getContext(); } } catch (e) { ok3d = false; }
@@ -780,6 +781,10 @@ window.AE_WORLD = (function () {
       townsfolk(o);
       bindInput();
       el.querySelector(".cam-snd").addEventListener("click", e => { e.stopPropagation(); SND.cycle(); e.currentTarget.textContent = SND.icon(); });
+      el.querySelector(".cam-msg").addEventListener("click", e => { e.stopPropagation(); msgPanel(true); });
+      el.querySelector(".msg-close").addEventListener("click", e => { e.stopPropagation(); msgPanel(false); });
+      el.querySelector(".msg-tabs").addEventListener("click", e => { const b = e.target.closest("[data-mt]"); if (!b) return; msgTab = b.dataset.mt; msgPanel(true); });
+      logEl.addEventListener("click", e => { e.stopPropagation(); msgPanel(true); });
       mapBase = mapImage(); mini = el.querySelector(".minimap"); miniCtx = mini.getContext("2d");
       mapEl = el.querySelector(".map-full"); mapCv = mapEl.querySelector("canvas"); bindMap();
       window.addEventListener("resize", resize); window.addEventListener("keydown", kd); window.addEventListener("keyup", ku);
@@ -1032,7 +1037,7 @@ window.AE_WORLD = (function () {
     const view = el.querySelector(".w3-view");
     let down = null, pinch0 = 0;
     view.addEventListener("pointerdown", e => {
-      if (e.target.closest(".joy,.minimap,.map-full,.cam-btns,.w-ui,.say-panel,.lab")) return;
+      if (e.target.closest(".joy,.minimap,.map-full,.cam-btns,.w-ui,.say-panel,.lab,.msg-panel,.w-toast")) return;
       pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
       if (Object.keys(pointers).length === 2) { const p = Object.values(pointers); pinch0 = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y); down = null; return; }
       down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, drag: false }; try { view.setPointerCapture(e.pointerId); } catch (er) { }
@@ -1345,7 +1350,7 @@ window.AE_WORLD = (function () {
     const mode = opts.langMode ? opts.langMode() : "ml";
     if (!line) return;
     if (mode === "en") bubble(f, line[1]); else bubble(f, line[0], mode === "ml" ? line[1] : null);
-    log(f ? f.name : "", mode === "en" ? line[1] : line[0]);
+    log(f ? f.name : "", mode === "en" ? line[1] : line[0], "town");
   }
   function ambientLine(f, kind, x, z) {
     const line = pickLine(kind); if (!line) return;
@@ -1638,14 +1643,53 @@ window.AE_WORLD = (function () {
     b.innerHTML = esc(t) + (s ? `<small>${esc(s)}</small>` : ""); b.hidden = false; b.classList.toggle("typed", !!typed);
     f.bubble = { until: performance.now() + (s ? 7000 : 5000) };
   }
-  function log(name, t) {
+  // ---- messages: one toast at a time (queued, de-duplicated, by priority) + a history panel ----
+  // kinds: game (notes, money, goals), chat (players), town (NPC chatter: bubble only, never a toast)
+  function log(name, t, kind) {
+    kind = kind || (name ? "chat" : "game");
+    const now = Date.now(), last = msgHist[msgHist.length - 1];
+    if (last && last.t === t && last.n === name && now - last.at < 4000) return;
+    msgHist.push({ n: name || "", t, k: kind === "mine" ? "chat" : kind, at: now }); if (msgHist.length > 60) msgHist.shift();
+    if (kind === "town" || kind === "mine") return msgRefresh();
+    if (!(msgEl && !msgEl.hidden)) msgUnread++;
+    msgRefresh();
     if (!logEl) return;
-    const p = document.createElement("p"); p.innerHTML = (name ? `<b>${esc(name)}:</b> ` : "") + esc(t);
-    logEl.appendChild(p); while (logEl.children.length > 3) logEl.firstChild.remove();
-    clearTimeout(log._t); logEl.hidden = false; log._t = setTimeout(() => { if (logEl) logEl.hidden = true; }, 9000);
+    const pri = /Goal complete|complete!|\+₹|Delivered|Welcome|👶|💍|Loan|joined|tipped|sent you/.test(t) ? 2 : kind === "chat" ? 0 : 1;
+    if ((toastCur && toastCur.t === t) || toastQ.some(q => q.t === t)) return;
+    toastQ.push({ n: name || "", t, pri });
+    toastQ.sort((a, b) => b.pri - a.pri);
+    while (toastQ.length > 3) toastQ.pop();
+    if (!toastCur) nextToast();
+    else { let m = logEl.querySelector("em"); if (!m) { m = document.createElement("em"); logEl.appendChild(m); } m.textContent = "+" + toastQ.length; }
+  }
+  function nextToast() {
+    clearTimeout(toastT);
+    if (!logEl) return;
+    const q = toastQ.shift();
+    if (!q) { toastCur = null; logEl.classList.add("out"); toastT = setTimeout(() => { if (logEl && !toastCur) logEl.hidden = true; }, 300); return; }
+    toastCur = q;
+    logEl.innerHTML = (q.n ? `<b>${esc(q.n)}</b> ` : "") + `<span>${esc(q.t)}</span>` + (toastQ.length ? `<em>+${toastQ.length}</em>` : "");
+    logEl.hidden = false; logEl.classList.remove("out"); void logEl.offsetWidth; logEl.classList.remove("pop"); void logEl.offsetWidth; logEl.classList.add("pop");
+    const ms = Math.min(5200, 2200 + q.t.length * 35) * (toastQ.length ? 0.75 : 1);
+    toastT = setTimeout(nextToast, ms);
+  }
+  function msgRefresh() {
+    if (!el) return;
+    const badge = el.querySelector(".cam-msg i");
+    if (badge) { badge.hidden = !msgUnread; badge.textContent = msgUnread > 9 ? "9+" : msgUnread; }
+    if (!msgEl || msgEl.hidden) return;
+    el.querySelectorAll(".msg-tabs button").forEach(b => b.classList.toggle("on", b.dataset.mt === msgTab));
+    const list = msgHist.filter(m => msgTab === "all" || m.k === msgTab).slice().reverse();
+    const ago = at => { const s = Math.round((Date.now() - at) / 1000); return s < 60 ? "now" : s < 3600 ? Math.round(s / 60) + "m" : Math.round(s / 3600) + "h"; };
+    msgEl.querySelector(".msg-list").innerHTML = list.length ? list.map(m => `<p class="mk-${m.k}">${m.n ? `<b>${esc(m.n)}</b> ` : ""}${esc(m.t)}<small>${ago(m.at)}</small></p>`).join("") : `<p class="empty">Nothing here yet.</p>`;
+  }
+  function msgPanel(on) {
+    msgEl = el && el.querySelector(".msg-panel"); if (!msgEl) return;
+    msgEl.hidden = !on; if (on) { msgUnread = 0; toastQ = []; nextToast(); SND.sfx("open"); }
+    msgRefresh();
   }
   function npcSay(role, t, s) { bubble(figs["npc_" + role], t, s); }
-  function meSay(t, typed) { bubble(me, t, null, typed); log(me.name, t); }
+  function meSay(t, typed) { bubble(me, t, null, typed); log(me.name, t, "mine"); }
   function note(t) { log("", t); SND.sfx(/Goal complete|complete!/.test(t) ? "goal" : "notify"); }
   function upsertRemote(id, d) {
     const k = "r_" + id;

@@ -515,3 +515,31 @@ body:has(.play2) { overflow: hidden; }
 .btoast span { font-size: .85rem; opacity: .92; }
 .btoast div { display: flex; gap: 8px; margin-top: 4px; }
 .btoast.out { opacity: 0; transform: translateY(20px); pointer-events: none; }
+
+/* v8: one message at a time + messages panel */
+.w-toast { position: absolute; z-index: 7; left: 8px; top: 54px; max-width: calc(100% - 160px); display: flex; align-items: baseline; gap: 6px; background: rgba(18,15,31,.78); backdrop-filter: blur(6px); color: #fff; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; padding: 7px 10px; font-size: .8rem; line-height: 1.3; cursor: pointer; transition: opacity .3s, transform .3s; }
+.w-toast[hidden] { display: none; }
+.w-toast span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.w-toast b { color: var(--accent-2); white-space: nowrap; }
+.w-toast em { font-style: normal; font-size: .7rem; opacity: .7; margin-left: auto; padding-left: 4px; }
+.w-toast.pop { animation: toastin .28s ease-out; }
+.w-toast.out { opacity: 0; transform: translateY(-6px); }
+@keyframes toastin { from { opacity: 0; transform: translateY(-8px) scale(.97); } to { opacity: 1; transform: none; } }
+.play2 .w-toast { top: calc(150px + env(safe-area-inset-top)); max-width: calc(100% - 140px); }
+.cam-msg { position: relative; }
+.cam-msg i { position: absolute; top: -3px; right: -3px; min-width: 16px; height: 16px; border-radius: 8px; background: #ff3d7f; color: #fff; font: 700 10px/16px system-ui, sans-serif; font-style: normal; text-align: center; padding: 0 3px; }
+.cam-msg i[hidden] { display: none; }
+.msg-panel { position: fixed; inset: auto 0 0 0; max-height: 72vh; z-index: 60; background: rgba(18,15,31,.97); border-radius: 20px 20px 0 0; padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 8px; box-shadow: 0 -10px 30px rgba(0,0,0,.45); animation: slideup .25s; color: #fff; }
+.msg-panel[hidden] { display: none !important; }
+.msg-panel .map-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+.msg-panel .map-top span { display: block; font-size: .75rem; opacity: .65; }
+.msg-tabs { display: flex; gap: 6px; overflow-x: auto; }
+.msg-tabs button { flex: none; border: 1px solid rgba(255,255,255,.2); background: transparent; color: #fff; border-radius: 99px; padding: 5px 12px; font-size: .8rem; }
+.msg-tabs button.on { background: #fff; color: #1a1730; }
+.msg-list { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-bottom: 4px; }
+.msg-list p { margin: 0; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.06); font-size: .85rem; line-height: 1.35; }
+.msg-list p b { color: var(--accent-2); }
+.msg-list p.mk-chat { border-left: 3px solid #b39bff; }
+.msg-list p.mk-town { opacity: .8; font-style: italic; }
+.msg-list p small { float: right; opacity: .5; font-size: .7rem; margin-left: 8px; }
+.msg-list p.empty { text-align: center; opacity: .6; background: none; }
