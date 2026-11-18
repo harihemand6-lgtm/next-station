@@ -388,7 +388,8 @@ window.AE = (function () {
   }
   function paint(g, i) { const cost = money(g, 500); if (g.cash < cost) return false; g.cash -= cost; g.house.wall = i; return true; }
   // Marriage
-  function profilesFor(g, want) { return C().profiles.filter(p => want === "any" || p.g === want); }
+  // older profiles (no site) appear on MangalyaMatch and ChaiDate; newer ones belong to one app each
+  function profilesFor(g, want, site) { return C().profiles.filter(p => (want === "any" || p.g === want) && (!site || (p.site ? p.site === site : site === "mangalya" || site === "chaidate"))); }
   function sendInterest(g, pid, site) {
     const P = C().profiles.find(p => p.id === pid); if (!P || g.spouse) return null;
     const tried = (g.romanceTried || []); if (tried.indexOf(pid) >= 0) return { ok: false, text: P.name + " has already replied to you." };

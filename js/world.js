@@ -1172,6 +1172,7 @@ window.AE_WORLD = (function () {
     soundTick(dt, time);
     Object.values(figs).forEach(f => {
       if (f.kind === "remote") { let rem = 0, px = f.x, pz = f.z; f.path.forEach(p => { rem += Math.hypot(p.x - px, p.z - pz); px = p.x; pz = p.z; }); const base = SPEED * vehMult(f.vehType); stepPath(f, dt, Math.min(base * 2.5, Math.max(base, rem / 0.95))); }
+      if (f.lead || f.homeward) { stepFollow(f, dt, time); return; }
       if (f.kind === "walker" && !f.stat) {
         if (f.pause && time < f.pause) { f.moving = false; return; }
         stepPath(f, dt, f.kid ? 1.4 : 1.25);
@@ -1558,8 +1559,38 @@ window.AE_WORLD = (function () {
   }
   function moveRemote(id, x, y) { const f = figs["r_" + id]; if (f) f.path = toPts(path(tileOf(f), { x, y })); }
   function sayRemote(id, t, typed) { const f = figs["r_" + id]; if (!f || Math.hypot(f.x - me.x, f.z - me.z) > 14) return false; bubble(f, t, null, typed); log(f.name, t); SND.sfx("chat"); return true; }
-  function removeRemote(id) { removeFig("r_" + id); }
-  function clearRemotes() { Object.keys(figs).filter(k => k.indexOf("r_") === 0).forEach(removeFig); }
+  function removeRemote(id) { removeFig("r_" + id); remoteFamily(id, null); }
+  function clearRemotes() { Object.keys(figs).filter(k => k.indexOf("r_") === 0 || k.indexOf("rf_") === 0).forEach(removeFig); }
+  // another player's spouse and kids walking with them (looks are generated from their names, same as on the owner's phone)
+  function remoteFamily(id, fam) {
+    const pre = "rf_" + id + "_", have = Object.keys(figs).filter(k => k.indexOf(pre) === 0), lead = figs["r_" + id];
+    const want = [];
+    if (fam && lead) { if (fam.s) want.push({ k: pre + "s", av: npcLook(fam.s, "s", !!fam.sf), name: fam.s, slot: 1 }); (fam.k || []).slice(0, 3).forEach(([nm, age], i) => { const av = PEOPLE.random(nm + "|kid", { kid: true, set: { height: 140 + Math.min(40, age * 3) } }); av.small = age < 12; want.push({ k: pre + "k" + i, av, name: nm, slot: 2 + i }); }); }
+    have.filter(k => !want.some(w => w.k === k)).forEach(removeFig);
+    want.forEach(w => { if (figs[w.k]) return; const f = addFig(w.k, "rfam", w.av, null, w.name, lead.x - 0.5, lead.z - 0.5); f.lead = "r_" + id; f.slot = w.slot; });
+  }
+  // your own family: walk with you, or stay (and walk back) home
+  let famWalk = false;
+  function setFamilyWalk(on) {
+    on = !!on; if (on === famWalk && Object.values(figs).some(f => (f.id === "npc_s" || f.kid) && !!f.lead === on)) return; famWalk = on;
+    const fam = Object.values(figs).filter(f => f.id === "npc_s" || (f.kid && f.id.indexOf("kid_") === 0));
+    fam.forEach((f, i) => {
+      if (on) { f.lead = "me"; f.slot = f.id === "npc_s" ? 1 : 2 + i; f.homeward = false; f.x = me.x - Math.sin(me.heading) * (0.6 + f.slot * 0.4); f.z = me.z - Math.cos(me.heading) * (0.6 + f.slot * 0.4); place(f); }
+      else if (f.lead) { f.lead = null; if (f.mesh) f.mesh.group.visible = true; f.lab.style.visibility = ""; const h = spots.house; if (h) { f.path = toPts(path(tileOf(f), { x: h.x, y: h.y })); f.homeward = true; } }
+    });
+  }
+  function stepFollow(f, dt, time) {
+    if (f.homeward) { stepPath(f, dt, 1.7); if (!f.path.length) { f.homeward = false; f.moving = false; } return; }
+    const L = figs[f.lead]; if (!L) { f.moving = false; return; }
+    const want = 0.55 + f.slot * 0.42, d = Math.hypot(L.x - f.x, L.z - f.z);
+    const hide = !!L.veh || (L === me && (!!ride || !!mride)) || (L.mesh && !L.mesh.group.visible);
+    if (f.mesh) f.mesh.group.visible = !hide; f.lab.style.visibility = hide ? "hidden" : "";
+    if (hide || d > 10) { f.x = L.x - Math.sin(L.heading) * want; f.z = L.z - Math.cos(L.heading) * want; f.path = []; f.moving = false; f.heading = L.heading; place(f); return; }
+    if (d > want + 0.3) {
+      if (time - (f.repath || 0) > 450 || !f.path.length) { f.repath = time; const p = toPts(path(tileOf(f), tileOf(L))); f.path = p.length > 1 ? p.slice(0, -1) : [{ x: L.x - Math.sin(L.heading) * want, z: L.z - Math.cos(L.heading) * want }]; }
+      stepPath(f, dt, SPEED * (d > 2.5 ? 1.3 : 1));
+    } else { f.path = []; f.moving = false; f.heading += angDiff(f.heading, L.heading) * Math.min(1, dt * 3); }
+  }
   function setOnline(n, phrases, emotes, canType, room) {
     if (!el) return;
     const on = el.querySelector(".w-online");
@@ -1689,7 +1720,7 @@ window.AE_WORLD = (function () {
     cancelAnimationFrame(raf); window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku); window.removeEventListener("resize", resize);
     SND.engine(null);
     if (renderer) { try { renderer.dispose(); if (renderer.forceContextLoss) renderer.forceContextLoss(); } catch (e) { } }
-    if (el) el.remove(); el = null; fx = []; burst.tex = null; mride = null; clouds = []; palmGeoC = null; rainGeoC = null; cloudMat = null; if (pmrem) { pmrem.dispose(); pmrem = null; } if (envRT) { envRT.dispose(); envRT = null; } envScene = null; envHour = -9; lastHour = -1; parkedHome = null; parkedKey = ""; cine = null; boxTexMat = null; wheelGeo = null; figs = {}; extraSpots = {}; guide = null; sceneMarker = null; renderer = null; vehicles = []; boats = []; facadeMats = []; tapFx = null;
+    if (el) el.remove(); el = null; fx = []; burst.tex = null; mride = null; famWalk = false; clouds = []; palmGeoC = null; rainGeoC = null; cloudMat = null; if (pmrem) { pmrem.dispose(); pmrem = null; } if (envRT) { envRT.dispose(); envRT = null; } envScene = null; envHour = -9; lastHour = -1; parkedHome = null; parkedKey = ""; cine = null; boxTexMat = null; wheelGeo = null; figs = {}; extraSpots = {}; guide = null; sceneMarker = null; renderer = null; vehicles = []; boats = []; facadeMats = []; tapFx = null;
   }
   // test hook: place camera and clock
   let dbgHour = null;
@@ -1698,5 +1729,5 @@ window.AE_WORLD = (function () {
   function mapPoint(x, z) { if (!mapEl || mapEl.hidden) return null; mv.cx = x; mv.cy = z; clampMap(); drawFull(performance.now()); const { tx, ty } = mapToScreen(), r = mapCv.getBoundingClientRect(); return { x: r.left + tx(x), y: r.top + ty(z) }; }
   const metroSpots = () => METRO_KEYS.filter(k => spots[k]).map(k => ({ key: k, name: spots[k].label.replace(" Metro", ""), z: spots[k].z }));
   const __stats = () => renderer ? { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures } : null;
-  return { __stats, startMetro, metroSpots, metroRiding: () => !!mride, __figs: () => Object.values(figs).filter(f => f.kind === "remote" || f.kind === "me").map(f => ({ id: f.id, x: +f.x.toFixed(1), z: +f.z.toFixed(1), veh: f.vehType || "" })), mapPoint, setVehicle, setParked, vehicleRemote, VEH, VCOL, __dbg, mount, setGuide, setMarker, setExtraSpot, randomDoor, npcSay, meSay, note, react, upsertRemote, moveRemote, sayRemote, removeRemote, clearRemotes, setOnline, spawnCourier, courierSay, setLook: (av, outfit) => setLookFig("me", av, outfit), teleport, position, destroy, available: can3d, preview, spotAt: k => { const p = spotPos(k); return p ? { x: p.x, z: p.z } : null; }, guideKey: () => guide && guide.key, mapOpen: () => !!(mapEl && !mapEl.hidden), cols: () => COLS, rows: () => ROWS, riding: () => !!ride };
+  return { setFamilyWalk, remoteFamily, __stats, startMetro, metroSpots, metroRiding: () => !!mride, __figs: () => Object.values(figs).filter(f => f.kind === "remote" || f.kind === "me" || f.kind === "rfam" || f.lead).map(f => ({ id: f.id, x: +f.x.toFixed(1), z: +f.z.toFixed(1), veh: f.vehType || "" })), mapPoint, setVehicle, setParked, vehicleRemote, VEH, VCOL, __dbg, mount, setGuide, setMarker, setExtraSpot, randomDoor, npcSay, meSay, note, react, upsertRemote, moveRemote, sayRemote, removeRemote, clearRemotes, setOnline, spawnCourier, courierSay, setLook: (av, outfit) => setLookFig("me", av, outfit), teleport, position, destroy, available: can3d, preview, spotAt: k => { const p = spotPos(k); return p ? { x: p.x, z: p.z } : null; }, guideKey: () => guide && guide.key, mapOpen: () => !!(mapEl && !mapEl.hidden), cols: () => COLS, rows: () => ROWS, riding: () => !!ride };
 })();

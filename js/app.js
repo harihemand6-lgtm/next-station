@@ -323,6 +323,7 @@
     return sheetBox("Family", `${sp ? `<p>💑 <b>${esc(sp.name)}</b> · ${esc(sp.job)}</p>` : `<p>You're single. Try MangalyaMatch or ChaiDate on your phone.</p>`}
       ${kids.length ? `<div class="list">${kids.map(k => { const a = LF.kidAge(g, k); return item("👶 " + esc(k.name), esc(LF.stage(a)) + " · age " + a, ""); }).join("")}</div>` : ""}
       ${ui.kinLine ? `<p class="note">“${esc(ui.kinLine)}”</p>` : ""}
+      ${sp || kids.length ? `<div class="f"><span>When you go out</span><div class="chips"><button class="chip ${g.famWalk ? "on" : ""}" data-act="famwalk" data-arg="1">🚶 Family walks with me</button><button class="chip ${g.famWalk ? "" : "on"}" data-act="famwalk" data-arg="0">🏠 They stay home</button></div><p class="hint">Other players can see your family walking with you.</p></div>` : ""}
       <div class="row">${sp ? `<button class="btn" data-act="kinchat" data-arg="${Math.floor(Math.random() * lines.length)}">💬 Spend time together</button>` : ""}
         ${LF.canPlanBaby(g) ? `<button class="btn primary" data-act="planbaby">👶 Plan a baby</button>` : ""}</div>
       ${sp && !LF.canPlanBaby(g) && !g.babyDue && kids.length < 3 && g.house.lvl < 1 ? `<p class="hint">Move out of the rented room first (upgrade your house) before planning a baby.</p>` : ""}
@@ -492,6 +493,8 @@
     if (/^metro/.test(k)) return openSheet("metro", { station: k });
   }
   const isKL = () => (game.loc || game.stateId) === "KL";
+  function famState(g) { if (!g.famWalk || away(g) || (!g.spouse && !(g.kids || []).length)) return null; return { s: g.spouse ? g.spouse.name : "", sf: g.spouse && ((CITY.profiles.find(p => p.id === g.spouse.pid) || {}).g || "w") === "w" ? 1 : 0, k: (g.kids || []).slice(0, 3).map(k => [k.name, LF.kidAge(g, k)]) }; }
+  function syncFam() { if (NET.setState) { const f = famState(game), k = JSON.stringify(f); if (syncFam._k !== k) { syncFam._k = k; NET.setState({ fam: f }); } } }
 
   // ── Daily duties: three hands-on tasks a day for your profession ──
   const DUT = window.AE_DUTIES || {};
@@ -739,7 +742,7 @@
 
   function phoneSheet() {
     const g = game, P = myParty(), mates = partyHere();
-    const apps = [["duties", (JOB_ICON[g.lifeId] || "🧑‍💼") + " Today's duties", (() => { const D = duties(g); return D ? D.done.length + " of " + D.ids.length + " done" : "None"; })()], ["goals", "🎯 Life goals", (LF.nextGoal(g) || { t: "All done!" }).t], ["fxnopen", "👗 FXN", "Rent outfits"], ["kin", "👨‍👩‍👧 Family", g.spouse ? g.spouse.name + ((g.kids || []).length ? " + " + g.kids.length : "") : "Single"], ["site:mangalya", "💍 MangalyaMatch", "Matrimony"], ["site:chaidate", "☕ ChaiDate", "Dating"], ["board", "📋 Odd jobs & teams", "Quick money, team tasks"], ...(isKL() ? [["metroapp", "🚇 Kochi Metro", metroTask(g) ? "Task: " + metroTask(g).T.t : "Rides and metro tasks"]] : []), ["garage", "🛵 Garage", g.vehicle ? (g.riding ? "Riding your " : "Your ") + CS.vehicleById(g.vehicle.id).name.toLowerCase() : "Buy a bicycle, scooter or car"], ["career", "💼 Career", "Switch job"], ["status", "🗂️ My papers", "Papers, loans, house"], ["retire", "🌅 Retire", "End this life"]];
+    const apps = [["duties", (JOB_ICON[g.lifeId] || "🧑‍💼") + " Today's duties", (() => { const D = duties(g); return D ? D.done.length + " of " + D.ids.length + " done" : "None"; })()], ["goals", "🎯 Life goals", (LF.nextGoal(g) || { t: "All done!" }).t], ["fxnopen", "👗 FXN", "Rent outfits"], ["kin", "👨‍👩‍👧 Family", g.spouse ? g.spouse.name + ((g.kids || []).length ? " + " + g.kids.length : "") : "Single"], ["site:mangalya", "💍 MangalyaMatch", "Matrimony"], ["site:kalyanam", "🪔 KalyanaVeedu", "Matrimony"], ["site:nri", "✈️ NRI Rishta", "Matrimony"], ["site:chaidate", "☕ ChaiDate", "Dating"], ["site:sunset", "🌅 SunsetSwipe", "Dating"], ["site:bookclub", "📚 Paperback", "Dating"], ["board", "📋 Odd jobs & teams", "Quick money, team tasks"], ...(isKL() ? [["metroapp", "🚇 Kochi Metro", metroTask(g) ? "Task: " + metroTask(g).T.t : "Rides and metro tasks"]] : []), ["garage", "🛵 Garage", g.vehicle ? (g.riding ? "Riding your " : "Your ") + CS.vehicleById(g.vehicle.id).name.toLowerCase() : "Buy a bicycle, scooter or car"], ["career", "💼 Career", "Switch job"], ["status", "🗂️ My papers", "Papers, loans, house"], ["retire", "🌅 Retire", "End this life"]];
     const party = P ? `<p>Your group: you${mates.length ? ", " + mates.map(m => esc(m.nick)).join(", ") : " (waiting for players to join)"}.</p><button class="btn small ghost" data-act="partyleave">Leave group</button>` : `<p class="hint">Tap a player in the city to invite them to your group (up to 6).</p>`;
     return sheetBox("Phone", `<div class="apps">${apps.map(a => `<button class="app" data-act="${a[0].indexOf("site:") === 0 ? "site" : a[0]}" ${a[0].indexOf("site:") === 0 ? `data-arg="${a[0].slice(5)}"` : ""}><b>${esc(a[1])}</b><span>${esc(a[2])}</span></button>`).join("")}</div><h3 class="sec">Group</h3>${party}`);
   }
@@ -755,7 +758,7 @@
     if (g.spouse) return sheetBox(S.name, `<p>You're married to <b>${esc(g.spouse.name)}</b>. ${esc(S.name)} sends you a cake emoji and deletes your profile.</p>`);
     if (g.romance) { const p = profileById(g.romance.pid); return sheetBox(S.name, `<p>You're seeing <b>${esc(p.name)}</b> (${esc(p.job)}). ${g.romance.stage === "date" ? "Meet at Café Monsoon for your first chai." : g.romance.stage === "family" ? "Walk home to introduce the families." : "You're engaged! Rent wedding wear on FXN and walk to the Town Hall."}</p>`); }
     const left = 3 - ((g.interestCh === g.chapter && g.interests) || 0);
-    const list = CS.profilesFor(g, seek).map(p => `<div class="profile"><div class="pf-top"><span class="init">${esc(p.name[0])}</span><div><b>${esc(p.name)}, ${p.age}</b><span class="hint">${esc(p.job)} · ${esc(p.city)}</span></div></div><p>“${esc(p.bio)}”</p><p class="hint">Likes: ${esc(p.likes)}</p>
+    const list = CS.profilesFor(g, seek, S.id).map(p => `<div class="profile"><div class="pf-top"><span class="init">${esc(p.name[0])}</span><div><b>${esc(p.name)}, ${p.age}</b><span class="hint">${esc(p.job)} · ${esc(p.city)}</span></div></div><p>“${esc(p.bio)}”</p><p class="hint">Likes: ${esc(p.likes)}</p>
       ${(g.romanceTried || []).indexOf(p.id) >= 0 ? `<span class="pill">Replied</span>` : `<button class="btn small primary" data-act="interest" data-arg="${p.id}" ${left > 0 ? "" : "disabled"}>${S.family ? "Send interest" : "Say hi"}</button>`}</div>`).join("");
     return sheetBox(S.name + " · " + S.kind, `<p class="hint">${esc(S.blurb)} Profiles are fictional characters. ${left} ${left === 1 ? "try" : "tries"} left this ${unitOf(g)}.</p>
       <div class="chips"><span class="hint">Looking for:</span>${[["w", "Bride"], ["m", "Groom"], ["any", "Anyone"]].map(o => `<button class="chip ${seek === o[0] ? "on" : ""}" data-act="seek" data-arg="${o[0]}">${o[1]}</button>`).join("")}</div><div class="profiles">${list}</div>`);
@@ -978,7 +981,7 @@
       onRoomTap: () => openSheet("rooms"),
       onMetro: to => { const g = game; mstate(g).rides++; g.min = Math.min((g.min || 0) + 12, 23 * 60 + 50); if (!metroStep(g, "metro", to, ui.metroFrom)) { save(); afterAction(); } updateHud(); }
     });
-    applyRide();
+    applyRide(); WORLD.setFamilyWalk(!!(g.famWalk && !away(g))); syncFam();
     WORLD.setExtraSpot("gig", g.shift ? g.shift.target : null);
     WORLD.setExtraSpot("odd", g.odd ? g.odd.target : null);
     WORLD.setExtraSpot("grp", g.group && g.group.key === "grp" ? g.group.target : null);
@@ -992,8 +995,8 @@
       WORLD.clearRemotes();
       const tag = d => d.nick + (d.rd ? " · ★" + d.rd + " rider" : d.l && lifeById(d.l) ? " · " + lifeById(d.l).title : "") + (ui.party && d.pt === ui.party.pid ? " · team" : "");
       NET.join(loc, char || g.player, WORLD.position(), {
-        onJoin: (id, d) => { WORLD.upsertRemote(id, Object.assign({}, d, { outfit: d.o && fxItem(d.o) ? fxItem(d.o).look : null, outfitKey: d.o || "", nick: tag(d) })); WORLD.vehicleRemote(id, remoteSpec(d)); },
-        onUpdate: (id, d) => { WORLD.upsertRemote(id, Object.assign({}, d, { outfit: d.o && fxItem(d.o) ? fxItem(d.o).look : null, outfitKey: d.o || "", nick: tag(d) })); WORLD.vehicleRemote(id, remoteSpec(d)); },
+        onJoin: (id, d) => { WORLD.upsertRemote(id, Object.assign({}, d, { outfit: d.o && fxItem(d.o) ? fxItem(d.o).look : null, outfitKey: d.o || "", nick: tag(d) })); WORLD.vehicleRemote(id, remoteSpec(d)); WORLD.remoteFamily(id, d.fam); },
+        onUpdate: (id, d) => { WORLD.upsertRemote(id, Object.assign({}, d, { outfit: d.o && fxItem(d.o) ? fxItem(d.o).look : null, outfitKey: d.o || "", nick: tag(d) })); WORLD.vehicleRemote(id, remoteSpec(d)); WORLD.remoteFamily(id, d.fam); },
         onGift: (id, amt, tip) => { if (!game || game.done) return; game.cash += amt; save(); const p = NET.peers()[id]; WORLD.note((p ? p.nick : "A player") + (tip ? " tipped you " : " sent you ") + inr(amt) + "!"); WORLD.react("giftGot"); updateHud(); },
         onParty: (id, m) => {
           const p = NET.peers()[id], nick = p ? p.nick : "A player";
@@ -1007,7 +1010,7 @@
         onLeave: id => WORLD.removeRemote(id),
         onCount: (n, room) => { WORLD.setOnline(n, NET.PHRASES, NET.EMOTES, true, room); if (ui.sheet === "rooms") { clearTimeout(roomsT); roomsT = setTimeout(() => { if (ui.sheet === "rooms") render(); }, 300); } },
         onRooms: () => { if (ui.sheet === "rooms") { clearTimeout(roomsT); roomsT = setTimeout(() => { if (ui.sheet === "rooms") render(); }, 300); } }
-      }, { o: g.outfit || "", hs: g.stateId, l: g.lifeId, rd: g.shift ? ((profile.rider && profile.rider.avg) || 5) : 0, pt: ui.party ? ui.party.pid : "", vh: g.shift ? "fxn" : (rideSpec(g) || {}).type || "", vc: g.vehicle ? g.vehicle.color || 0 : 0 }, ui.roomPick && ui.roomPick.city === loc ? ui.roomPick.n : 0).catch(() => { netKey = null; });
+      }, { o: g.outfit || "", hs: g.stateId, l: g.lifeId, rd: g.shift ? ((profile.rider && profile.rider.avg) || 5) : 0, pt: ui.party ? ui.party.pid : "", vh: g.shift ? "fxn" : (rideSpec(g) || {}).type || "", vc: g.vehicle ? g.vehicle.color || 0 : 0, fam: famState(g) }, ui.roomPick && ui.roomPick.city === loc ? ui.roomPick.n : 0).catch(() => { netKey = null; });
     }
   }
 
@@ -1300,6 +1303,7 @@
       case "phone": openSheet("phone"); break;
       case "garage": openSheet("garage", { atShop: false }); break;
       case "duties": openSheet("duties"); break;
+      case "famwalk": { const g = game; g.famWalk = arg === "1"; save(); WORLD.setFamilyWalk(g.famWalk && !away(g)); syncFam(); WORLD.note(g.famWalk ? "👨‍👩‍👧 Your family is coming along." : "🏠 Your family is heading home."); render(); break; }
       case "dretry": { const S = ui.dutyS; S.fail = false; S.count = 0; S.t0 = 0; S.step = 0; S.round = 0; render(); break; }
       case "dtap": {
         const g = game, S = ui.dutyS, d = DUT[g.lifeId][S.i]; if (!S || S.done || S.fail) break;

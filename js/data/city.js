@@ -76,9 +76,37 @@ window.AE_CITY = {
   // Fictional apps. Profiles are made-up characters.
   sites: [
     { id: "mangalya", name: "MangalyaMatch", kind: "Matrimony", blurb: "Families, horoscopes optional, and an aunty who checks your 'settled' status.", family: true },
-    { id: "chaidate", name: "ChaiDate", kind: "Dating app", blurb: "Swipe, chat, meet for chai. Families come later.", family: false }
+    { id: "chaidate", name: "ChaiDate", kind: "Dating app", blurb: "Swipe, chat, meet for chai. Families come later.", family: false },
+    { id: "kalyanam", name: "KalyanaVeedu", kind: "Matrimony", blurb: "Kerala's friendliest matrimony app. Your amma already has an account.", family: true },
+    { id: "sunset", name: "SunsetSwipe", kind: "Dating app", blurb: "Match, then meet at Marine Drive for the sunset. Simple.", family: false },
+    { id: "nri", name: "NRI Rishta", kind: "Matrimony", blurb: "For Malayalis abroad and coming home. Time zones included.", family: true },
+    { id: "bookclub", name: "Paperback", kind: "Dating app", blurb: "Match on the books you love. Small talk not required.", family: false }
   ],
   profiles: [
+    // KalyanaVeedu
+    { id: "k1", g: "w", site: "kalyanam", name: "Nimisha", age: 27, job: "Architect", city: "Kozhikode", bio: "Designs homes with big verandahs. Wants one with a mango tree.", likes: "Monsoon, filter coffee", pick: 40 },
+    { id: "k2", g: "w", site: "kalyanam", name: "Anjana", age: 25, job: "School teacher", city: "Kottayam", bio: "Can silence 40 kids with one look.", likes: "Reading, temple festivals", pick: 25 },
+    { id: "k3", g: "w", site: "kalyanam", name: "Gopika", age: 28, job: "Civil engineer, Kochi Metro", city: "Kochi", bio: "Built the line you ride every day. You're welcome.", likes: "Bridges, biryani", pick: 45 },
+    { id: "k4", g: "m", site: "kalyanam", name: "Vishnu", age: 29, job: "KSEB engineer", city: "Thrissur", bio: "Keeps the lights on. Literally.", likes: "Pooram, cricket", pick: 30 },
+    { id: "k5", g: "m", site: "kalyanam", name: "Arjun", age: 30, job: "Chartered accountant", city: "Kochi", bio: "Will do your taxes and your dishes.", likes: "Spreadsheets, sadya", pick: 40 },
+    { id: "k6", g: "m", site: "kalyanam", name: "Kiran", age: 31, job: "Police sub-inspector", city: "Alappuzha", bio: "Strict at work, softie at home.", likes: "Boat races, karimeen", pick: 35 },
+    // SunsetSwipe
+    { id: "s1", g: "w", site: "sunset", name: "Riya", age: 24, job: "Graphic designer", city: "Kochi", bio: "Will judge your font choices. Lovingly.", likes: "Sunsets, street food", pick: 30 },
+    { id: "s2", g: "w", site: "sunset", name: "Shreya", age: 26, job: "Air hostess", city: "Kochi", bio: "Flies all week, wants someone grounded.", likes: "Travel, beaches", pick: 50 },
+    { id: "s3", g: "w", site: "sunset", name: "Safa", age: 25, job: "Data analyst", city: "Kochi", bio: "Has a spreadsheet for her spreadsheets.", likes: "Board games, falooda", pick: 35 },
+    { id: "s4", g: "m", site: "sunset", name: "Joel", age: 27, job: "Indie musician", city: "Kochi", bio: "Will write a song about you. It might be sad.", likes: "Guitars, late chai", pick: 30 },
+    { id: "s5", g: "m", site: "sunset", name: "Alan", age: 28, job: "Wedding photographer", city: "Kochi", bio: "Has been to 300 weddings. Ready for his own.", likes: "Golden hour, porotta", pick: 35 },
+    { id: "s6", g: "m", site: "sunset", name: "Faisal", age: 29, job: "Chef", city: "Kozhikode", bio: "Will cook for you. You do the dishes.", likes: "Biryani, football", pick: 40 },
+    // NRI Rishta
+    { id: "n1", g: "w", site: "nri", name: "Liya", age: 28, job: "Nurse in London, moving home", city: "Kochi", bio: "Survived NHS night shifts. Can survive anything.", likes: "Tea, long walks", pick: 45 },
+    { id: "n2", g: "w", site: "nri", name: "Fathima", age: 27, job: "Doctor in Dubai", city: "Malappuram", bio: "Wants to open a clinic back home.", likes: "Desert stars, Kerala rain", pick: 50 },
+    { id: "n3", g: "m", site: "nri", name: "Rohan", age: 31, job: "Pilot", city: "Kochi", bio: "Lands planes softly. Hoping to land a wife too.", likes: "Aviation, appam", pick: 55 },
+    { id: "n4", g: "m", site: "nri", name: "Shahid", age: 30, job: "Textile business, Qatar", city: "Kannur", bio: "Coming home for good. Bringing dates (the fruit).", likes: "Family, cricket", pick: 40 },
+    // Paperback
+    { id: "p1", g: "w", site: "bookclub", name: "Aparna", age: 26, job: "Lawyer", city: "Kochi", bio: "Will win every argument. Including the one about books.", likes: "Thrillers, black coffee", pick: 45 },
+    { id: "p2", g: "w", site: "bookclub", name: "Nayana", age: 25, job: "Classical dancer", city: "Thiruvananthapuram", bio: "Mohiniyattam by day, mystery novels by night.", likes: "Music, poetry", pick: 35 },
+    { id: "p3", g: "m", site: "bookclub", name: "Nikhil", age: 29, job: "Doctor", city: "Kochi", bio: "Prescribes one novel a week.", likes: "Basheer, badminton", pick: 45 },
+    { id: "p4", g: "m", site: "bookclub", name: "Aswin", age: 26, job: "District cricketer", city: "Palakkad", bio: "Reads on the team bus. Bowls leg-spin.", likes: "Cricket, comics", pick: 30 },
     { id: "b1", g: "w", name: "Meera", age: 26, job: "Software tester at Infopark", city: "Kochi", bio: "Finds bugs for a living. Will find yours too.", likes: "Long drives, short meetings", pick: 30 },
     { id: "b2", g: "w", name: "Ayesha", age: 27, job: "Dentist", city: "Kochi", bio: "Will judge your smile. Professionally.", likes: "Biriyani, bad puns", pick: 45 },
     { id: "b3", g: "w", name: "Lakshmi", age: 25, job: "Bank officer", city: "Thrissur", bio: "Looking for someone with a stable EMI-to-income ratio.", likes: "Pooram, spreadsheets", pick: 40 },
