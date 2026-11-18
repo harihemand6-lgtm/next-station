@@ -13,15 +13,16 @@ window.AE_WORLD = (function () {
 
   // ── Kochi, on its real layout (1 tile ≈ 3 m, squeezed) ──
   const K = {
-    land: [[1, 0, 8, 17], [2, 22, 17, 47], [21, 25, 31, 38], [23, 7, 29, 14], [36, 0, 63, 47], [68, 0, 95, 47]],
+    land: [[1, 0, 8, 17], [2, 22, 17, 47], [21, 25, 31, 38], [23, 7, 29, 14], [36, 0, 63, 47], [68, 0, 95, 71]],
     sand: [[1, 0, 1, 17], [2, 22, 3, 36]],
-    plaza: [[36, 0, 38, 47], [68, 0, 68, 47]],
+    plaza: [[36, 0, 38, 47], [68, 0, 68, 71]],
     roads: [[39, 0, 40, 47], [46, 0, 47, 47], [53, 0, 54, 47], [59, 0, 60, 47], [39, 8, 63, 9], [39, 21, 63, 22], [39, 36, 63, 37], [39, 45, 63, 46],
       [9, 22, 10, 47], [15, 22, 16, 47], [4, 31, 17, 32], [4, 40, 17, 41], [26, 25, 26, 38], [21, 31, 31, 32], [23, 11, 29, 12], [4, 0, 5, 17], [2, 11, 8, 12],
-      [69, 0, 70, 47], [79, 0, 80, 47], [89, 0, 90, 47], [69, 8, 95, 9], [69, 21, 95, 22], [69, 36, 95, 37], [69, 45, 95, 46]],
-    bridges: [[9, 11, 22, 12], [30, 11, 35, 12], [18, 31, 20, 32], [32, 31, 35, 32], [64, 8, 68, 9], [64, 21, 68, 22], [64, 36, 68, 37], [64, 45, 68, 46]],
+      [69, 0, 70, 71], [79, 0, 80, 71], [89, 0, 90, 71], [69, 8, 95, 9], [69, 21, 95, 22], [69, 36, 95, 37], [69, 45, 95, 46], [69, 54, 95, 55], [69, 63, 95, 64]],
+    bridges: [[9, 11, 22, 12], [30, 11, 35, 12], [18, 31, 20, 32], [32, 31, 35, 32], [64, 8, 68, 9], [64, 21, 68, 22], [64, 36, 68, 37], [64, 45, 68, 46], [68, 54, 68, 55], [68, 63, 68, 64]],
     jetties: [[18, 24, 19, 24], [33, 19, 35, 19], [33, 21, 35, 21], [9, 13, 10, 13], [29, 15, 29, 16], [18, 28, 19, 28], [64, 38, 64, 39], [67, 14, 67, 15]],
     ponds: [[73, 13, 76, 17]],
+    lawns: [[71, 47, 95, 71]],
     parks: [[48, 16, 52, 20], [71, 10, 78, 20]],
     lots: {
       hall: { r: [48, 1, 52, 6], door: [50, 7], name: "Town Hall", kind: "hall" },
@@ -52,7 +53,11 @@ window.AE_WORLD = (function () {
       infopark: { r: [81, 11, 88, 19], door: [84, 20], name: "Infopark Hub", kind: "tower" },
       ipfood: { r: [91, 11, 95, 19], door: [93, 20], name: "Infopark Food Street", kind: "cafe" },
       CIVIL: { r: [71, 24, 78, 29], door: [74, 30], name: "Civil Station, Kakkanad", kind: "office" },
-      KJN: { r: [81, 24, 88, 29], door: [84, 30], name: "Kakkanad Junction", kind: "mall" }
+      KJN: { r: [81, 24, 88, 29], door: [84, 30], name: "Kakkanad Junction", kind: "mall" },
+      // FXN Nagar: the township on the outskirts, by Vembanad Lake
+      HTA: { r: [71, 38, 78, 43], door: [74, 44], name: "FXN Heights · Tower A", kind: "tower" },
+      HTB: { r: [81, 38, 88, 43], door: [84, 44], name: "FXN Heights · Tower B", kind: "tower" },
+      broker: { r: [91, 38, 95, 43], door: [93, 44], name: "FXN Homes", kind: "fxn" }
     },
     blocks: [
       { r: [55, 23, 58, 28], style: "res" }, { r: [61, 23, 63, 35], style: "res" }, { r: [55, 38, 58, 44], style: "shop" },
@@ -65,14 +70,14 @@ window.AE_WORLD = (function () {
     ],
     lifeLot: { street: "BW", job: "IP1", govt: "NORTH", creator: "FK", startup: "IP2", craft: "FK", film: "WILL", cricket: "STADIUM", reality: "WILL", trader: "SMART", nurse: "HOSP", cab: "AUTO", teacher: "NORTH", kitchen: "BW", homestay: "FK", stylist: "MG", band: "FK", planner: "MG", seafood: "HARBOUR", gulf: "BW" },
     board: [37, 23], park: [50, 18], start: [37, 26], ferry: { MD: [36, 19], FK: [17, 24] },
-    areas: [["Arabian Sea", 0.6, 30], ["Vypeen", 4.5, 4], ["Fort Kochi", 6, 30], ["Mattancherry", 12, 45], ["Willingdon Island", 26, 36.5], ["Bolgatty", 26, 9.5], ["Marine Drive", 37.5, 9], ["MG Road", 46.5, 28], ["Kaloor", 56.5, 8.6], ["Edappally", 61.5, 8.6], ["Kadavanthra", 57, 25], ["Vyttila", 60, 41], ["Ernakulam South", 50, 46.4], ["Backwaters", 32.5, 22], ["Kakkanad", 84, 40.5], ["Infopark", 80, 0.9], ["Chilavannur Canal", 65.9, 30]],
+    areas: [["Arabian Sea", 0.6, 30], ["Vypeen", 4.5, 4], ["Fort Kochi", 6, 30], ["Mattancherry", 12, 45], ["Willingdon Island", 26, 36.5], ["Bolgatty", 26, 9.5], ["Marine Drive", 37.5, 9], ["MG Road", 46.5, 28], ["Kaloor", 56.5, 8.6], ["Edappally", 61.5, 8.6], ["Kadavanthra", 57, 25], ["Vyttila", 60, 41], ["Ernakulam South", 50, 46.4], ["Backwaters", 32.5, 22], ["Kakkanad", 84, 40.5], ["Infopark", 80, 0.9], ["Chilavannur Canal", 65.9, 30], ["FXN Nagar", 84, 59.4], ["Vembanad Lake", 50, 60]],
     palms: [[2, 22, 3, 36, 0.5], [1, 0, 1, 17, 0.5], [36, 0, 38, 47, 0.18], [23, 7, 29, 14, 0.2], [21, 25, 31, 38, 0.05], [2, 22, 17, 47, 0.06], [55, 23, 63, 35, 0.06], [68, 0, 68, 47, 0.3], [71, 10, 78, 20, 0.1], [69, 23, 95, 35, 0.04]],
     // real Ernakulam / Fort Kochi street names: [name, x, y, vertical]
     roadNames: [["Shanmugham Road", 40, 27, 1], ["MG Road", 47, 17, 1], ["Chittoor Road", 54, 30, 1], ["Kaloor–Kadavanthra Road", 60, 29, 1], ["Banerji Road", 51, 9, 0], ["Park Avenue", 57, 22, 0], ["Sahodaran Ayyappan Road", 50, 37, 0], ["Thevara Road", 52, 46, 0],
       ["Princess Street", 10, 36, 1], ["Bazaar Road", 16, 27, 1], ["Calvathy Road", 7, 32, 0], ["Jew Town Road", 12.5, 41, 0], ["Bristow Road", 26.5, 35, 1], ["Goshree Bridge", 16, 12, 0], ["Goshree Bridge", 32.5, 12, 0], ["BOT Bridge", 19.5, 32, 0], ["Venduruthy Bridge", 33.5, 32, 0], ["Vypeen Beach Road", 5, 6, 1], ["Seaport–Airport Road", 69.6, 30, 1], ["Infopark Expressway", 84, 8.6, 0], ["Civil Line Road", 84, 21.6, 0], ["Kakkanad–Vyttila Road", 84, 36.6, 0]],
     major: [[39, 0, 40, 47], [46, 0, 47, 47], [39, 36, 95, 37], [39, 8, 95, 9], [69, 0, 70, 47]],
     signs: [[38.75, 30.5, "Shanmugham Rd", 1], [45.7, 15.5, "MG Road", 1], [52.7, 15.5, "Chittoor Rd", 1], [58.7, 7.5, "Kaloor–Kadavanthra Rd", 1], [41.6, 7.7, "Banerji Rd", 0], [38.6, 20.7, "Park Avenue", 0], [38.6, 35.7, "Sahodaran Ayyappan Rd", 0], [38.6, 44.7, "Thevara Rd", 0], [11.3, 30.6, "Princess St", 1], [14.7, 30.6, "Bazaar Rd", 1], [11.3, 39.4, "Jew Town Rd", 0]],
-    metro: { x: 47, stations: [[3.5, "Kaloor"], [30.5, "MG Road"], [42.5, "Ernakulam South"]] },
+    metro: { x: 47, len: 48, stations: [[3.5, "Kaloor"], [30.5, "MG Road"], [42.5, "Ernakulam South"]] },
     busStops: [[38.3, 12.5], [38.3, 33.5], [68.3, 25.5]],
     // Kochi Water Metro: electric boats. Line A from the High Court jetty out to the islands, line B up the canal from Vyttila to Kakkanad (Infopark)
     water: {
@@ -83,7 +88,7 @@ window.AE_WORLD = (function () {
       wmVT: { spot: [64, 38], dock: [65.7, 39.6], line: "B", name: "Vyttila" },
       wmKK: { spot: [68, 15], dock: [66.1, 14.5], line: "B", name: "Kakkanad (Infopark)" }
     },
-    routes: [[[40, -2], [40, 50]], [[47, -2], [47, 50]], [[54, -2], [54, 50]], [[60, -2], [60, 50]], [[39, 9], [98, 9]], [[39, 22], [98, 22]], [[39, 37], [98, 37]], [[39, 46], [98, 46]], [[70, -2], [70, 50]], [[80, -2], [80, 50]], [[90, -2], [90, 50]], [[10, 22], [10, 50]], [[16, 22], [16, 50]], [[4, 32], [36, 32]], [[2, 12], [36, 12]], [[5, -2], [5, 17]]]
+    routes: [[[40, -2], [40, 47]], [[47, -2], [47, 47]], [[54, -2], [54, 47]], [[60, -2], [60, 47]], [[39, 9], [98, 9]], [[39, 22], [98, 22]], [[39, 37], [98, 37]], [[39, 46], [98, 46]], [[70, -2], [70, 74]], [[80, -2], [80, 74]], [[90, -2], [90, 74]], [[68, 55], [98, 55]], [[10, 22], [10, 50]], [[16, 22], [16, 50]], [[4, 32], [36, 32]], [[2, 12], [36, 12]], [[5, -2], [5, 17]]]
   };
   const CITY_MONUMENT = { KA: "Vidhana Soudha", TG: "Charminar", MH: "Gateway of India", DL: "India Gate" };
 
@@ -103,7 +108,7 @@ window.AE_WORLD = (function () {
   function reset() { grid = []; blds = []; labels = []; trees = []; spots = {}; doors = []; areaLabels = []; palmsList = []; }
   function lotName(o, id, def) {
     const w = o.words, homeName = o.house ? ["Home (rented room)", "Home (1BHK flat)", "Home (2BHK flat)", "Your House", "Your Villa"][o.house.lvl || 0] : "Home";
-    if (id === "home") return o.base ? homeName : "Guesthouse";
+    if (id === "home") return o.base ? (o.homeAt && o.homeAt.x != null ? "Family home" : homeName) : "Guesthouse";
     if (id === "rival") return w.v + "'s place";
     if (id === "station") return isKochi ? "Ernakulam Junction" : w.city + " Railway Station";
     return def;
@@ -125,16 +130,16 @@ window.AE_WORLD = (function () {
     });
   }
   function buildKochi(o) {
-    COLS = 96; ROWS = 48; reset(); grid = new Array(COLS * ROWS).fill(WATER);
+    COLS = 96; ROWS = 72; reset(); grid = new Array(COLS * ROWS).fill(WATER);
     const R = rng(hashNum("kochi" + (o.house ? o.house.lvl : 0)));
-    K.land.forEach(r => fill(r, SIDE)); K.sand.forEach(r => fill(r, SAND)); K.plaza.forEach(r => fill(r, PLAZA));
+    K.land.forEach(r => fill(r, SIDE)); K.sand.forEach(r => fill(r, SAND)); K.plaza.forEach(r => fill(r, PLAZA)); (K.lawns || []).forEach(r => fill(r, GRASS));
     K.roads.forEach(r => fill(r, ROAD)); K.bridges.forEach(r => fill(r, BRIDGE)); K.jetties.forEach(r => fill(r, JETTY));
     K.parks.forEach(r => { fill(r, GRASS); for (let y = r[1]; y <= r[3]; y++) for (let x = r[0]; x <= r[2]; x++) if ((x + y) % 3 === 0 && x !== K.park[0] && y !== K.park[1] && R() < 0.6) { setT(x, y, TREE); trees.push({ x, y, kind: "rain" }); } });
     (K.ponds || []).forEach(r => { fill(r, WATER); trees = trees.filter(t => !(t.x >= r[0] && t.x <= r[2] && t.y >= r[1] && t.y <= r[3])); });
     const lifeLot = K.lifeLot[o.lifeId] || "BW";
     Object.keys(K.lots).forEach(id => {
       const L = K.lots[id], [x0, y0, x1, y1] = L.r;
-      let big = { hall: "hall", bank: "bank", cafe: "cafe", fxn: "fxn", rival: "rival", office: "office", home: "home", station: "station", mall: "mall", SHOW: "garage", infopark: "infopark", ipfood: "ipfood" }[id] || (id === lifeLot ? "life" : "lm");
+      let big = { hall: "hall", bank: "bank", cafe: "cafe", fxn: "fxn", rival: "rival", office: "office", home: "home", station: "station", mall: "mall", SHOW: "garage", infopark: "infopark", ipfood: "ipfood", broker: "broker", HTA: "heightsA", HTB: "heightsB" }[id] || (id === lifeLot ? "life" : "lm");
       let name = big === "life" ? (LANDMARK[o.lifeId] || "Market").replace("{stall}", o.words.stall) : lotName(o, id, L.name || "");
       const kind = big === "home" ? "home" : big === "rival" ? "shop" : L.kind || "shop";
       const floors = { showroom: 2, hall: 2, hospital: 6, mall: 4, bank: 3, cafe: 1, fxn: 3, stadium: 2, tower: 8, market: 1, office: 3, station: 2, warehouse: 2, church: 2, colonial: 2, home: [2, 3, 4, 2, 2][(o.house && o.house.lvl) || 0], shop: 3 }[kind] || 2;
@@ -142,7 +147,7 @@ window.AE_WORLD = (function () {
       if (name) labels.push({ x: (x0 + x1 + 1) / 2, y: (y0 + y1 + 1) / 2, t: name, c: BIGCOL[big] || "#e8dcc0", h: floors + 0.6 });
       const d = { x: L.door[0], y: L.door[1], label: name };
       if (big === "life") spots.m = d; if (big === "rival") spots.v = d; if (big === "home") { spots.p = d; spots.house = { x: L.door[0] + 2, y: L.door[1], label: name }; }
-      if (["station", "hall", "fxn", "office", "bank", "cafe", "mall", "garage", "infopark", "ipfood"].indexOf(big) >= 0) spots[big] = d;
+      if (["station", "hall", "fxn", "office", "bank", "cafe", "mall", "garage", "infopark", "ipfood", "broker", "heightsA", "heightsB"].indexOf(big) >= 0) spots[big] = d;
       if (big === "lm") doors.push({ x: L.door[0], y: L.door[1] });
       if (id === "HOSP") spots.hospital = { x: L.door[0], y: L.door[1], label: "City Hospital" };
     });
@@ -152,6 +157,9 @@ window.AE_WORLD = (function () {
     spots.food = { x: 37, y: 28, label: "Chayakkada" };
     spots.ferryMD = { x: K.ferry.MD[0], y: K.ferry.MD[1], label: "Boat Jetty", ride: "ferryFK", rideLabel: "Take the ferry to Fort Kochi" };
     spots.ferryFK = { x: K.ferry.FK[0], y: K.ferry.FK[1], label: "Boat Jetty", ride: "ferryMD", rideLabel: "Take the ferry to Marine Drive" };
+    // FXN Nagar plots: gates on the road, houses come and go with their owners
+    const T = window.AE_TOWN; if (T) T.plots.forEach(pl => { spots[pl.id] = { x: pl.door[0], y: pl.door[1], label: (pl.kind === "villa" ? "Villa plot " : "Plot ") + pl.id, plot: pl.id }; });
+    if (o.homeAt && o.homeAt.x != null) { if (o.homeAt.key && o.homeAt.key !== "house") delete spots[o.homeAt.key]; spots.house = { x: o.homeAt.x, y: o.homeAt.y, label: o.homeAt.label || "Home" }; }
     Object.keys(K.water).forEach(k => { const W = K.water[k]; spots[k] = { x: W.spot[0], y: W.spot[1], label: "Water Metro · " + W.name, wm: W.line }; });
     // Kochi Metro: stairs down to MG Road under each station
     K.metro.stations.forEach(([z, name], i) => { const k = METRO_KEYS[i]; spots[k] = { x: K.metro.x - 1, y: Math.floor(z), label: name + " Metro", metro: i, z }; });
@@ -279,8 +287,8 @@ window.AE_WORLD = (function () {
   // ── ground texture: asphalt with wear, kerbs, interlocking pavers, grass, sand, contact shadows at building bases ──
   function tileCanvas(size, draw) { const c = document.createElement("canvas"); c.width = c.height = size; draw(c.getContext("2d"), size); return c; }
   function groundTexture() {
-    const Pp = 32, c = document.createElement("canvas"); c.width = COLS * Pp; c.height = ROWS * Pp;
-    const x = c.getContext("2d"), R = rng(11);
+    const Pp = 32, GS = COLS * ROWS > 4000 ? 0.75 : 1, c = document.createElement("canvas"); c.width = COLS * Pp * GS; c.height = ROWS * Pp * GS;
+    const x = c.getContext("2d"), R = rng(11); x.scale(GS, GS);
     const pat = (cv, k) => { const p2 = x.createPattern(cv, "repeat"); if (k && p2.setTransform) p2.setTransform(new DOMMatrix().scale(k)); return p2; };
     const asphalt = tileCanvas(128, (g, S) => { g.drawImage(noiseCanvas(128, "#3f4249", 30, 1), 0, 0); const r = rng(41); for (let i = 0; i < 260; i++) { g.fillStyle = r() < 0.5 ? "rgba(255,255,255,.05)" : "rgba(0,0,0,.08)"; g.fillRect(r() * S, r() * S, 1 + r() * 2, 1 + r() * 2); } g.strokeStyle = "rgba(0,0,0,.25)"; g.lineWidth = 1; for (let i = 0; i < 3; i++) { g.beginPath(); let px = r() * S, py = r() * S; g.moveTo(px, py); for (let k = 0; k < 6; k++) { px += (r() - 0.5) * 22; py += (r() - 0.5) * 22; g.lineTo(px, py); } g.stroke(); } g.fillStyle = "rgba(20,20,24,.25)"; g.beginPath(); g.ellipse(r() * S, r() * S, 18, 10, r(), 0, 7); g.fill(); });
     const pavers = (base, line) => tileCanvas(64, (g, S) => { g.drawImage(noiseCanvas(64, base, 16, 2), 0, 0); g.strokeStyle = line; g.lineWidth = 1.2; for (let yy = 0; yy < S; yy += 16) for (let xx = 0; xx < S; xx += 16) { const o2 = (yy / 16) % 2 ? 8 : 0; g.beginPath(); g.moveTo(xx + o2, yy); g.lineTo(xx + o2 + 6, yy + 4); g.lineTo(xx + o2 + 10, yy); g.lineTo(xx + o2 + 16, yy + 4); g.stroke(); g.strokeRect(xx + 0.5, yy + 0.5, 16, 16); } });
@@ -528,7 +536,7 @@ window.AE_WORLD = (function () {
     lmParts = [];
     hmap = new Float32Array(COLS * ROWS);
     blds.forEach(b => { const top = (b.h || 1) + (b.roof ? 0.9 : 0.4); for (let y = b.y; y < b.y + b.d; y++) for (let x = b.x; x < b.x + b.w; x++) if (x >= 0 && y >= 0 && x < COLS && y < ROWS) hmap[y * COLS + x] = Math.max(hmap[y * COLS + x], top); });
-    if (isKochi && K.metro) for (let y = 0; y < ROWS; y++) for (let x = K.metro.x - 1; x <= K.metro.x; x++) hmap[y * COLS + x] = Math.max(hmap[y * COLS + x], 3.1);
+    if (isKochi && K.metro) for (let y = 0; y < Math.min(ROWS, K.metro.len || ROWS); y++) for (let x = K.metro.x - 1; x <= K.metro.x; x++) hmap[y * COLS + x] = Math.max(hmap[y * COLS + x], 3.1);
     const fac = {}, getFac = k => fac[k] || (fac[k] = { mat: facade(k), parts: [] }), roofParts = [], propParts = [];
     const R = rng(hashNum(o.stateId + "paint"));
     const pastel = ["#f3e6d2", "#e9d7c4", "#d9e6dd", "#e6dcef", "#f1e0b5", "#dbe9f3", "#f2d6cf", "#e8e4dc"];
@@ -732,6 +740,67 @@ window.AE_WORLD = (function () {
       buildWaterMetro();
     }
   }
+  // ═══ FXN Nagar township: plots with houses that belong to players (or FXN Rentals, or neighbours) ═══
+  let townG = {}, townKey = {};
+  const TWALL = () => (window.AE_TOWN || {}).walls || [["Cream", "#efe4cf"]], TROOF = () => (window.AE_TOWN || {}).roofs || [["Terracotta", "#b5532f"]];
+  function plotFoot(pl) { // house footprint inside the plot (yard on the gate side, one side strip for porch and garden)
+    const [x0, y0, x1, y1] = pl.r, depth = pl.kind === "villa" ? 3 : 2;
+    return pl.face === "n" ? { x0, y0: y1 - depth + 1, x1: x1 - 1, y1 } : { x0, y0, x1: x1 - 1, y1: y0 + depth - 1 };
+  }
+  function townBuild(states) {
+    Object.values(townG).forEach(g => scene.remove(g)); townG = {}; townKey = {};
+    const T = window.AE_TOWN; if (!T) return;
+    T.plots.forEach(pl => setPlotLook(pl.id, Object.assign({}, T.seed[pl.id] || {}, states[pl.id] || {}), true));
+  }
+  function setPlots(states) { const T = window.AE_TOWN; if (!T || !isKochi || !scene) return; T.plots.forEach(pl => setPlotLook(pl.id, Object.assign({}, T.seed[pl.id] || {}, (states || {})[pl.id] || {}))); }
+  function setPlotLook(id, st, force) {
+    const T = window.AE_TOWN, pl = T && T.plots.find(p => p.id === id); if (!pl) return;
+    const key = JSON.stringify(st || {}); if (!force && townKey[id] === key) return; townKey[id] = key;
+    if (townG[id]) { townG[id].traverse(o => { if (o.material) { const i = facadeMats.indexOf(o.material); if (i >= 0) facadeMats.splice(i, 1); } }); scene.remove(townG[id]); }
+    const F = plotFoot(pl), built = st && st.s && st.st;
+    for (let y = F.y0; y <= F.y1; y++) for (let x = F.x0; x <= F.x1; x++) setT(x, y, built ? BLD : GRASS);
+    const g = houseGroup(pl, F, st || {}); scene.add(g); townG[id] = g;
+    if (hmap) { const top = built ? 1 + (st.st === "villa" || (st.x || []).indexOf("floor") >= 0 ? 1 : 0) + 0.9 : 0; for (let y = F.y0; y <= F.y1; y++) for (let x = F.x0; x <= F.x1; x++) hmap[y * COLS + x] = top; }
+  }
+  function houseGroup(pl, F, st) {
+    const g = new THREE.Group(), add = (geo, c, x, y, z, mat) => { const m = new THREE.Mesh(geo, mat || new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 })); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; g.add(m); return m; };
+    const [x0, y0, x1, y1] = pl.r, gx = pl.door[0] + 0.5, gz = pl.face === "n" ? y0 + 0.02 : y1 + 0.98, fz = pl.face === "n" ? -1 : 1, X = st.x || [];
+    const sign = (text, bg, fg, w) => { const sp = signPlane(text, bg, fg, w || 1.6, 0.36); sp.position.set(gx + 0.6, 0.85, gz + fz * 0.05); sp.rotation.y = pl.face === "n" ? Math.PI : 0; g.add(sp); add(new THREE.BoxGeometry(0.06, 0.7, 0.06), "#6d5a44", gx + 0.6, 0.35, gz); return sp; };
+    if (!st.s || !st.st) { // open plot: bare earth, a few stakes and the FXN Homes board
+      const dirt = add(new THREE.PlaneGeometry(x1 - x0 + 0.9, y1 - y0 + 0.9), null, (x0 + x1 + 1) / 2, 0.012, (y0 + y1 + 1) / 2, new THREE.MeshStandardMaterial({ color: 0x9b7a55, roughness: 1 })); dirt.rotation.x = -Math.PI / 2; dirt.castShadow = false;
+      [[x0 + 0.2, y0 + 0.2], [x1 + 0.8, y0 + 0.2], [x0 + 0.2, y1 + 0.8], [x1 + 0.8, y1 + 0.8]].forEach(([a, b]) => add(new THREE.BoxGeometry(0.05, 0.3, 0.05), "#e8e0d0", a, 0.15, b));
+      sign(pl.kind === "villa" ? "LAKE VIEW PLOT · FXN HOMES" : "PLOT FOR SALE · FXN HOMES", "#ff4f9a", "#ffffff", 1.8);
+      return g;
+    }
+    const wall = col((TWALL()[st.w || 0] || TWALL()[0])[1]), roofC = col((TROOF()[st.rf || 0] || TROOF()[0])[1]);
+    const w = F.x1 - F.x0 + 1 - 0.15, d = F.y1 - F.y0 + 1 - 0.15, cx = (F.x0 + F.x1 + 1) / 2, cz = (F.y0 + F.y1 + 1) / 2;
+    const floors = st.st === "villa" ? 2 : 1 + (X.indexOf("floor") >= 0 ? 1 : 0), H = floors * 1.0;
+    const fm = facade(st.st === "modern" ? "res" : st.st === "villa" ? "res" : "kerala"); fm.color = wall; fm.vertexColors = false;
+    add(facadeBox(w, H, d, 0.8, 1.0), null, cx, H / 2, cz, fm);
+    const frontZ = pl.face === "n" ? cz - d / 2 : cz + d / 2;
+    if (st.st === "kerala") {
+      add(hipRoof(w, d, 0.6 + w * 0.06), null, cx, H, cz, new THREE.MeshStandardMaterial({ color: roofC, roughness: 0.8, map: roofTex() }));
+      for (let i = 0; i < 3; i++) add(new THREE.CylinderGeometry(0.05, 0.05, 0.9, 8), "#fbf6ea", cx - w * 0.35 + i * w * 0.35, 0.45, frontZ + fz * 0.35);
+      add(new THREE.BoxGeometry(w * 0.9, 0.06, 0.5), roofC.getStyle(), cx, 0.92, frontZ + fz * 0.25);
+    } else {
+      add(new THREE.BoxGeometry(w + 0.08, 0.08, d + 0.08), "#3a3d45", cx, H + 0.04, cz);
+      add(new THREE.BoxGeometry(w * 0.7, H * 0.55, 0.04), null, cx - w * 0.1, H * 0.5, frontZ + fz * 0.02, new THREE.MeshStandardMaterial({ color: 0x1f3d55, roughness: 0.1, metalness: 0.4, emissive: 0xffc77a, emissiveIntensity: 0 })).userData.glow = true;
+      add(new THREE.BoxGeometry(0.5, H * 0.9, 0.05), "#8a5a35", cx + w * 0.36, H * 0.45, frontZ + fz * 0.03);
+      if (st.st === "villa") { add(new THREE.BoxGeometry(w + 0.3, 0.07, 0.6), "#e9e6df", cx, 1.0, frontZ + fz * 0.3); add(new THREE.BoxGeometry(w + 0.3, 0.3, 0.03), null, cx, 1.2, frontZ + fz * 0.58, new THREE.MeshStandardMaterial({ color: 0x9fd3e6, transparent: true, opacity: 0.35, roughness: 0.05 })); }
+      add(new THREE.BoxGeometry(w + 0.08, 0.12, 0.06), roofC.getStyle(), cx, H + 0.1, frontZ);
+    }
+    if (X.indexOf("solar") >= 0) for (let i = 0; i < 3; i++) { const sp = add(new THREE.BoxGeometry(w * 0.26, 0.03, d * 0.4), "#1d2c4a", cx - w * 0.3 + i * w * 0.3, H + (st.st === "kerala" ? 0.38 : 0.14), cz); sp.rotation.x = 0.25 * -fz; }
+    if (X.indexOf("garden") >= 0) { [[x1 + 0.5, (y0 + y1 + 1) / 2], [x0 + 0.3, pl.face === "n" ? y0 + 0.4 : y1 + 0.6], [x1 + 0.5, pl.face === "n" ? y0 + 0.4 : y1 + 0.6]].forEach(([a, b], i) => { add(new THREE.SphereGeometry(0.28, 8, 6), "#3f8a3e", a, 0.28, b); if (i === 0) { add(new THREE.CylinderGeometry(0.05, 0.07, 1.6, 6), "#7a5a3a", a, 0.8, b - 0.3); add(new THREE.ConeGeometry(0.5, 0.35, 7), "#2f7a3a", a, 1.65, b - 0.3); } }); }
+    if (X.indexOf("wall") >= 0) { const L1 = gx - 0.45 - x0, L2 = x1 + 1 - (gx + 0.45); if (L1 > 0.05) add(new THREE.BoxGeometry(L1, 0.45, 0.08), "#e4dccb", x0 + L1 / 2, 0.22, gz); if (L2 > 0.05) add(new THREE.BoxGeometry(L2, 0.45, 0.08), "#e4dccb", gx + 0.45 + L2 / 2, 0.22, gz); add(new THREE.BoxGeometry(0.9, 0.5, 0.04), "#2b2b30", gx, 0.25, gz); }
+    if (X.indexOf("porch") >= 0) { const px = x1 + 0.5, pz = (F.y0 + F.y1 + 1) / 2; add(new THREE.BoxGeometry(0.95, 0.05, 1.7), roofC.getStyle(), px, 1.0, pz); [[-0.4, -0.75], [0.4, -0.75], [-0.4, 0.75], [0.4, 0.75]].forEach(([a, b]) => add(new THREE.CylinderGeometry(0.03, 0.03, 1, 6), "#ddd", px + a, 0.5, pz + b)); }
+    if (X.indexOf("pool") >= 0) { const pool = add(new THREE.PlaneGeometry(1.4, 0.7), null, (x0 + x1 + 1) / 2, 0.02, pl.face === "n" ? y0 + 0.5 : y1 + 0.5, new THREE.MeshStandardMaterial({ color: 0x2ec5e0, roughness: 0.05, emissive: 0x0a5c70, emissiveIntensity: 0.4 })); pool.rotation.x = -Math.PI / 2; pool.castShadow = false; }
+    if (X.indexOf("lights") >= 0) for (let i = 0; i < 9; i++) add(new THREE.SphereGeometry(0.035, 6, 4), null, cx - w / 2 + i * w / 8, H - 0.05, frontZ + fz * 0.06, new THREE.MeshBasicMaterial({ color: ["#ffcf4a", "#ff4f9a", "#19e6ff"][i % 3] }));
+    const label = st.s === "rent" ? (st.n ? st.n + " · rented" : "FXN RENTALS · TO LET") : st.s === "resale" ? "RESALE · FXN HOMES" : (st.n ? (/'s|The /.test(st.n) ? st.n : st.n + "'s home") : "");
+    if (label) { const neon = X.indexOf("neon") >= 0; const sp = sign(label.toUpperCase(), neon ? "#1a0b1e" : st.s === "rent" && !st.n ? "#16998c" : st.s === "resale" ? "#ff4f9a" : "#f7f3e8", neon ? "#ff4f9a" : st.s === "own" || st.s === "npc" || st.n ? "#3a2a1a" : "#ffffff"); if (neon) sp.material.emissiveIntensity = 0.9; }
+    return g;
+  }
+  const plotState = id => { try { return JSON.parse(townKey[id] || "{}"); } catch (e) { return {}; } };
+
   // ═══ Kochi Water Metro: sleek electric catamarans; they shuttle between jetties on their own and carry you when you buy a ticket ═══
   let wmBoats = {}, wride = null;
   const WM_HUB = "wmHC", WM_FKVIA = [21.3, 23.0], WM_SPEED = 2.6;
@@ -857,7 +926,7 @@ window.AE_WORLD = (function () {
         makeSky(); makeWater(); makeOuterLand(o);
         groundMesh = new THREE.Mesh(new THREE.PlaneGeometry(COLS, ROWS), new THREE.MeshStandardMaterial({ map: groundTexture(), roughness: 0.95, alphaTest: 0.5 }));
         groundMesh.rotation.x = -Math.PI / 2; groundMesh.position.set(COLS / 2, 0, ROWS / 2); groundMesh.receiveShadow = true; scene.add(groundMesh);
-        renderCity(o); plantTrees(); streetLamps(); spawnTraffic(); powerLines(); bushes();
+        renderCity(o); plantTrees(); streetLamps(); spawnTraffic(); powerLines(); bushes(); if (isKochi) townBuild(o.plots || {});
         if (isKochi) { fishingNets(); bridgesRails(); chayaStall(36.45, 29.35); metro(); streetSigns(); busStops(); roadPalms(); }
         city2030(o);
         labels.forEach(l => { const s = textSprite(l.t, l.c, 0.42); s.position.set(l.x, l.h + 0.7, l.y); scene.add(s); });
@@ -914,10 +983,11 @@ window.AE_WORLD = (function () {
   // ── Kochi Metro: an elevated line over MG Road with three stations and a train that shuttles along it ──
   function metro() {
     const M = K.metro, X = M.x, deckY = 2.3, parts = [], conc = col("#bdb7ab"), conc2 = col("#a7a196");
-    parts.push(P(new THREE.BoxGeometry(0.95, 0.2, ROWS + 8), conc, X, deckY - 0.1, ROWS / 2));
-    [-1, 1].forEach(sd => parts.push(P(new THREE.BoxGeometry(0.06, 0.18, ROWS + 8), conc2, X + sd * 0.45, deckY + 0.09, ROWS / 2)));
+    const MR = M.len || ROWS;
+    parts.push(P(new THREE.BoxGeometry(0.95, 0.2, MR + 8), conc, X, deckY - 0.1, MR / 2));
+    [-1, 1].forEach(sd => parts.push(P(new THREE.BoxGeometry(0.06, 0.18, MR + 8), conc2, X + sd * 0.45, deckY + 0.09, MR / 2)));
     const junction = z => [[8, 10], [21, 23], [36, 38], [45, 47]].some(([a, b]) => z >= a && z <= b);
-    for (let z = -2.5; z < ROWS + 4; z += 3) if (!junction(z)) { parts.push(P(new THREE.CylinderGeometry(0.085, 0.1, deckY - 0.2, 12), conc2, X, (deckY - 0.2) / 2, z)); parts.push(P(new THREE.BoxGeometry(0.75, 0.16, 0.3), conc2, X, deckY - 0.27, z)); }
+    for (let z = -2.5; z < MR + 4; z += 3) if (!junction(z)) { parts.push(P(new THREE.CylinderGeometry(0.085, 0.1, deckY - 0.2, 12), conc2, X, (deckY - 0.2) / 2, z)); parts.push(P(new THREE.BoxGeometry(0.75, 0.16, 0.3), conc2, X, deckY - 0.27, z)); }
     M.stations.forEach(([z]) => {
       parts.push(P(new THREE.BoxGeometry(1.9, 0.14, 3.4), conc, X, deckY - 0.08, z));
       parts.push(P(new THREE.CylinderGeometry(1.05, 1.05, 3.4, 16, 1, true, -Math.PI / 2, Math.PI), col("#9fd8d2"), X, deckY + 0.45, z, Math.PI / 2, 0, 0, 1, 0.42, 1));
@@ -941,7 +1011,7 @@ window.AE_WORLD = (function () {
     const nz = T.z + T.dir * dt * 3.2;
     const hit = st.find(z => (T.z - z) * (nz - z) <= 0 && T.last !== z);
     if (hit !== undefined) { T.z = hit; T.wait = 3; T.last = hit; } else T.z = nz;
-    if (T.z > ROWS + 6) { T.dir = -1; T.last = null; } if (T.z < -6) { T.dir = 1; T.last = null; }
+    if (T.z > (K.metro.len || ROWS) + 6) { T.dir = -1; T.last = null; } if (T.z < -6) { T.dir = 1; T.last = null; }
     T.m.position.z = T.z;
   }
   function streetSigns() {
@@ -1518,7 +1588,7 @@ window.AE_WORLD = (function () {
   // ═══ maps: an illustrated city map (roads with names, pins, your route) for the minimap and the full map ═══
   const BP = 20; // base map pixels per tile
   const METRO_KEYS = ["metroKL", "metroMG", "metroES"];
-  const PIN = { wmHC: ["⛴", "#0fa3b8", 3], wmVY: ["⛴", "#0fa3b8", 3], wmBG: ["⛴", "#0fa3b8", 3], wmFK: ["⛴", "#0fa3b8", 3], wmVT: ["⛴", "#0fa3b8", 3], wmKK: ["⛴", "#0fa3b8", 3], infopark: ["💻", "#2b7bd6", 4], ipfood: ["🍜", "#c98a2b", 2], duty: ["⭐", "#f4a52b", 6], metroKL: ["🚇", "#16998c", 3], metroMG: ["🚇", "#16998c", 3], metroES: ["🚇", "#16998c", 3], m: ["💼", "#f4a52b", 3], house: ["🏠", "#8f6bff", 4], f: ["🌳", "#3f9b4a", 2], board: ["📋", "#16998c", 4], station: ["🚉", "#16998c", 3], hall: ["🏛️", "#8a3b3b", 3], fxn: ["👗", "#ff4f9a", 5], office: ["🏢", "#1f6b52", 3], bank: ["🏦", "#1f4e8c", 3], cafe: ["☕", "#8a5a3a", 2], mall: ["🛍️", "#6b4fa0", 2], hospital: ["🏥", "#d84343", 2], food: ["🍵", "#c98a2b", 2], ferryMD: ["⛴️", "#1f73b8", 2], ferryFK: ["⛴️", "#1f73b8", 2], garage: ["🛵", "#e0602b", 3], v: ["🏪", "#ef6a5f", 1], gig: ["📦", "#ff4f9a", 6], odd: ["🔧", "#e0a530", 6], grp: ["👥", "#16998c", 6] };
+  const PIN = { broker: ["🏷️", "#ff4f9a", 4], heightsA: ["🏢", "#6b4fa0", 1], heightsB: ["🏢", "#6b4fa0", 1], wmHC: ["⛴", "#0fa3b8", 3], wmVY: ["⛴", "#0fa3b8", 3], wmBG: ["⛴", "#0fa3b8", 3], wmFK: ["⛴", "#0fa3b8", 3], wmVT: ["⛴", "#0fa3b8", 3], wmKK: ["⛴", "#0fa3b8", 3], infopark: ["💻", "#2b7bd6", 4], ipfood: ["🍜", "#c98a2b", 2], duty: ["⭐", "#f4a52b", 6], metroKL: ["🚇", "#16998c", 3], metroMG: ["🚇", "#16998c", 3], metroES: ["🚇", "#16998c", 3], m: ["💼", "#f4a52b", 3], house: ["🏠", "#8f6bff", 4], f: ["🌳", "#3f9b4a", 2], board: ["📋", "#16998c", 4], station: ["🚉", "#16998c", 3], hall: ["🏛️", "#8a3b3b", 3], fxn: ["👗", "#ff4f9a", 5], office: ["🏢", "#1f6b52", 3], bank: ["🏦", "#1f4e8c", 3], cafe: ["☕", "#8a5a3a", 2], mall: ["🛍️", "#6b4fa0", 2], hospital: ["🏥", "#d84343", 2], food: ["🍵", "#c98a2b", 2], ferryMD: ["⛴️", "#1f73b8", 2], ferryFK: ["⛴️", "#1f73b8", 2], garage: ["🛵", "#e0602b", 3], v: ["🏪", "#ef6a5f", 1], gig: ["📦", "#ff4f9a", 6], odd: ["🔧", "#e0a530", 6], grp: ["👥", "#16998c", 6] };
   let mv = { s: 12, cx: 0, cy: 0 }, route = null, routeT = 0;
   function mapImage() {
     const c = document.createElement("canvas"); c.width = COLS * BP; c.height = ROWS * BP;
@@ -1989,5 +2059,5 @@ window.AE_WORLD = (function () {
   const __stats = () => renderer ? { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures } : null;
   const __traffic = () => vehicles.map(v => ({ k: +(v.k == null ? 1 : v.k).toFixed(2), side: +(v.side || 0).toFixed(2), x: +v.m.position.x.toFixed(1), z: +v.m.position.z.toFixed(1), type: v.type }));
   const waterSpots = () => K.water ? Object.keys(K.water).filter(k => spots[k]).map(k => ({ key: k, name: K.water[k].name, line: K.water[k].line })) : [];
-  return { startWater, waterSpots, waterRiding: () => !!wride, pause: on => { paused = !!on; }, __traffic, setFamilyWalk, remoteFamily, __stats, startMetro, metroSpots, metroRiding: () => !!mride, __figs: () => Object.values(figs).filter(f => f.kind === "remote" || f.kind === "me" || f.kind === "rfam" || f.lead).map(f => ({ id: f.id, x: +f.x.toFixed(1), z: +f.z.toFixed(1), veh: f.vehType || "" })), mapPoint, setVehicle, setParked, vehicleRemote, VEH, VCOL, __dbg, mount, setGuide, setMarker, setExtraSpot, randomDoor, npcSay, meSay, note, react, upsertRemote, moveRemote, sayRemote, removeRemote, clearRemotes, setOnline, spawnCourier, courierSay, setLook: (av, outfit) => setLookFig("me", av, outfit), teleport, position, destroy, available: can3d, preview, spotAt: k => { const p = spotPos(k); return p ? { x: p.x, z: p.z } : null; }, guideKey: () => guide && guide.key, mapOpen: () => !!(mapEl && !mapEl.hidden), cols: () => COLS, rows: () => ROWS, riding: () => !!ride };
+  return { setPlots, plotState, startWater, waterSpots, waterRiding: () => !!wride, pause: on => { paused = !!on; }, __traffic, setFamilyWalk, remoteFamily, __stats, startMetro, metroSpots, metroRiding: () => !!mride, __figs: () => Object.values(figs).filter(f => f.kind === "remote" || f.kind === "me" || f.kind === "rfam" || f.lead).map(f => ({ id: f.id, x: +f.x.toFixed(1), z: +f.z.toFixed(1), veh: f.vehType || "" })), mapPoint, setVehicle, setParked, vehicleRemote, VEH, VCOL, __dbg, mount, setGuide, setMarker, setExtraSpot, randomDoor, npcSay, meSay, note, react, upsertRemote, moveRemote, sayRemote, removeRemote, clearRemotes, setOnline, spawnCourier, courierSay, setLook: (av, outfit) => setLookFig("me", av, outfit), teleport, position, destroy, available: can3d, preview, spotAt: k => { const p = spotPos(k); return p ? { x: p.x, z: p.z } : null; }, guideKey: () => guide && guide.key, mapOpen: () => !!(mapEl && !mapEl.hidden), cols: () => COLS, rows: () => ROWS, riding: () => !!ride };
 })();

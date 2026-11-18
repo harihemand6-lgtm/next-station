@@ -57,3 +57,65 @@ create index if not exists scores_life on public.scores (life, score desc);
 
 Scores are sent by players' browsers, so a determined cheater can fake one. Delete suspicious rows in
 Table Editor → `scores`.
+
+## FXN Nagar houses (run once, also in SQL Editor)
+
+Makes township houses shared: every player sees who lives where. Without this table the township
+still works, but each player only sees their own house. Browsers can read the table; they can only
+change it through the two functions below, which check a secret key kept on the owner's device.
+
+```sql
+create extension if not exists pgcrypto with schema extensions;
+
+create table if not exists public.plots (
+  city text not null check (city ~ '^[A-Z]{2}$'),
+  plot text not null check (plot ~ '^[TV][0-9]{2}$'),
+  st jsonb not null default '{}'::jsonb,
+  owner_hash text,
+  updated_at timestamptz not null default now(),
+  primary key (city, plot)
+);
+alter table public.plots enable row level security;
+drop policy if exists "anyone can read plots" on public.plots;
+create policy "anyone can read plots" on public.plots for select to anon, authenticated using (true);
+revoke all on public.plots from anon, authenticated;
+grant select on public.plots to anon, authenticated;
+
+-- claim or update a plot: free, on resale, abandoned for 21 days, or already yours
+create or replace function public.claim_plot(p_city text, p_plot text, p_key text, p_st jsonb)
+returns boolean language plpgsql security definer set search_path = public, extensions as $$
+declare h text; r public.plots;
+begin
+  if p_city !~ '^[A-Z]{2}$' or p_plot !~ '^[TV][0-9]{2}$' or length(coalesce(p_key, '')) not between 20 and 80
+     or pg_column_size(p_st) > 1500 or coalesce(p_st->>'s', '') not in ('own', 'rent')
+     or coalesce(p_st->>'st', '') not in ('kerala', 'modern', 'villa') then return false; end if;
+  h := encode(extensions.digest(p_key, 'sha256'), 'hex');
+  select * into r from public.plots where city = p_city and plot = p_plot for update;
+  if found and r.owner_hash is not null and r.owner_hash <> h and coalesce(r.st->>'s', '') <> 'resale'
+     and r.updated_at > now() - interval '21 days' then return false; end if;
+  insert into public.plots (city, plot, st, owner_hash, updated_at) values (p_city, p_plot, p_st, h, now())
+  on conflict (city, plot) do update set st = excluded.st, owner_hash = excluded.owner_hash, updated_at = now();
+  return true;
+end $$;
+
+-- give a plot up: owners' houses go on resale with the broker, rented houses go back to FXN Rentals
+create or replace function public.release_plot(p_city text, p_plot text, p_key text, p_resale boolean)
+returns boolean language plpgsql security definer set search_path = public, extensions as $$
+declare h text := encode(extensions.digest(coalesce(p_key, ''), 'sha256'), 'hex');
+begin
+  if p_resale then
+    update public.plots set st = jsonb_set(st - 'nk', '{s}', '"resale"'), owner_hash = null, updated_at = now()
+    where city = p_city and plot = p_plot and owner_hash = h;
+  else
+    delete from public.plots where city = p_city and plot = p_plot and owner_hash = h;
+  end if;
+  return found;
+end $$;
+
+revoke all on function public.claim_plot(text, text, text, jsonb) from public;
+revoke all on function public.release_plot(text, text, text, boolean) from public;
+grant execute on function public.claim_plot(text, text, text, jsonb) to anon, authenticated;
+grant execute on function public.release_plot(text, text, text, boolean) to anon, authenticated;
+```
+
+To reset the township, delete rows in Table Editor → `plots`.

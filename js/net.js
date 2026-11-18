@@ -265,5 +265,5 @@ window.AE_NET = (function () {
   }
   function leave(keepLobby) { if (ch) { try { ch.unsubscribe(); } catch (e) { } } clearTimeout(sendMove._t); ch = null; peers = {}; heard = {}; lastSent = ""; if (!keepLobby && lobMine && lobMine.c) { lobMine.c = ""; lobMine.n = 0; if (lob) { try { lob.track(lobMine); } catch (e) { } } } }
 
-  return { rooms, room: () => ({ city, n: roomN, cap: CAP }), switchRoom, configured, setOutfit, gift, party, groupDone, setState, peerPos, lobby, takenLives, peers: () => peers, myId: () => myId, submitScore, topScores, enabled, join, move, say, sendText, check, mute, report, leave: () => leave(false), PHRASES, EMOTES, nick: () => nickOf(myNick()), heardFrom: id => heard[id] || [] };
+  return { db, cleanNick: n => nickOf(n), myNick, rooms, room: () => ({ city, n: roomN, cap: CAP }), switchRoom, configured, setOutfit, gift, party, groupDone, setState, peerPos, lobby, takenLives, peers: () => peers, myId: () => myId, submitScore, topScores, enabled, join, move, say, sendText, check, mute, report, leave: () => leave(false), PHRASES, EMOTES, nick: () => nickOf(myNick()), heardFrom: id => heard[id] || [] };
 })();

@@ -268,6 +268,8 @@ window.AE = (function () {
     if (g.ending) end = L.end.find(e => e.id === g.ending) || GENERIC[g.ending];
     if (!end) end = L.end.find(e => e.c && e.c(g, K)) || L.end[L.end.length - 1];
     g.done = true;
+    // your FXN Nagar house goes to the broker for resale; rented homes go back to FXN Rentals
+    if (g.home && /^[TV]\d\d$/.test(g.home.at || "") && window.AE_PLOTS) { try { window.AE_PLOTS.release(g.home.at, !!g.home.own); } catch (e) { } }
     g.result = { id: end.id, t: fill(end.t, g), d: fill(end.d, g) };
     return g.result;
   }
@@ -477,8 +479,13 @@ window.AE = (function () {
   function citySettle(g, K) {
     const out = [];
     (g.loans || []).forEach(l => { if (l.left > 0) { const emi = Math.min(l.emi, l.left); l.left -= emi; out.push({ label: l.name + " EMI", amount: -emi, kind: "money" }); } });
-    const H = C().houseLevels[g.house ? g.house.lvl : 0];
-    if (H && H.upkeep) { out.push({ label: H.name + " upkeep", amount: -money(g, H.upkeep), kind: "money" }); g.h = clamp(g.h + H.h, 0, 100); }
+    const H = C().houseLevels[g.house ? g.house.lvl : 0], TW = window.AE_TOWN, Hm = g.home;
+    if (TW && Hm && Hm.at && Hm.at !== "room") {
+      let amt, label;
+      if (Hm.flat) { const F = TW.flats.find(f => f.id === Hm.flat) || TW.flats[0]; amt = Hm.own ? TW.upkeep.own : F.rent; label = F.name + (Hm.own ? ": maintenance" : ": rent"); }
+      else { const villa = /^V/.test(Hm.at); amt = Hm.own ? (villa ? TW.upkeep.villa : TW.upkeep.own) : TW.houseRent; label = (villa ? "Villa " : "House ") + Hm.at + ", FXN Nagar: " + (Hm.own ? "upkeep" : "rent"); }
+      out.push({ label, amount: -money(g, amt), kind: "money" }); if (H) g.h = clamp(g.h + H.h, 0, 100);
+    } else if (H && H.upkeep) { out.push({ label: H.name + " upkeep", amount: -money(g, H.upkeep), kind: "money" }); g.h = clamp(g.h + H.h, 0, 100); }
     const VH = g.vehicle && vehicleById(g.vehicle.id); if (VH && VH.fuel) out.push({ label: VH.name + ": petrol & service", amount: -money(g, VH.fuel), kind: "money" });
     if (g.spouse) { out.push({ label: g.spouse.name + "'s share of household costs", amount: money(g, 2500), kind: "money" }); g.h = clamp(g.h + 3, 0, 100); }
     if ((g.fake || []).length && rnd(g) < 0.5) {

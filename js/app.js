@@ -477,6 +477,9 @@
     if (/^metro/.test(k)) { const st = (WORLD.metroSpots() || []).find(m => m.key === k); return "🚇 " + (st ? st.name : "Metro") + " station: ride"; }
     if (/^wm/.test(k)) { const st = (WORLD.waterSpots ? WORLD.waterSpots() : []).find(m => m.key === k); return "⛴️ Water Metro · " + (st ? st.name : "jetty"); }
     if (k === "infopark") return "💻 Infopark Hub: gigs, meetups, tech jobs";
+    if (k === "broker") return "🏷️ FXN Homes: flats, houses and plots";
+    if (k === "heightsA" || k === "heightsB") return "🏢 FXN Heights: see flats";
+    if (/^[TV]\d\d$/.test(k) && TOWN()) { const st = plotNow(k); if (!st) return "🌱 Plot " + k + " for sale · " + inr(plotPrice(g, k)); if (st.s === "resale") return "🏷️ Resale · " + inr(plotPrice(g, k)); if (st.s === "rent" && !st.n) return "🏠 To let · " + inr(CS.money(g, TOWN().houseRent)) + " a " + unitOf(g); return "🏡 " + (st.n || "A neighbour") + (st.s === "rent" ? " (tenant)" : ""); }
     if (k === "ipfood") return "🍜 Food Street · " + inr(LF.money(g, LF.FOOD.ipfood.cost));
     return null;
   }
@@ -502,6 +505,9 @@
     if (/^wm/.test(k)) return openSheet("water", { station: k });
     if (k === "infopark") return openSheet("infopark", { ipq: null });
     if (k === "ipfood") return doEat("ipfood");
+    if (k === "broker") return openSheet("broker", { build: null });
+    if (k === "heightsA" || k === "heightsB") return openSheet("broker", { btab2: "flats", build: null });
+    if (/^[TV]\d\d$/.test(k) && TOWN()) { const st = plotNow(k); if (st && st.n) { WORLD.note("🏡 " + (st.n || "A neighbour") + "'s home. Nice " + (st.x && st.x.length ? st.x.length + " upgrades!" : "place!")); return; } return openSheet("broker", { btab2: !st ? "plots" : st.s === "resale" ? "resale" : "houses", build: !st && tierOf(game) >= (plotDef(k).kind === "villa" ? 3 : 2) ? { id: k } : null }); }
   }
   const isKL = () => (game.loc || game.stateId) === "KL";
   // ── FXN Arcade: 2 paid plays per game per day, pay scales with score ──
@@ -851,6 +857,78 @@
       <div class="row"><button class="btn primary" data-act="venturego" ${ui.vCity && ui.vLife ? "" : "disabled"}>Take the loan and start${ui.vLife && ui.vCity ? ": " + esc(lifeById(ui.vLife).title) + " in " + esc(STATES[ui.vCity].city) : ""}</button><button class="btn ghost" data-act="ventureback">Back</button></div>`);
   }
 
+  // ── FXN Nagar township: flats, rental houses, plots to build on, resale through the FXN Homes broker ──
+  const TOWN = () => window.AE_TOWN, PLOTS = () => window.AE_PLOTS;
+  const homeOf = g => g.home || { at: "room" };
+  const townOn = g => !!TOWN() && g.stateId === "KL" && !away(g);
+  function tierOf(g) { const T = TOWN(), jt = T.tiers[g.lifeId] != null ? T.tiers[g.lifeId] : 1; let ct = 0; T.tierCash.forEach((c, i) => { if (g.cash >= CS.money(g, c)) ct = i; }); return Math.max(jt, ct); }
+  const plotDef = id => TOWN().plots.find(p => p.id === id);
+  const plotNow = id => (PLOTS() ? PLOTS().all()[id] : null) || TOWN().seed[id] || null;
+  function lookCost(g, st) { const T = TOWN(), S = T.styles.find(x => x.id === st.st); return CS.money(g, (S ? S.cost : 0) + (st.x || []).reduce((a, id) => a + ((T.extras.find(e => e.id === id) || {}).cost || 0), 0)); }
+  function plotPrice(g, id) { const pl = plotDef(id), st = plotNow(id), base = CS.money(g, TOWN().plotPrice[pl.kind]); return st && st.s === "resale" ? Math.round((base + lookCost(g, st)) * TOWN().resaleMult / 100) * 100 : base; }
+  function homeSpotFor(g) {
+    const H = homeOf(g); if (!townOn(g) || !H.at || H.at === "room") return null;
+    if (H.at === "HTA" || H.at === "HTB") { const key = H.at === "HTA" ? "heightsA" : "heightsB"; return { key, x: H.at === "HTA" ? 74 : 84, y: 44, label: "Your flat" }; }
+    const pl = plotDef(H.at); return pl ? { key: pl.id, x: pl.door[0], y: pl.door[1], label: "Your home" } : null;
+  }
+  function homeLabel(g) { const H = homeOf(g); if (!H.at || H.at === "room") return CITY.houseLevels[g.house.lvl].name; if (H.flat) return TOWN().flats.find(f => f.id === H.flat).name + (H.own ? "" : " (rented)"); return (/^V/.test(H.at) ? "Villa " : "House ") + H.at + ", FXN Nagar" + (H.own ? "" : " (rented)"); }
+  // move out of wherever you live now; owned plots go to the broker for resale and you get most of the value back
+  async function leaveHome(g) {
+    const H = homeOf(g); let back = 0;
+    if (H.at && /^[TV]\d\d$/.test(H.at)) { if (H.own) { const st = (PLOTS().all()[H.at]) || H.st; back = Math.round((CS.money(g, TOWN().plotPrice[plotDef(H.at).kind]) + lookCost(g, st || {})) * 0.8 / 100) * 100; g.cash += back; } await PLOTS().release(H.at, !!H.own); }
+    if (H.flat && H.own) { back = Math.round(CS.money(g, TOWN().flats.find(f => f.id === H.flat).buy) * 0.85 / 100) * 100; g.cash += back; }
+    g.home = { at: "room" }; return back;
+  }
+  async function moveTo(g, home, lvl, cost, loan) {
+    if (loan) { if (!CS.takeLoan(g, "home", cost)) { ui.msg = "The bank said no. You need your address proof and a smaller loan."; render(); return false; } }
+    else { if (g.cash < cost) { ui.msg = "Not enough cash."; render(); return false; } }
+    if (home.plot) { const r = await PLOTS().claim(home.plot, home.st); if (!r.ok) { if (loan) { const L = g.loans[g.loans.length - 1]; if (L) { L.left = 0; } } ui.msg = r.reason; render(); return false; } }
+    const back = await leaveHome(g);
+    if (!loan) g.cash -= cost;
+    g.home = home.plot ? { at: home.plot, own: home.own, st: home.st } : home; g.house.lvl = lvl; g.h = Math.min(100, g.h + 5);
+    ui.sheet = null; ui.build = null; save(); netKey = null; render(); updateHud();
+    WORLD.note("🏡 Welcome home: " + homeLabel(g) + (back ? " · old home sold back for " + inr(back) : "")); WORLD.react("house"); SND.sfx("goal"); afterAction(true);
+    return true;
+  }
+  function brokerSheet() {
+    const g = game, T = TOWN(), tab = ui.btab2 || "flats", my = tierOf(g), H = homeOf(g), all = PLOTS() ? PLOTS().all() : {};
+    const lock = need => need > my ? `<span class="pill">Needs ${esc(T.tierNames[need])}: a better-paid job or ${inr(CS.money(g, T.tierCash[need]))} saved</span>` : "";
+    const tabs = [["flats", "🏢 Flats"], ["houses", "🏠 Rent a house"], ["plots", "🌱 Buy a plot"], ["resale", "🏷️ Resale"]];
+    let body = "";
+    if (ui.build) { // pick a design for a plot you're buying
+      const id = ui.build.id, pl = plotDef(id), price = plotPrice(g, id);
+      body = `<p>${esc(pl.kind === "villa" ? "Lakeside villa plot " : "Plot ") + id} · land ${inr(price)}. Pick a design. You can paint it and add a garden, solar, a porch and more later.</p><div class="list">${T.styles.filter(S => (pl.kind === "villa") === !!S.villa || (pl.kind === "villa" && S.id === "modern")).map(S => { const c = price + CS.money(g, S.cost); return item("🏗️ " + esc(S.name), esc(S.desc) + " · total " + inr(c), `<button class="btn small primary" data-act="tbuild" data-arg="${id}:${S.id}" ${g.cash >= c ? "" : "disabled"}>Cash</button><button class="btn small" data-act="tbuild" data-arg="${id}:${S.id}:loan" ${CS.loanOk(g, "home") ? "" : "disabled"}>Home loan</button>`); }).join("")}</div><button class="btn small ghost" data-act="tbuildx">Back</button>`;
+    } else if (tab === "flats") {
+      body = `<div class="list">${T.flats.map(F => { const live = H.flat === F.id, rent = CS.money(g, F.rent), buy = CS.money(g, F.buy), dep = rent * 2;
+        return item(esc(F.name), live ? "You live here" : "Rent " + inr(rent) + " a " + unitOf(g) + " (deposit " + inr(dep) + ") · or buy " + inr(buy), live ? "" : lock(F.tier) || `<button class="btn small" data-act="tflat" data-arg="${F.id}:rent" ${g.cash >= dep ? "" : "disabled"}>Rent</button><button class="btn small primary" data-act="tflat" data-arg="${F.id}:buy" ${g.cash >= buy ? "" : "disabled"}>Buy</button><button class="btn small" data-act="tflat" data-arg="${F.id}:loan" ${CS.loanOk(g, "home") ? "" : "disabled"}>Loan</button>`); }).join("")}</div>`;
+    } else if (tab === "houses") {
+      const list = T.plots.filter(pl => { const st = all[pl.id] || T.seed[pl.id]; return st && st.s === "rent" && !(all[pl.id] && all[pl.id].n); });
+      const rent = CS.money(g, T.houseRent);
+      body = `<p class="hint">Ready-to-move Kerala and modern houses owned by FXN Rentals. Rent ${inr(rent)} a ${unitOf(g)}, deposit ${inr(rent * 2)}.</p><div class="list">${list.map(pl => { const st = all[pl.id] || T.seed[pl.id], S = T.styles.find(x => x.id === st.st);
+        return item("🏠 House " + pl.id + " · " + esc(S.name), H.at === pl.id ? "You live here" : "FXN Nagar, " + (pl.r[1] < 55 ? "near FXN Heights" : "lake side"), H.at === pl.id ? "" : lock(1) || `<button class="btn small primary" data-act="thouse" data-arg="${pl.id}" ${g.cash >= rent * 2 ? "" : "disabled"}>Rent</button>`); }).join("") || `<p class="hint">Every rental house is taken. Check back soon.</p>`}</div>`;
+    } else if (tab === "plots") {
+      const list = T.plots.filter(pl => !all[pl.id] && !T.seed[pl.id]);
+      body = `<p class="hint">Open land in FXN Nagar. Buy a plot, pick a design and FXN Homes builds it. It stays yours until you retire, then the broker sells it on.</p><div class="list">${list.map(pl => { const price = plotPrice(g, pl.id), need = pl.kind === "villa" ? 3 : 2;
+        return item((pl.kind === "villa" ? "🌅 Lakeside villa plot " : "🌱 Plot ") + pl.id, "Land " + inr(price) + " + building from " + inr(CS.money(g, pl.kind === "villa" ? T.styles[2].cost : T.styles[0].cost)), lock(need) || `<button class="btn small primary" data-act="tplot" data-arg="${pl.id}">Choose</button>`); }).join("") || `<p class="hint">All plots are sold! Watch the resale list.</p>`}</div>`;
+    } else {
+      const list = T.plots.filter(pl => all[pl.id] && all[pl.id].s === "resale");
+      body = `<p class="hint">Homes whose owners retired. Buy them as they are, garden and all, then make them yours.</p><div class="list">${list.map(pl => { const st = all[pl.id], S = T.styles.find(x => x.id === st.st), price = plotPrice(g, pl.id);
+        return item("🏷️ " + (pl.kind === "villa" ? "Villa " : "House ") + pl.id + " · " + esc(S.name), (st.x || []).length + " extras · " + inr(price), lock(pl.kind === "villa" ? 3 : 2) || `<button class="btn small primary" data-act="tresale" data-arg="${pl.id}" ${g.cash >= price ? "" : "disabled"}>Cash</button><button class="btn small" data-act="tresale" data-arg="${pl.id}:loan" ${CS.loanOk(g, "home") ? "" : "disabled"}>Loan</button>`); }).join("") || `<p class="hint">Nothing on resale right now.</p>`}</div>`;
+    }
+    const line = T.brokerLines[(g.day + (ui.btab2 || "").length) % T.brokerLines.length];
+    return sheetBox("🏷️ FXN Homes · " + T.name, `<div class="pol-me" style="--pc:#ff4f9a"><b>${esc(T.tierNames[my])} buyer</b><span>Now: ${esc(homeLabel(g))} · cash ${inr(g.cash)}${PLOTS() && PLOTS().isShared() ? " · live township" : ""}</span></div>
+      ${ui.build ? "" : `<div class="chips">${tabs.map(t => `<button class="chip ${tab === t[0] ? "on" : ""}" data-act="btab2" data-arg="${t[0]}">${t[1]}</button>`).join("")}</div>`}${body}<p class="hint">${esc(line)}</p>`, "broker");
+  }
+  // customise an owned house in FXN Nagar
+  function townCustom(g) {
+    const H = homeOf(g); if (!H.at || !/^[TV]\d\d$/.test(H.at) || !H.own) return "";
+    const T = TOWN(), st = (PLOTS().all()[H.at]) || H.st, villa = /^V/.test(H.at);
+    const walls = `<div class="chips">${T.walls.map((w, i) => `<button class="sw ${st.w === i ? "on" : ""}" style="background:${w[1]}" data-act="tlook" data-arg="w:${i}" title="${esc(w[0])}" aria-label="Paint ${esc(w[0])}"></button>`).join("")}<span class="hint">Outside paint: ${inr(CS.money(g, 2000))}</span></div>`;
+    const roofs = `<div class="chips">${T.roofs.map((w, i) => `<button class="sw ${st.rf === i ? "on" : ""}" style="background:${w[1]}" data-act="tlook" data-arg="rf:${i}" title="${esc(w[0])}" aria-label="Roof ${esc(w[0])}"></button>`).join("")}<span class="hint">Roof or trim: ${inr(CS.money(g, 2000))}</span></div>`;
+    const ex = T.extras.filter(e => !e.villa || villa).map(e => { const own = (st.x || []).indexOf(e.id) >= 0, c = CS.money(g, e.cost); return `<button class="chip ${own ? "on" : ""}" data-act="tlook" data-arg="x:${e.id}" ${own || g.cash < c ? "disabled" : ""}>${esc(e.name)}${own ? " ✓" : " · " + inr(c)}</button>`; }).join("");
+    const styles = T.styles.filter(S => villa ? S.villa || S.id === "modern" : !S.villa).filter(S => S.id !== st.st).map(S => `<button class="chip" data-act="tlook" data-arg="st:${S.id}" ${g.cash >= CS.money(g, S.cost * 0.6) ? "" : "disabled"}>Rebuild as ${esc(S.name)} · ${inr(CS.money(g, S.cost * 0.6))}</button>`).join("");
+    return `<h3 class="sec">Your house outside</h3><p class="hint">Everyone in FXN Nagar sees these.</p>${walls}${roofs}<div class="chips">${ex}</div><div class="chips">${styles}</div>`;
+  }
   function houseSVG(h) {
     const wall = CITY.walls[h.wall || 0][1], has = id => h.items.indexOf(id) >= 0;
     let s = `<svg viewBox="0 0 320 170" width="320" height="170" class="house-svg" role="img" aria-label="Your house"><rect width="320" height="130" fill="${wall}"/><rect y="130" width="320" height="40" fill="#8a6a45"/><rect x="128" y="22" width="64" height="48" fill="#bfe3f7" stroke="#fff" stroke-width="4"/><line x1="160" y1="22" x2="160" y2="70" stroke="#fff" stroke-width="3"/>`;
@@ -874,14 +952,15 @@
       `<button class="btn small primary" data-act="hupgrade" ${g.cash >= cost ? "" : "disabled"}>Pay cash</button><button class="btn small" data-act="hloan" ${CS.loanOk(g, "home") ? "" : "disabled"}>${CS.hasPaper(g, "id") ? "Home loan" : "Home loan (needs address proof)"}</button>`) : `<p class="hint">You have the best house in town.</p>`;
     const walls = `<div class="chips">${CITY.walls.map((w, i) => `<button class="sw ${h.wall === i ? "on" : ""}" style="background:${w[1]}" data-act="paint" data-arg="${i}" title="${esc(w[0])}" aria-label="Paint ${esc(w[0])}"></button>`).join("")}<span class="hint">Repaint: ${inr(CS.money(g, 500))}</span></div>`;
     const decor = CITY.decor.map(d => { const own = h.items.indexOf(d.id) >= 0, c = CS.money(g, d.cost); return `<button class="chip ${own ? "on" : ""}" data-act="decor" data-arg="${d.id}" ${own || g.cash < c ? "disabled" : ""}>${esc(d.name)}${own ? " ✓" : " · " + inr(c)}</button>`; }).join("");
-    const canCook = h.lvl >= 1 || g.spouse, night = LF.night(g);
+    const canCook = h.lvl >= 1 || g.spouse, night = LF.night(g), town = townOn(g);
+    const up2 = town ? item("🏷️ Move house", "Flats, rental houses and plots in FXN Nagar (Kakkanad, by the lake)" + (homeOf(g).at !== "room" ? " · now: " + esc(homeLabel(g)) : ""), `<button class="btn small primary" data-act="broker">FXN Homes</button>`) : up;
     const life = `<div class="row homeacts"><button class="btn primary" data-act="sleep">${night || g.energy < 40 ? "😴 Sleep till morning" : "😴 Take a nap"}</button>${canCook ? `<button class="btn" data-act="eat" data-arg="home">🍛 Eat at home · ${inr(LF.money(g, LF.FOOD.home.cost))}</button>` : ""}${g.spouse ? `<button class="btn" data-act="kin">👨‍👩‍👧 Family</button>` : ""}</div>`;
-    return sheetBox("Your house: " + H[h.lvl].name, `${life}${houseSVG(h)}${up}<h3 class="sec">Wall colour</h3>${walls}<h3 class="sec">Furnish it</h3><div class="chips">${decor}</div>`);
+    return sheetBox(town ? "Your home: " + homeLabel(g) : "Your house: " + H[h.lvl].name, `${life}${houseSVG(h)}${up2}${town ? townCustom(g) : ""}<h3 class="sec">Wall colour</h3>${walls}<h3 class="sec">Furnish it</h3><div class="chips">${decor}</div>`);
   }
 
   function phoneSheet() {
     const g = game, P = myParty(), mates = partyHere();
-    const apps = [["duties", (JOB_ICON[g.lifeId] || "🧑‍💼") + " Today's duties", (() => { const D = duties(g); return D ? D.done.length + " of " + D.ids.length + " done" : "None"; })()], ["goals", "🎯 Life goals", (LF.nextGoal(g) || { t: "All done!" }).t], ["fxnopen", "👗 FXN", "Rent outfits"], ["arcade", "🎮 FXN Arcade", "Mini-games · earn up to " + inr(CS.money(g, 250)) + " each"], ["kin", "👨‍👩‍👧 Family", g.spouse ? g.spouse.name + ((g.kids || []).length ? " + " + g.kids.length : "") : "Single"], ["site:mangalya", "💍 MangalyaMatch", "Matrimony"], ["site:kalyanam", "🪔 KalyanaVeedu", "Matrimony"], ["site:nri", "✈️ NRI Rishta", "Matrimony"], ["site:chaidate", "☕ ChaiDate", "Dating"], ["site:sunset", "🌅 SunsetSwipe", "Dating"], ["site:bookclub", "📚 Paperback", "Dating"], ["board", "📋 Odd jobs & teams", "Quick money, team tasks"], ["politics", "🗳️ Ward politics", g.pol && g.pol.party ? (g.pol.seat ? "Ward Councillor · " : "") + polParty(g).name : "Join a party"], ...(isKL() ? [["metroapp", "🚇 Kochi Metro", metroTask(g) ? "Task: " + metroTask(g).T.t : "Rides and metro tasks"]] : []), ["garage", "🛵 Garage", g.vehicle ? (g.riding ? "Riding your " : "Your ") + CS.vehicleById(g.vehicle.id).name.toLowerCase() : "Buy a bicycle, scooter or car"], ["career", "💼 Career", "Switch job"], ["status", "🗂️ My papers", "Papers, loans, house"], ["retire", "🌅 Retire", "End this life"]];
+    const apps = [["duties", (JOB_ICON[g.lifeId] || "🧑‍💼") + " Today's duties", (() => { const D = duties(g); return D ? D.done.length + " of " + D.ids.length + " done" : "None"; })()], ["goals", "🎯 Life goals", (LF.nextGoal(g) || { t: "All done!" }).t], ["fxnopen", "👗 FXN", "Rent outfits"], ["arcade", "🎮 FXN Arcade", "Mini-games · earn up to " + inr(CS.money(g, 250)) + " each"], ["kin", "👨‍👩‍👧 Family", g.spouse ? g.spouse.name + ((g.kids || []).length ? " + " + g.kids.length : "") : "Single"], ["site:mangalya", "💍 MangalyaMatch", "Matrimony"], ["site:kalyanam", "🪔 KalyanaVeedu", "Matrimony"], ["site:nri", "✈️ NRI Rishta", "Matrimony"], ["site:chaidate", "☕ ChaiDate", "Dating"], ["site:sunset", "🌅 SunsetSwipe", "Dating"], ["site:bookclub", "📚 Paperback", "Dating"], ["board", "📋 Odd jobs & teams", "Quick money, team tasks"], ...(g.stateId === "KL" ? [["broker", "🏷️ FXN Homes", homeLabel(g)]] : []), ["politics", "🗳️ Ward politics", g.pol && g.pol.party ? (g.pol.seat ? "Ward Councillor · " : "") + polParty(g).name : "Join a party"], ...(isKL() ? [["metroapp", "🚇 Kochi Metro", metroTask(g) ? "Task: " + metroTask(g).T.t : "Rides and metro tasks"]] : []), ["garage", "🛵 Garage", g.vehicle ? (g.riding ? "Riding your " : "Your ") + CS.vehicleById(g.vehicle.id).name.toLowerCase() : "Buy a bicycle, scooter or car"], ["career", "💼 Career", "Switch job"], ["status", "🗂️ My papers", "Papers, loans, house"], ["retire", "🌅 Retire", "End this life"]];
     const party = P ? `<p>Your group: you${mates.length ? ", " + mates.map(m => esc(m.nick)).join(", ") : " (waiting for players to join)"}.</p><button class="btn small ghost" data-act="partyleave">Leave group</button>` : `<p class="hint">Tap a player in the city to invite them to your group (up to 6).</p>`;
     return sheetBox("Phone", `<div class="apps">${apps.map(a => `<button class="app" data-act="${a[0].indexOf("site:") === 0 ? "site" : a[0]}" ${a[0].indexOf("site:") === 0 ? `data-arg="${a[0].slice(5)}"` : ""}><b>${esc(a[1])}</b><span>${esc(a[2])}</span></button>`).join("")}</div><h3 class="sec">Group</h3>${party}`);
   }
@@ -981,6 +1060,7 @@
     if (k === "water") return waterSheet();
     if (k === "infopark") return infoparkSheet();
     if (k === "politics") return politicsSheet();
+    if (k === "broker") return brokerSheet();
     if (k === "election") return electionSheet();
     if (k === "duty") return dutySheet();
     if (k === "duties") { const D = duties(game); return sheetBox("Today's duties", D ? `<div class="list">${D.ids.map(i => { const d = DUT[game.lifeId][i], ok = D.done.indexOf(i) >= 0; return item((ok ? "✅ " : "⬜ ") + esc(d.t), ok ? "Done" : inr(dutyPay(game, d)), ""); }).join("")}</div><p class="hint">Do all three for a bonus. Do them every day for a streak bonus (up to +50%).</p>` : `<p>No duties in this city.</p>`); }
@@ -1101,10 +1181,10 @@
     if (!slot) return;
     const g = game, here = locState(g), loc = g.loc || g.stateId, isBase = loc === g.stateId;
     const kidsHere = isBase ? (g.kids || []).map(k => ({ name: k.name, age: LF.kidAge(g, k) })) : [];
-    const key = [g.seed, g.lifeId, loc, isBase ? g.house.lvl + "." + g.house.wall : "", isBase && g.spouse ? g.spouse.name : "", kidsHere.map(k => k.name + (k.age < 12 ? "s" : "b")).join(",")].join(":");
+    const key = [g.seed, g.lifeId, loc, isBase ? g.house.lvl + "." + g.house.wall + "." + homeOf(g).at : "", isBase && g.spouse ? g.spouse.name : "", kidsHere.map(k => k.name + (k.age < 12 ? "s" : "b")).join(",")].join(":");
     WORLD.mount(slot, {
       key, stateId: loc, lifeId: g.lifeId, hue: here.hue, cast: here.cast, avatar: char || g.player, meLabel: (char || g.player).name, outfit: outfitLook(g),
-      base: isBase, house: isBase ? g.house : null, wallColor: CITY.walls[g.house.wall || 0][1], spouse: isBase && g.spouse ? g.spouse.name : null, spouseFem: g.spouse ? ((CITY.profiles.find(p => p.id === g.spouse.pid) || {}).g || "w") === "w" : true,
+      base: isBase, house: isBase ? g.house : null, homeAt: isBase ? homeSpotFor(g) : null, plots: window.AE_PLOTS ? AE_PLOTS.all() : {}, wallColor: CITY.walls[g.house.wall || 0][1], spouse: isBase && g.spouse ? g.spouse.name : null, spouseFem: g.spouse ? ((CITY.profiles.find(p => p.id === g.spouse.pid) || {}).g || "w") === "w" : true,
       words: { stall: here.food.stall, city: here.city, v: here.cast.v },
       kids: kidsHere, startPos: g.pos && g.pos.loc === loc ? g.pos : null,
       hour: () => LF.hour(game), langMode: () => prefs.lang === "en" ? "en" : prefs.subs ? "ml" : "mlonly",
@@ -1126,6 +1206,7 @@
       onMetro: to => { const g = game; mstate(g).rides++; g.min = Math.min((g.min || 0) + 12, 23 * 60 + 50); if (!metroStep(g, "metro", to, ui.metroFrom)) { save(); afterAction(); } updateHud(); }
     });
     applyRide(); WORLD.setFamilyWalk(!!(g.famWalk && !away(g))); syncFam(); syncParty._k = null; syncParty();
+    if (loc === "KL" && window.AE_PLOTS) { if (!mountWorld._pl) { mountWorld._pl = true; AE_PLOTS.onChange(st => { if (WORLD.setPlots) WORLD.setPlots(st); }); } AE_PLOTS.start(); }
     WORLD.setExtraSpot("gig", g.shift ? g.shift.target : null);
     WORLD.setExtraSpot("odd", g.odd ? g.odd.target : null);
     WORLD.setExtraSpot("canvass", g.pol && g.pol.canv && g.pol.canv.day === g.day && !away(g) ? g.pol.canv.target : null);
@@ -1479,6 +1560,22 @@
       case "mtask": { const M = mstate(game); if (M.task) break; M.task = arg; M.step = 0; save(); ui.sheet = null; render(); refreshGuide(); WORLD.note("🚇 " + MET().tasks.find(t => t.id === arg).t + ": " + MET().tasks.find(t => t.id === arg).steps[0].txt); break; }
       case "mtaskquit": { const M = mstate(game); M.task = null; M.step = 0; save(); render(); refreshGuide(); break; }
       case "politics": ui.polProj = false; openSheet("politics"); break;
+      case "broker": openSheet("broker", { build: null }); break;
+      case "btab2": ui.btab2 = arg; ui.build = null; render(); break;
+      case "tplot": ui.build = { id: arg }; render(); break;
+      case "tbuildx": ui.build = null; render(); break;
+      case "tflat": { const g = game, [fid, how] = arg.split(":"), F = TOWN().flats.find(f => f.id === fid); if (!F || F.tier > tierOf(g)) break; const tower = Math.random() < 0.5 ? "HTA" : "HTB";
+        if (how === "rent") moveTo(g, { at: tower, flat: fid, own: false }, F.lvl, CS.money(g, F.rent) * 2, false); else moveTo(g, { at: tower, flat: fid, own: true }, F.lvl, CS.money(g, F.buy), how === "loan"); break; }
+      case "thouse": { const g = game, st0 = TOWN().seed[arg]; if (!st0 || tierOf(g) < 1) break; moveTo(g, { plot: arg, own: false, st: Object.assign({}, st0, { s: "rent", n: (char || g.player).name }) }, 3, CS.money(g, TOWN().houseRent) * 2, false); break; }
+      case "tbuild": { const g = game, [id, sid, loan] = arg.split(":"), pl = plotDef(id); if (!pl || plotNow(id)) break; const cost = plotPrice(g, id) + CS.money(g, TOWN().styles.find(x => x.id === sid).cost);
+        moveTo(g, { plot: id, own: true, st: { s: "own", st: sid, w: 0, rf: sid === "kerala" ? 0 : 2, x: [], n: (char || g.player).name } }, pl.kind === "villa" ? 4 : 3, cost, !!loan); break; }
+      case "tresale": { const g = game, [id, loan] = arg.split(":"), st = plotNow(id); if (!st || st.s !== "resale") break; moveTo(g, { plot: id, own: true, st: Object.assign({}, st, { s: "own", n: (char || g.player).name }) }, plotDef(id).kind === "villa" ? 4 : 3, plotPrice(g, id), !!loan); break; }
+      case "tlook": { const g = game, H = homeOf(g); if (!H.own || !/^[TV]\d\d$/.test(H.at || "")) break; const T = TOWN(), st = Object.assign({}, PLOTS().all()[H.at] || H.st), [kk, v] = arg.split(":"); let c = 0;
+        if (kk === "w" || kk === "rf") { c = CS.money(g, 2000); st[kk] = +v; }
+        else if (kk === "x") { const e = T.extras.find(q => q.id === v); if (!e || (st.x || []).indexOf(v) >= 0) break; c = CS.money(g, e.cost); st.x = (st.x || []).concat(v); g.h = Math.min(100, g.h + e.h); }
+        else if (kk === "st") { const S = T.styles.find(q => q.id === v); if (!S) break; c = CS.money(g, S.cost * 0.6); st.st = v; }
+        if (g.cash < c) break; g.cash -= c; H.st = st; SND.sfx("spend");
+        PLOTS().claim(H.at, st).then(() => { save(); updateHud(); render(); WORLD.react("decor"); }); break; }
       case "poljoin": { const g = game, P = polState(g); if (P.party) break; P.party = arg; P.pts = 5; syncParty(); save(); render(); WORLD.note(polParty(g).icon + " You joined the " + polParty(g).name + ". " + polParty(g).slogan); WORLD.react("fun"); break; }
       case "polleave": { const g = game, P = polState(g); if (!P.party || P.cand) break; P.party = null; P.pts = 0; P.seat = false; P.canv = null; g.r = Math.max(0, g.r - 10); WORLD.setExtraSpot("canvass", null); syncParty(); save(); render(); refreshGuide(); break; }
       case "polcanv": { const g = game, P = polState(g); if (P.canv && P.canv.day === g.day) break; P.canv = { day: g.day, n: 0, target: WORLD.randomDoor(Math.random()) }; WORLD.setExtraSpot("canvass", P.canv.target); ui.sheet = null; save(); render(); refreshGuide(); break; }
