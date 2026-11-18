@@ -297,6 +297,7 @@ window.AE_WORLD = (function () {
     const fills = { [ROAD]: pat(asphalt), [SIDE]: pat(pavers("#b9b2a5", "rgba(80,70,60,.22)"), 0.5), [PLAZA]: pat(pavers("#d4bf98", "rgba(120,90,50,.24)"), 0.5), [GRASS]: pat(grass), [BLD]: pat(noiseCanvas(64, "#77716a", 10, 5)), [TREE]: pat(grass), [JETTY]: pat(noiseCanvas(64, "#8a6a45", 22, 7)), [SAND]: pat(sand), [BRIDGE]: pat(noiseCanvas(64, "#8f8d86", 16, 9)) };
     for (let y = 0; y < ROWS; y++) for (let xx = 0; xx < COLS; xx++) {
       const t = at(xx, y); if (t === WATER) continue;
+      if (t === BRIDGE && isKochi && xx >= 64 && xx <= 68) continue;
       x.fillStyle = fills[t]; x.fillRect(xx * Pp, y * Pp, Pp, Pp);
       if (t === JETTY) { x.strokeStyle = "rgba(0,0,0,.25)"; for (let i = 4; i < Pp; i += 6) { x.beginPath(); x.moveTo(xx * Pp + i, y * Pp); x.lineTo(xx * Pp + i, y * Pp + Pp); x.stroke(); } }
       [[0, -1], [0, 1], [-1, 0], [1, 0]].forEach(([dx, dy]) => { const n = at(xx + dx, y + dy), inside = xx + dx >= 0 && y + dy >= 0 && xx + dx < COLS && y + dy < ROWS; if (!inside) return;
@@ -385,10 +386,14 @@ window.AE_WORLD = (function () {
     f.mesh = person(personLook(f.av, outfit), id === "me"); f.mesh.group.userData.figId = id; f.H = f.mesh.H;
     parent.add(f.mesh.group); if (f.veh) seatPerson(f); f.H = figH(f); place(f);
   }
+  // arched bridges over the Chilavannur canal so Water Metro boats pass underneath
+  const CANAL = [63.9, 69.1], DECK = 1.3;
+  function deckY(x, z) { if (!isKochi || x <= CANAL[0] || x >= CANAL[1] || at(Math.floor(x), Math.floor(z)) !== BRIDGE) return 0; return Math.sin((x - CANAL[0]) / (CANAL[1] - CANAL[0]) * Math.PI) * DECK; }
   function place(f) {
     if (!f.mesh) return;
-    if (f.veh) { const g = f.veh.group; g.position.set(f.x, f.ride || 0, f.z); g.rotation.y = f.heading; g.rotation.z = f.lean || 0; }
-    else { f.mesh.group.position.set(f.x, f.y || 0, f.z); f.mesh.group.rotation.y = f.heading + (f.twirl || 0); }
+    const dy = deckY(f.x, f.z);
+    if (f.veh) { const g = f.veh.group; g.position.set(f.x, (f.ride || 0) + dy, f.z); g.rotation.y = f.heading; g.rotation.z = f.lean || 0; }
+    else { f.mesh.group.position.set(f.x, (f.y || 0) + dy, f.z); f.mesh.group.rotation.y = f.heading + (f.twirl || 0); }
   }
 
   // ═══ Vehicles you can own (and the FXN scooter) ═══
@@ -731,13 +736,13 @@ window.AE_WORLD = (function () {
     if (isKochi) {
       const hb = [P(new THREE.BoxGeometry(0.9, 0.3, 3.2), col("#5a3a22"), 0, 0.1, 0), P(new THREE.CylinderGeometry(0.55, 0.55, 2.4, 12, 1, false, 0, Math.PI), col("#c9a46a"), 0, 0.3, 0, Math.PI / 2, 0, 0, 1, 1, 0.8)];
       const houseboat = new THREE.Mesh(mergeGeos(hb), vcMat); houseboat.castShadow = true; scene.add(houseboat);
-      boats.push({ m: houseboat, a: [33.2, 2], b: [33.2, 44], t: 0.3, dir: 1, sp: 0.012 });
+      boats.push({ m: houseboat, a: [12, 18.6], b: [30.5, 18.6], t: 0.3, dir: 1, sp: 0.02, x: true });
       const canoe = new THREE.Mesh(mergeGeos([P(new THREE.CylinderGeometry(0.18, 0.18, 1.4, 8), col("#3b2a1c"), 0, 0.02, 0, Math.PI / 2, 0, 0, 1, 1, 0.5)]), vcMat); scene.add(canoe);
       boats.push({ m: canoe, a: [-2, 18], b: [-2, 40], t: 0.1, dir: 1, sp: 0.01 });
       const fp = [P(new THREE.BoxGeometry(1.1, 0.35, 2.6), col("#f2f2ee"), 0, 0.12, 0), P(new THREE.BoxGeometry(1.0, 0.5, 1.4), col("#2f73b8"), 0, 0.55, -0.1), P(new THREE.BoxGeometry(1.15, 0.06, 1.6), col("#e8e2d0"), 0, 0.82, -0.1)];
       ferry = { m: new THREE.Mesh(mergeGeos(fp), vcMat) }; ferry.m.castShadow = true; scene.add(ferry.m);
       ferry.m.position.set(20.2, 0, 24.5); ferry.m.rotation.y = Math.PI / 2;
-      buildWaterMetro();
+      buildWaterMetro(); canalBridges();
     }
   }
   // ═══ FXN Nagar township: plots with houses that belong to players (or FXN Rentals, or neighbours) ═══
@@ -800,6 +805,26 @@ window.AE_WORLD = (function () {
     return g;
   }
   const plotState = id => { try { return JSON.parse(townKey[id] || "{}"); } catch (e) { return {}; } };
+
+  function canalBridges() {
+    const parts = [], rows = [];
+    for (let y = 0; y < ROWS; y++) if (at(66, y) === BRIDGE) rows.push(y);
+    const bands = []; rows.forEach(y => { const b = bands[bands.length - 1]; if (b && b[1] === y - 1) b[1] = y; else bands.push([y, y]); });
+    bands.forEach(([y0, y1]) => {
+      const zc = (y0 + y1 + 1) / 2, wz = y1 - y0 + 1, N = 14;
+      for (let i = 0; i < N; i++) {
+        const xa = CANAL[0] + (CANAL[1] - CANAL[0]) * i / N, xb = CANAL[0] + (CANAL[1] - CANAL[0]) * (i + 1) / N, ya = deckYRaw(xa), yb = deckYRaw(xb), len = Math.hypot(xb - xa, yb - ya), ang = Math.atan2(yb - ya, xb - xa), xm = (xa + xb) / 2, ym = (ya + yb) / 2;
+        parts.push(P(new THREE.BoxGeometry(len + 0.02, 0.16, wz), col("#43464d"), xm, ym - 0.07, zc, 0, 0, ang));
+        parts.push(P(new THREE.BoxGeometry(len + 0.02, 0.12, wz + 0.1), col("#c9c3b6"), xm, ym - 0.2, zc, 0, 0, ang));
+        [-1, 1].forEach(sd => parts.push(P(new THREE.BoxGeometry(len + 0.02, 0.32, 0.06), col("#e8e2d6"), xm, ym + 0.14, zc + sd * (wz / 2 - 0.03), 0, 0, ang)));
+      }
+      // stripes and lamps
+      parts.push(P(new THREE.BoxGeometry(0.08, 1.6, 0.08), col("#a9a59c"), 66.5, DECK + 0.8, zc - wz / 2 + 0.05), P(new THREE.BoxGeometry(0.3, 0.06, 0.12), col("#fff3c4"), 66.5, DECK + 1.6, zc - wz / 2 + 0.15));
+      [CANAL[0] + 0.2, CANAL[1] - 0.2].forEach(px => parts.push(P(new THREE.BoxGeometry(0.4, 0.9, wz + 0.2), col("#b9b3a6"), px, -0.35, zc)));
+    });
+    if (parts.length) { const m = new THREE.Mesh(mergeGeos(parts), vcMatRough); m.castShadow = m.receiveShadow = true; scene.add(m); }
+  }
+  function deckYRaw(x) { return Math.max(0, Math.sin((x - CANAL[0]) / (CANAL[1] - CANAL[0]) * Math.PI)) * DECK; }
 
   // ═══ Kochi Water Metro: sleek electric catamarans; they shuttle between jetties on their own and carry you when you buy a ticket ═══
   let wmBoats = {}, wride = null;
@@ -894,7 +919,7 @@ window.AE_WORLD = (function () {
       el.innerHTML = `<div class="w-banner" hidden><span class="arrow" aria-hidden="true">➤</span><div class="w-banner-t"><b></b><span></span></div><div class="w-banner-a"></div></div>
         <div class="w3-view"><div class="w-labels"></div><div class="joy" aria-label="Joystick: drag to walk"><i></i></div>
           <canvas class="minimap" width="150" height="112" aria-label="City map. Tap to open."></canvas>
-          <div class="cam-btns"><button class="w-btn small cam-spin" title="Look all around" aria-label="Look all around">⟳</button><button class="w-btn small cam-zoom" title="Zoom" aria-label="Zoom out">⤢</button><button class="w-btn small cam-snd" title="Sound: music and effects, effects only, or off" aria-label="Sound">${window.AE_SOUND ? window.AE_SOUND.icon() : "🔊"}</button><button class="w-btn small cam-msg" title="Messages" aria-label="Messages">💬<i hidden></i></button></div>
+          <div class="cam-btns"><button class="w-btn small cam-spin" title="Look around 360° (or drag up and down to look up at the skyline)" aria-label="Look around 360 degrees">⟳</button><button class="w-btn small cam-zoom" title="Zoom" aria-label="Zoom out">⤢</button><button class="w-btn small cam-snd" title="Sound: music and effects, effects only, or off" aria-label="Sound">${window.AE_SOUND ? window.AE_SOUND.icon() : "🔊"}</button><button class="w-btn small cam-msg" title="Messages" aria-label="Messages">💬<i hidden></i></button></div>
           <div class="map-full" hidden><div class="map-top"><div><b>${isKochi ? "Kochi 2030" : esc(o.words.city) + " 2030"}</b><span></span></div><button class="w-btn small map-close">Close</button></div><div class="map-area"><canvas></canvas><div class="map-zoom"><button class="mz-in" aria-label="Zoom in">+</button><button class="mz-out" aria-label="Zoom out">−</button><button class="mz-me" aria-label="Centre on me">◎</button></div></div><p class="map-hint">Tap a pin or any street to walk there · drag to move · pinch to zoom</p></div>
           <div class="w-ui"><button class="w-btn act" hidden></button><button class="w-btn say" hidden>Say…</button><button class="w-btn chat" hidden>Chat</button><span class="w-online" hidden></span></div>
           <div class="say-panel" hidden></div>
@@ -1333,14 +1358,14 @@ window.AE_WORLD = (function () {
       if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6 || down.drag) {
         down.drag = true;
         yaw -= (e.clientX - down.lx) * 0.008;
-        pitch = Math.max(0.08, Math.min(1.45, pitch + (e.clientY - down.ly) * 0.006));
+        pitch = Math.max(-0.6, Math.min(1.45, pitch + (e.clientY - down.ly) * 0.006));
         down.lx = e.clientX; down.ly = e.clientY; lastDrag = performance.now();
       }
     });
     const up = e => { delete pointers[e.pointerId]; if (Object.keys(pointers).length < 2) pinch0 = 0; if (down && !down.drag && e.type === "pointerup") tap(e); down = null; };
     view.addEventListener("pointerup", up); view.addEventListener("pointercancel", up);
     view.addEventListener("wheel", e => { e.preventDefault(); dist = Math.max(1.6, Math.min(14, dist * (e.deltaY > 0 ? 1.1 : 0.9))); lastDrag = performance.now(); }, { passive: false });
-    el.querySelector(".cam-spin").addEventListener("click", () => { spin = Math.PI * 2; lastDrag = performance.now(); });
+    el.querySelector(".cam-spin").addEventListener("click", () => { spin = Math.PI * 2; spinPitch = pitch; spinDist = dist; lastDrag = performance.now(); });
     el.querySelector(".cam-zoom").addEventListener("click", () => { if (dist < 6) { dist = 9; pitch = 0.95; } else { dist = 2.9; pitch = 0.42; } });
     el.querySelector(".minimap").addEventListener("click", openMap);
     el.querySelector(".map-close").addEventListener("click", () => { mapEl.hidden = true; });
@@ -1539,7 +1564,7 @@ window.AE_WORLD = (function () {
     updateEnv(h);
   }
 
-  let paused = false;
+  let paused = false, camFrac = 1, spinPitch = null, spinDist = null;
   function tick(time) {
     if (paused) { last = time; raf = requestAnimationFrame(tick); return; }
     const dt = Math.min(0.05, (time - last) / 1000); last = time;
@@ -1567,29 +1592,43 @@ window.AE_WORLD = (function () {
       applyTime(dbgHour != null ? dbgHour : opts.hour ? opts.hour() : 17);
       if (cine && time < cine.until) { yaw += angDiff(yaw, cine.yaw) * Math.min(1, dt * 2.5); dist += (cine.dist - dist) * Math.min(1, dt * 2); pitch += (0.3 - pitch) * Math.min(1, dt * 2); }
       else if (cine) { dist = cine.back; cine = null; }
-      else if (spin > 0) { const st = Math.min(spin, dt * Math.PI * 0.55); yaw += st; spin -= st; }
+      else if (spin > 0) { // 360° look-around: tilt up to the skyline, turn slowly, then settle back
+        const st = Math.min(spin, dt * Math.PI * 0.4); yaw += st; spin -= st;
+        const k = Math.min(1, dt * 2), tp = spin > 0.6 ? -0.32 : (spinPitch != null ? spinPitch : 0.42), td = spin > 0.6 ? 3.2 : (spinDist || 2.9);
+        pitch += (tp - pitch) * k; dist += (td - dist) * k; if (spin <= 0) { spinPitch = null; }
+      }
       else if (follow && me.moving && !me.free && performance.now() - lastDrag > 1500) yaw += angDiff(yaw, me.heading) * Math.min(1, dt * 2.2);
       else if (follow && me.free && performance.now() - lastDrag > 2500 && joy.on && Math.abs(joy.y) > 0.5 && joy.y < 0) yaw += angDiff(yaw, me.heading) * Math.min(1, dt * 1.2);
       Object.values(figs).forEach(f => animate(f, dt));
       // traffic gives way: brake for anyone in front, and edge sideways if there's room in the lane
       const people = Object.values(figs).filter(f => f.mesh && (f.mesh.group.visible || f.veh) && !isFly(f.vehType));
       vehicles.forEach(v => {
+        if (v.uturn) { // a smooth half-circle U-turn at the end of the road
+          v.uturn.t += dt / 1.3; const u = Math.min(1, v.uturn.t), U = v.uturn, c = Math.cos(Math.PI * u), sn = Math.sin(Math.PI * u);
+          const px = U.cx + U.lx * c + U.fx * 0.6 * sn, pz = U.cz + U.lz * c + U.fz * 0.6 * sn;
+          v.m.position.set(px, deckY(px, pz), pz); v.m.rotation.y = U.h0 + Math.PI * u; v.px = px; v.pz = pz;
+          if (u >= 1) v.uturn = null; return;
+        }
         const dx = v.b[0] - v.a[0], dz = v.b[1] - v.a[1], L = Math.hypot(dx, dz), nx = dx / L, nz = dz / L;
         const fx0 = nx * v.dir, fz0 = nz * v.dir, look = v.type === "bus" ? 2.4 : 1.8, halfW = v.type === "bus" ? 0.5 : 0.38;
         const cx0 = v.a[0] + dx * v.t - nz * 0.45 * v.dir + (-fz0) * (v.side || 0), cz0 = v.a[1] + dz * v.t + nx * 0.45 * v.dir + fx0 * (v.side || 0);
         let block = null;
         people.forEach(p => { const rx = p.x - cx0, rz = p.z - cz0, along = rx * fx0 + rz * fz0, lat = -rx * fz0 + rz * fx0; if (along > 0.1 && along < look && Math.abs(lat) < halfW + 0.22 && (!block || along < block.along)) block = { along, lat }; });
+        let carAhead = null; // keep a gap behind other vehicles (and wait at crossings) instead of driving through them
+        vehicles.forEach(o => { if (o === v || o.px == null) return; const rx = o.px - cx0, rz = o.pz - cz0, along = rx * fx0 + rz * fz0, lat = -rx * fz0 + rz * fx0; if (along > 0.2 && along < look + 0.6 && Math.abs(lat) < halfW + 0.3 && (!carAhead || along < carAhead)) carAhead = along; });
         const wantSide = block ? Math.max(-0.3, Math.min(0.3, (block.lat > 0 ? -1 : 1) * 0.3)) : 0;
         v.side = (v.side || 0) + (wantSide - (v.side || 0)) * Math.min(1, dt * 2.5);
         const stillBlocked = block && Math.abs(block.lat - (v.side || 0)) < halfW + 0.12;
-        v.k = (v.k == null ? 1 : v.k) + ((stillBlocked ? (block.along < 0.9 ? 0 : 0.25) : 1) - (v.k == null ? 1 : v.k)) * Math.min(1, dt * (stillBlocked ? 6 : 1.5));
-        v.t += v.sp * dt * v.dir * v.k; if (v.t > 1) { v.t = 1; v.dir = -1; } if (v.t < 0) { v.t = 0; v.dir = 1; }
+        const want = stillBlocked ? (block.along < 0.9 ? 0 : 0.25) : carAhead != null ? (carAhead < 1.3 ? 0.12 : 0.5) : 1;
+        v.k = (v.k == null ? 1 : v.k) + (want - (v.k == null ? 1 : v.k)) * Math.min(1, dt * (want < v.k ? 6 : 1.5));
+        v.t += v.sp * dt * v.dir * v.k;
+        if (v.t > 1 || v.t < 0) { v.t = Math.max(0, Math.min(1, v.t)); const ex = v.a[0] + dx * v.t, ez = v.a[1] + dz * v.t, inside = ex > 0 && ex < COLS && ez > 0 && ez < ROWS; const dOld = v.dir; v.dir *= -1; if (inside) { v.uturn = { t: 0, h0: Math.atan2(fx0, fz0), cx: ex, cz: ez, lx: -nz * 0.45 * dOld, lz: nx * 0.45 * dOld, fx: fx0, fz: fz0 }; return; } }
         const off = 0.45 * v.dir, x = v.a[0] + dx * v.t - nz * off - fz0 * (v.side || 0), z = v.a[1] + dz * v.t + nx * off + fx0 * (v.side || 0);
         if (stillBlocked && block.along < 1.2 && time > (v.honk || 0) - 6000 && Math.hypot(x - me.x, z - me.z) < 6 && time > (v.beep || 0)) { v.beep = time + 4000; SND.sfx(v.type === "bus" ? "honkBus" : v.type === "auto" ? "honkAuto" : "honkCar"); }
-        v.m.position.set(x, 0, z); v.m.rotation.y = Math.atan2(nx * v.dir, nz * v.dir);
+        v.m.position.set(x, deckY(x, z), z); v.m.rotation.y = Math.atan2(nx * v.dir, nz * v.dir); v.px = x; v.pz = z;
         if (Math.hypot(x - me.x, z - me.z) < 1.0 && time > v.honk) { v.honk = time + 9000; ambientLine(null, "honk", x, z); SND.sfx(v.type === "bus" ? "honkBus" : v.type === "auto" ? "honkAuto" : "honkCar"); }
       });
-      boats.forEach(b => { b.t += b.sp * dt * b.dir; if (b.t > 1 || b.t < 0) { b.dir *= -1; b.t = Math.max(0, Math.min(1, b.t)); } b.m.position.set(b.a[0] + (b.b[0] - b.a[0]) * b.t, Math.sin(time / 600 + b.t * 9) * 0.03, b.a[1] + (b.b[1] - b.a[1]) * b.t); b.m.rotation.y = b.dir > 0 ? 0 : Math.PI; });
+      boats.forEach(b => { b.t += b.sp * dt * b.dir; if (b.t > 1 || b.t < 0) { b.dir *= -1; b.t = Math.max(0, Math.min(1, b.t)); } b.m.position.set(b.a[0] + (b.b[0] - b.a[0]) * b.t, Math.sin(time / 600 + b.t * 9) * 0.03, b.a[1] + (b.b[1] - b.a[1]) * b.t); b.m.rotation.y = b.x ? (b.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : (b.dir > 0 ? 0 : Math.PI); });
       if (ferry && !ride) ferry.m.position.y = Math.sin(time / 550) * 0.025;
       if (isKochi) stepWMAmbient(dt);
       spinners.forEach(g => { g.rotation.y += dt * 0.5; });
@@ -1597,11 +1636,17 @@ window.AE_WORLD = (function () {
       stepFlyers(dt, time); if (isKochi) stepAds(dt, time);
       waterTex.offset.set(time * 0.000012, time * 0.000008);
       clouds.forEach((c, i) => { c.position.x += dt * (0.25 + (i % 3) * 0.1); if (c.position.x > COLS / 2 + 160) c.position.x -= 320; });
-      const fx = Math.sin(yaw), fz = Math.cos(yaw), hz = Math.cos(pitch) * dist, vy = Math.sin(pitch) * dist;
-      const ty = 0.42 + (me.y || 0) + (me.veh ? (me.veh.spec.car ? 0.15 : 0.06) + (me.veh.spec.fly ? me.ride || 0 : 0) : 0);
+      // below 0.12 the camera stops dropping and tilts up instead, so you can see tall buildings and their ads
+      const cp = Math.max(0.12, pitch), lookUp = Math.max(0, 0.12 - pitch) * 13;
+      const fx = Math.sin(yaw), fz = Math.cos(yaw);
+      let hz = Math.cos(cp) * dist, vy = Math.sin(cp) * dist;
+      const ty = 0.42 + (me.y || 0) + deckY(me.x, me.z) + (me.veh ? (me.veh.spec.car ? 0.15 : 0.06) + (me.veh.spec.fly ? me.ride || 0 : 0) : 0);
+      // pull the camera in front of any building between it and you
+      let frac = 1; for (let k = 1; k <= 12; k++) { const q = k / 12, px = me.x - fx * hz * q, pz = me.z - fz * hz * q, py = ty + vy * q; if (roofAt(px, pz) > py - 0.15 && !(isKochi && K.metro && Math.floor(px) >= K.metro.x - 1 && Math.floor(px) <= K.metro.x && pz < (K.metro.len || ROWS))) { frac = Math.max(0.12, (k - 1.4) / 12); break; } }
+      camFrac += (frac - camFrac) * Math.min(1, dt * (frac < camFrac ? 14 : 3)); hz *= camFrac; vy *= camFrac;
       camera.position.set(me.x - fx * hz, ty + vy, me.z - fz * hz);
       if (camera.position.y < 0.15) camera.position.y = 0.15;
-      camera.lookAt(me.x + fx * 0.35 * Math.cos(pitch), ty, me.z + fz * 0.35 * Math.cos(pitch));
+      camera.lookAt(me.x + fx * (0.35 * Math.cos(cp) + lookUp * 0.25), ty + lookUp, me.z + fz * (0.35 * Math.cos(cp) + lookUp * 0.25));
       sky.position.copy(camera.position); stars.position.copy(camera.position);
       const sd = sun.userData.dir || new THREE.Vector3(-0.4, 0.8, 0.45);
       sun.position.set(me.x + sd.x * 30, sd.y * 30, me.z + sd.z * 30); sun.target.position.set(me.x, 0, me.z); sun.target.updateMatrixWorld();
@@ -1615,7 +1660,7 @@ window.AE_WORLD = (function () {
       projectLabels();
     }
     let best = null, bd = 1.6;
-    if (!ride && !mride) Object.keys(Object.assign({}, spots, extraSpots)).forEach(k => { const p = spotPos(k); if (!p) return; const d = Math.hypot(p.x - me.x, p.z - me.z); if (d < bd) { bd = d; best = k; } });
+    if (!ride && !mride && !wride) Object.keys(Object.assign({}, spots, extraSpots)).forEach(k => { const p = spotPos(k); if (!p) return; const d = Math.hypot(p.x - me.x, p.z - me.z); if (d < bd) { bd = d; best = k; } });
     if (best !== nearKey) { nearKey = best; const s = best && spots[best]; const lbl = best ? ((opts.spotLabel && opts.spotLabel(best)) || (s && s.rideLabel) || null) : null; actBtn.hidden = !lbl; if (lbl) actBtn.textContent = lbl; }
     if (!ride) [guide && guide.key, sceneMarker].forEach(k => {
       if (!k) return; const p = spotPos(k); if (!p) return;
@@ -2149,8 +2194,8 @@ window.AE_WORLD = (function () {
     const key = spec ? spec.type + spec.color : ""; if (key === parkedKey && (parkedHome || !spec)) return; parkedKey = key;
     if (parkedHome) { scene.remove(parkedHome.group); parkedHome = null; }
     if (!spec || !ok3d || !spots.house) return;
-    parkedHome = vehRig(spec.type, spec.color); const h = spots.house;
-    parkedHome.group.position.set(h.x + 1.4, 0, h.y + 0.55); parkedHome.group.rotation.y = Math.PI / 2; scene.add(parkedHome.group);
+    parkedHome = vehRig(spec.type, spec.color); const h = spots.house, pk = opts.homeAt && opts.homeAt.park;
+    if (pk) parkedHome.group.position.set(pk[0], 0, pk[1]); else parkedHome.group.position.set(h.x + 1.4, 0, h.y + 0.55); parkedHome.group.rotation.y = Math.PI / 2; scene.add(parkedHome.group);
   }
   function courierSay(t, s) { bubble(figs.courier, t, s); }
   function vehicleRemote(id, spec) { const f = figs["r_" + id]; if (f) { setFigVehicle(f, spec); f.H = figH(f); } }

@@ -941,7 +941,8 @@
   function homeSpotFor(g) {
     const H = homeOf(g); if (!townOn(g) || !H.at || H.at === "room") return null;
     if (H.at === "HTA" || H.at === "HTB") { const key = H.at === "HTA" ? "heightsA" : "heightsB"; return { key, x: H.at === "HTA" ? 74 : 84, y: 44, label: "Your flat" }; }
-    const pl = plotDef(H.at); return pl ? { key: pl.id, x: pl.door[0], y: pl.door[1], label: "Your home" } : null;
+    const pl = plotDef(H.at); if (!pl) return null; const dep = pl.kind === "villa" ? 3 : 2, mid = pl.face === "n" ? pl.r[3] - dep / 2 + 1 : pl.r[1] + dep / 2;
+    return { key: pl.id, x: pl.door[0], y: pl.door[1], label: "Your home", park: [pl.r[2] + 0.5, mid] };
   }
   function homeLabel(g) { const H = homeOf(g); if (!H.at || H.at === "room") return CITY.houseLevels[g.house.lvl].name; if (H.flat) return TOWN().flats.find(f => f.id === H.flat).name + (H.own ? "" : " (rented)"); return (/^V/.test(H.at) ? "Villa " : "House ") + H.at + ", FXN Nagar" + (H.own ? "" : " (rented)"); }
   // move out of wherever you live now; owned plots go to the broker for resale and you get most of the value back
