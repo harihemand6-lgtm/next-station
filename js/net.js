@@ -182,6 +182,11 @@ window.AE_NET = (function () {
   function party(to, k, pid, task) { if (!ch) return false; ch.send({ type: "broadcast", event: "party", payload: { id: myId, to: to || "", k, pid: pid || "", task: task || "" } }); return true; }
   function team(members, data) { if (!ch) return; ch.send({ type: "broadcast", event: "team", payload: Object.assign({ id: myId, members }, data) }); }
   function groupDone(members, task, real) { if (!ch) return; ch.send({ type: "broadcast", event: "gdone", payload: { id: myId, members, task, real } }); }
+  // coming back to the game (phone unlocked, app switched back): announce yourself again and refresh who's here
+  if (typeof document !== "undefined") document.addEventListener("visibilitychange", () => {
+    if (document.hidden || !ch || !my) return;
+    setTimeout(() => { try { if (ch) { ch.track(my); sync(); sendMove(true); } } catch (e) { } }, 400);
+  });
   // only re-send presence when something actually changed: every re-track makes other players see a leave + join
   function setState(patch) { if (!my) return; let changed = false; Object.keys(patch || {}).forEach(k => { if (JSON.stringify(my[k]) !== JSON.stringify(patch[k])) { my[k] = patch[k]; changed = true; } }); if (changed && ch) { clearTimeout(setState._t); setState._t = setTimeout(() => { try { ch && ch.track(my); } catch (e) { } }, 250); } }
   function peerPos(id) { const p = peers[id]; return p ? { x: p.x, y: p.y } : null; }
