@@ -1813,7 +1813,7 @@ window.AE_WORLD = (function () {
     const nameEl = f.lab.querySelector("span"); nameEl.setAttribute("role", "button"); nameEl.tabIndex = 0;
     nameEl.addEventListener("click", e => { e.stopPropagation(); if (opts.onRemoteTap) opts.onRemoteTap(f.rid, f.name); });
   }
-  function moveRemote(id, x, y) { const f = figs["r_" + id]; if (f) f.path = isFly(f.vehType) ? [{ x: x + 0.5, z: y + 0.5 }] : toPts(path(tileOf(f), { x, y })); }
+  function moveRemote(id, x, y) { x = Math.max(0, Math.min(COLS - 1, x)); y = Math.max(0, Math.min(ROWS - 1, y)); const f = figs["r_" + id]; if (f) f.path = isFly(f.vehType) ? [{ x: x + 0.5, z: y + 0.5 }] : toPts(path(tileOf(f), { x, y })); }
   function sayRemote(id, t, typed) { const f = figs["r_" + id]; if (!f || Math.hypot(f.x - me.x, f.z - me.z) > 14) return false; bubble(f, t, null, typed); log(f.name, t); SND.sfx("chat"); return true; }
   function removeRemote(id) { removeFig("r_" + id); remoteFamily(id, null); }
   function clearRemotes() { Object.keys(figs).filter(k => k.indexOf("r_") === 0 || k.indexOf("rf_") === 0).forEach(removeFig); }

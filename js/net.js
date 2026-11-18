@@ -8,7 +8,7 @@ window.AE_NET = (function () {
   const ADJ = ["Chai", "Masala", "Monsoon", "Filter", "Express", "Lucky", "Mango", "Turbo", "Coconut", "Spicy", "Midnight", "Sunny", "Desi", "Royal", "Jolly", "Silent"];
   const NOUN = ["Tiger", "Rocket", "Peacock", "Elephant", "Cobra", "Panther", "Kite", "Lassi", "Samosa", "Falcon", "Monk", "Rickshaw", "Parrot", "Dosa", "Comet", "Banyan"];
   const HAIR = ["short", "long", "bun", "curly", "buzz", "bald"], TOP = ["tee", "shirt", "kurta"], ACC = ["none", "specs", "moustache", "beard", "cap"];
-  const MAX = CFG.MAX_PLAYERS_SHOWN || 20, COLS = 64, ROWS = 48, MAXLEN = 80;
+  const MAX = CFG.MAX_PLAYERS_SHOWN || 20, COLS = 128, ROWS = 96, MAXLEN = 80; // clamp bounds for positions (largest map; the world clamps again to its own grid)
 
   // Starter block list. Add words freely; matching ignores case, spacing, repeated letters and common l33t swaps.
   const BAD = ["fuck", "fuk", "shit", "bitch", "bastard", "asshole", "dick", "pussy", "slut", "whore", "cunt", "porn", "nude", "nudes", "sexy", "sex",
