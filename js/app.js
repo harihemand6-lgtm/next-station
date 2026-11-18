@@ -402,6 +402,7 @@
     if (ui.guideTo === "garage") return { text: "Walk to " + (loc === "KL" ? "Vyttila Motors" : "City Motors"), sub: "Buy a bicycle, scooter, bike or car", key: "garage" };
     if (g.shift) return { text: "FXN delivery: take the parcel to " + g.shift.cust, sub: g.shift.left + " of " + CITY.rider.drops + " left" + (g.shift.ratings.length ? " · rating " + avgOf(g.shift.ratings) + "★" : ""), key: "gig", actions: go("gig") };
     if (g.odd) { const J = CITY.oddJobs.find(j => j.id === g.odd.id); return { text: "Odd job: " + J.t, sub: "Walk to the glowing door · " + inr(CS.oddPay(g, J)), key: "odd", actions: go("odd") }; }
+    if (g.pol && g.pol.canv && g.pol.canv.target && g.pol.canv.day === g.day && !away(g)) { const Pq = polParty(g); return { text: "🗳️ Campaign for the " + (Pq ? Pq.name : "party") + ": door " + (g.pol.canv.n + 1) + " of 3", sub: "Walk to the glowing door and talk to the voters", key: "canvass", actions: go("canvass") }; }
     if (g.group) {
       const T = groupTask(g.group.id);
       if (T.city !== loc) return { text: "Group task in " + STATES_[T.city].city + ": " + T.t, sub: "Walk to the Railway Station and travel there with your group", key: "station", actions: go("station") };
@@ -463,6 +464,7 @@
     if (k === "hall") return away(g) ? null : "Enter the Town Hall";
     if (k === "gig") return "Deliver parcel";
     if (k === "odd") return "Do the odd job";
+    if (k === "canvass") return "🚪 Knock and ask for votes";
     if (k === "office") return "Enter the Government Office";
     if (k === "bank") return "Enter the Bank";
     if (k === "cafe") return g.romance && g.romance.stage === "date" ? "Meet " + profileById(g.romance.pid).name : "🍛 Eat here · " + inr(LF.money(g, LF.FOOD.cafe.cost));
@@ -485,6 +487,7 @@
     if (k === "hall") return enterHall();
     if (k === "gig") return game.shift ? riderDrop() : null;
     if (k === "odd") return onArrive("odd");
+    if (k === "canvass") return canvassDoor();
     if (k === "office") return openSheet("office");
     if (k === "bank") return openSheet("bank", { venture: false });
     if (k === "cafe") { if (game.romance && game.romance.stage === "date") return openSheet("date", { dateText: null }); return doEat("cafe"); }
@@ -627,6 +630,69 @@
     const tasks = MET().tasks.map(T => { const done = M.done.indexOf(T.id) >= 0, act = M.task === T.id;
       return item((done ? "✅ " : act ? "▶️ " : "") + T.t, act ? "Now: " + T.steps[M.step].txt : T.d + (T.pay ? " · " + inr(CS.money(g, T.pay)) : " · mood boost"), done ? "" : act ? `<button class="btn small" data-act="mtaskquit">Stop</button>` : `<button class="btn small primary" data-act="mtask" data-arg="${T.id}" ${M.task ? "disabled" : ""}>Start</button>`); }).join("");
     return sheetBox(here ? "🚇 " + here.name + " Metro" : "🚇 Kochi Metro", `${here ? `<p class="hint">Trains every few minutes. Pick where you're going.</p><div class="list">${rides}</div>` : rides}${card}<h3 class="sec">Metro tasks</h3><div class="list">${tasks}</div>`);
+  }
+
+  // ── Ward politics (fictional parties, local civic issues only) ──
+  const POL = () => window.AE_POL;
+  const polState = g => (g.pol = g.pol || { party: null, pts: 0, cand: false, seat: false, wins: 0, lastElec: 0, canv: null, poster: 0, rally: 0, proj: 0 });
+  const polParty = g => g.pol && g.pol.party ? POL().parties.find(p => p.id === g.pol.party) : null;
+  const nextElection = g => { const c = POL().cycle; return (Math.floor(g.day / c) + 1) * c; };
+  function polShares(g, live) {
+    const P = polState(g), seed = Math.floor(g.day / POL().cycle) * 97 + (g.name || "").length, rnd = i => ((Math.sin(seed * 13.7 + i * 7.1) + 1) / 2);
+    const peers = NET.peers ? Object.values(NET.peers() || {}) : [];
+    const raw = POL().parties.map((p, i) => { let v = 26 + rnd(i) * 14; if (p.id === P.party) { v += Math.min(13, P.pts * 0.14); if (P.cand) v += g.r * 0.06 + 2; if (P.seat) v += 2; } v += peers.filter(d => d.py === p.id).length * 2; if (live === false) v += (rnd(i + 9) - 0.5) * 8; return v; });
+    const sum = raw.reduce((a, b) => a + b, 0); return raw.map(v => Math.round(v / sum * 1000) / 10);
+  }
+  function syncParty() { if (NET.setState) { const id = (game.pol && game.pol.party) || ""; if (syncParty._k !== id) { syncParty._k = id; NET.setState({ py: id }); } } }
+  function canvassDoor() {
+    const g = game, P = polState(g), C = P.canv; if (!C || C.day !== g.day) return;
+    P.pts += 10; g.r = Math.min(100, g.r + 2); g.min = Math.min(g.min + 25, 23 * 60 + 50); g.energy = Math.max(0, g.energy - 4);
+    WORLD.note("🚪 " + POL().canvassLines[Math.floor(Math.random() * POL().canvassLines.length)] + " (+10 party points)"); WORLD.react("fun");
+    C.n++; if (C.n >= 3) { C.target = null; WORLD.note("🗳️ Door-to-door done for today. +30 party points in all."); } else C.target = WORLD.randomDoor(Math.random());
+    WORLD.setExtraSpot("canvass", C.target); save(); updateHud(); refreshGuide();
+  }
+  // runs when you wake up: every 7th day the ward votes
+  function polElection(g) {
+    const P = g.pol; if (!P || !P.party || g.day % POL().cycle !== 0 || P.lastElec === g.day || away(g)) return;
+    P.lastElec = g.day;
+    const shares = polShares(g, false), win = shares.indexOf(Math.max.apply(null, shares)), winner = POL().parties[win], mine = winner.id === P.party;
+    let pay = 0; if (P.seat) { pay = CS.money(g, POL().honorarium); g.cash += pay; }
+    const was = P.seat, stood = P.cand;
+    if (stood) { P.seat = mine; if (mine) { P.wins++; g.r = Math.min(100, g.r + 10); g.h = Math.min(100, g.h + 8); } else g.h = Math.max(0, g.h - 4); }
+    else if (was) P.seat = false;
+    P.cand = false; P.pts = Math.round(P.pts * 0.4);
+    ui.elec = { shares, win, stood, mine, pay, was };
+    setTimeout(() => { openSheet("election"); SND.sfx(stood && mine ? "wedding" : "notify"); }, 1200);
+  }
+  function electionSheet() {
+    const g = game, E = ui.elec; if (!E) return "";
+    const W = POL().parties[E.win], Pp = polParty(g);
+    const bars = POL().parties.map((p, i) => `<div class="pol-bar"><span>${p.icon} ${esc(p.name)}</span><i style="width:${E.shares[i]}%;background:${p.color}"></i><b>${E.shares[i]}%</b></div>`).join("");
+    const head = E.stood ? (E.mine ? "🏅 You won " + POL().ward + "!" : "You lost this time") : W.icon + " " + W.name + " wins " + POL().ward;
+    const body = E.stood ? (E.mine ? "You're the Ward Councillor. Pick a ward project from the 🗳️ app and collect your honorarium every election day." : "The " + W.name + " took the ward. Keep campaigning and stand again next week.") : (Pp && W.id === Pp.id ? "Your party won! Party members celebrate at the chayakkada." : "Not your party's day. Campaign harder for the next one.");
+    return sheetBox("🗳️ " + POL().ward + " results · Day " + g.day, `<p class="duty-ok">${esc(head)}</p><div class="pol-bars">${bars}</div><p>${esc(body)}</p>${E.pay ? `<p class="hint">Councillor honorarium: +${inr(E.pay)}</p>` : ""}<p class="hint">Next election: Day ${nextElection(g)}</p>`, "pol");
+  }
+  function politicsSheet() {
+    const g = game, P = polState(g), Pp = polParty(g), D = POL(), h = LF.hour(g), ne = nextElection(g);
+    if (!Pp) return sheetBox("🗳️ " + D.ward + " politics", `<p class="hint">Three local parties are fighting for ${D.ward}. Join one, campaign, and stand for Ward Councillor. Elections every ${D.cycle} days.</p>
+      <div class="pol-parties">${D.parties.map(p => `<div class="pol-card" style="--pc:${p.color}"><div class="pol-top"><span class="pol-ic">${p.icon}</span><div><b>${esc(p.name)}</b><small>${esc(p.slogan)}</small></div></div><ul>${p.plank.map(x => `<li>${esc(x)}</li>`).join("")}</ul><button class="btn small primary" data-act="poljoin" data-arg="${p.id}">Join</button></div>`).join("")}</div>
+      <p class="hint pol-disc">${esc(D.disclaimer)}</p>`, "pol");
+    const C = P.canv && P.canv.day === g.day ? P.canv : null, canvDone = C && C.n >= 3, eve = h >= 17 && h < 22;
+    const shares = polShares(g), mineI = D.parties.findIndex(p => p.id === Pp.id);
+    const canStand = !P.cand && P.pts >= D.standPoints && g.r >= D.standRep && g.cash >= CS.money(g, D.fee);
+    const rows = [
+      item("🚪 Door-to-door campaign", canvDone ? "Done for today" : C ? "Door " + (C.n + 1) + " of 3: follow the arrow" : "Knock on 3 doors · +10 points each", canvDone || C ? "" : `<button class="btn small primary" data-act="polcanv" ${away(g) ? "disabled" : ""}>Start</button>`),
+      item("🪧 Put up posters", P.poster === g.day ? "Done for today" : inr(CS.money(g, D.posterCost)) + " · +8 points", P.poster === g.day ? "" : `<button class="btn small" data-act="polposter" ${g.cash >= CS.money(g, D.posterCost) ? "" : "disabled"}>Print</button>`),
+      item("📣 Evening rally", P.rally === g.day ? "You were there today" : eve ? "+12 points, and it's fun" : "Rallies run 5 to 10 pm", P.rally === g.day ? "" : `<button class="btn small" data-act="polrally" ${eve && g.energy >= 8 ? "" : "disabled"}>Go</button>`),
+      P.cand ? item("📝 You're a candidate", "Voting on Day " + ne + ". Sleep to see the results.", "") :
+        item("📝 Stand for Ward Councillor", "Needs " + D.standPoints + " party points and " + D.standRep + " reputation · fee " + inr(CS.money(g, D.fee)), `<button class="btn small primary" data-act="polstand" ${canStand ? "" : "disabled"}>File</button>`),
+      P.seat ? item("🏗️ Ward project", P.proj === ne ? "Chosen for this term" : "Pick one project this term", P.proj === ne ? "" : `<button class="btn small primary" data-act="polproj">Choose</button>`) : "",
+      item("🚶 Leave the party", "Costs 10 reputation", `<button class="btn small" data-act="polleave" ${P.cand ? "disabled" : ""}>Leave</button>`)
+    ].join("");
+    const projList = ui.polProj ? `<h3 class="sec">Ward projects</h3><div class="list">${D.projects.map(x => item(esc(x.t), "+" + x.r + " reputation, +" + x.h + " mood", `<button class="btn small primary" data-act="polpick" data-arg="${x.id}">Build</button>`)).join("")}</div>` : "";
+    return sheetBox(Pp.icon + " " + Pp.name, `<div class="pol-me" style="--pc:${Pp.color}"><b>${P.seat ? "🏅 Ward Councillor" : P.cand ? "📝 Candidate" : "Party member"}</b><span>${P.pts} party points · reputation ${Math.round(g.r)} · election on Day ${ne}</span></div>
+      <div class="pol-bars">${D.parties.map((p, i) => `<div class="pol-bar ${i === mineI ? "me" : ""}"><span>${p.icon} ${esc(p.short)}</span><i style="width:${shares[i]}%;background:${p.color}"></i><b>${shares[i]}%</b></div>`).join("")}<small class="hint">Ward mood today (polls can be wrong)</small></div>
+      <div class="list">${rows}</div>${projList}<p class="hint pol-disc">${esc(D.disclaimer)}</p>`, "pol");
   }
 
   // ── Kochi Water Metro ──
@@ -815,7 +881,7 @@
 
   function phoneSheet() {
     const g = game, P = myParty(), mates = partyHere();
-    const apps = [["duties", (JOB_ICON[g.lifeId] || "🧑‍💼") + " Today's duties", (() => { const D = duties(g); return D ? D.done.length + " of " + D.ids.length + " done" : "None"; })()], ["goals", "🎯 Life goals", (LF.nextGoal(g) || { t: "All done!" }).t], ["fxnopen", "👗 FXN", "Rent outfits"], ["arcade", "🎮 FXN Arcade", "Mini-games · earn up to " + inr(CS.money(g, 250)) + " each"], ["kin", "👨‍👩‍👧 Family", g.spouse ? g.spouse.name + ((g.kids || []).length ? " + " + g.kids.length : "") : "Single"], ["site:mangalya", "💍 MangalyaMatch", "Matrimony"], ["site:kalyanam", "🪔 KalyanaVeedu", "Matrimony"], ["site:nri", "✈️ NRI Rishta", "Matrimony"], ["site:chaidate", "☕ ChaiDate", "Dating"], ["site:sunset", "🌅 SunsetSwipe", "Dating"], ["site:bookclub", "📚 Paperback", "Dating"], ["board", "📋 Odd jobs & teams", "Quick money, team tasks"], ...(isKL() ? [["metroapp", "🚇 Kochi Metro", metroTask(g) ? "Task: " + metroTask(g).T.t : "Rides and metro tasks"]] : []), ["garage", "🛵 Garage", g.vehicle ? (g.riding ? "Riding your " : "Your ") + CS.vehicleById(g.vehicle.id).name.toLowerCase() : "Buy a bicycle, scooter or car"], ["career", "💼 Career", "Switch job"], ["status", "🗂️ My papers", "Papers, loans, house"], ["retire", "🌅 Retire", "End this life"]];
+    const apps = [["duties", (JOB_ICON[g.lifeId] || "🧑‍💼") + " Today's duties", (() => { const D = duties(g); return D ? D.done.length + " of " + D.ids.length + " done" : "None"; })()], ["goals", "🎯 Life goals", (LF.nextGoal(g) || { t: "All done!" }).t], ["fxnopen", "👗 FXN", "Rent outfits"], ["arcade", "🎮 FXN Arcade", "Mini-games · earn up to " + inr(CS.money(g, 250)) + " each"], ["kin", "👨‍👩‍👧 Family", g.spouse ? g.spouse.name + ((g.kids || []).length ? " + " + g.kids.length : "") : "Single"], ["site:mangalya", "💍 MangalyaMatch", "Matrimony"], ["site:kalyanam", "🪔 KalyanaVeedu", "Matrimony"], ["site:nri", "✈️ NRI Rishta", "Matrimony"], ["site:chaidate", "☕ ChaiDate", "Dating"], ["site:sunset", "🌅 SunsetSwipe", "Dating"], ["site:bookclub", "📚 Paperback", "Dating"], ["board", "📋 Odd jobs & teams", "Quick money, team tasks"], ["politics", "🗳️ Ward politics", g.pol && g.pol.party ? (g.pol.seat ? "Ward Councillor · " : "") + polParty(g).name : "Join a party"], ...(isKL() ? [["metroapp", "🚇 Kochi Metro", metroTask(g) ? "Task: " + metroTask(g).T.t : "Rides and metro tasks"]] : []), ["garage", "🛵 Garage", g.vehicle ? (g.riding ? "Riding your " : "Your ") + CS.vehicleById(g.vehicle.id).name.toLowerCase() : "Buy a bicycle, scooter or car"], ["career", "💼 Career", "Switch job"], ["status", "🗂️ My papers", "Papers, loans, house"], ["retire", "🌅 Retire", "End this life"]];
     const party = P ? `<p>Your group: you${mates.length ? ", " + mates.map(m => esc(m.nick)).join(", ") : " (waiting for players to join)"}.</p><button class="btn small ghost" data-act="partyleave">Leave group</button>` : `<p class="hint">Tap a player in the city to invite them to your group (up to 6).</p>`;
     return sheetBox("Phone", `<div class="apps">${apps.map(a => `<button class="app" data-act="${a[0].indexOf("site:") === 0 ? "site" : a[0]}" ${a[0].indexOf("site:") === 0 ? `data-arg="${a[0].slice(5)}"` : ""}><b>${esc(a[1])}</b><span>${esc(a[2])}</span></button>`).join("")}</div><h3 class="sec">Group</h3>${party}`);
   }
@@ -914,6 +980,8 @@
     if (k === "metro") return metroSheet();
     if (k === "water") return waterSheet();
     if (k === "infopark") return infoparkSheet();
+    if (k === "politics") return politicsSheet();
+    if (k === "election") return electionSheet();
     if (k === "duty") return dutySheet();
     if (k === "duties") { const D = duties(game); return sheetBox("Today's duties", D ? `<div class="list">${D.ids.map(i => { const d = DUT[game.lifeId][i], ok = D.done.indexOf(i) >= 0; return item((ok ? "✅ " : "⬜ ") + esc(d.t), ok ? "Done" : inr(dutyPay(game, d)), ""); }).join("")}</div><p class="hint">Do all three for a bonus. Do them every day for a streak bonus (up to +50%).</p>` : `<p>No duties in this city.</p>`); }
     if (k === "group") return groupSheet();
@@ -1057,9 +1125,10 @@
       onWater: (to, from) => { const g = game; wstate(g).rides++; g.min = Math.min((g.min || 0) + 15, 23 * 60 + 50); WORLD.react("metro"); save(); afterAction(); updateHud(); },
       onMetro: to => { const g = game; mstate(g).rides++; g.min = Math.min((g.min || 0) + 12, 23 * 60 + 50); if (!metroStep(g, "metro", to, ui.metroFrom)) { save(); afterAction(); } updateHud(); }
     });
-    applyRide(); WORLD.setFamilyWalk(!!(g.famWalk && !away(g))); syncFam();
+    applyRide(); WORLD.setFamilyWalk(!!(g.famWalk && !away(g))); syncFam(); syncParty._k = null; syncParty();
     WORLD.setExtraSpot("gig", g.shift ? g.shift.target : null);
     WORLD.setExtraSpot("odd", g.odd ? g.odd.target : null);
+    WORLD.setExtraSpot("canvass", g.pol && g.pol.canv && g.pol.canv.day === g.day && !away(g) ? g.pol.canv.target : null);
     WORLD.setExtraSpot("grp", g.group && g.group.key === "grp" ? g.group.target : null);
     if (NET.lobby) NET.lobby(g.lifeId);
     WORLD.setMarker(!away(g) && !ui.outcome && !ui.eventOpen && !ui.mscene && !ui.cityEv ? ui._marker : null);
@@ -1069,7 +1138,7 @@
     if (NET.enabled() && netKey !== key) {
       netKey = key;
       WORLD.clearRemotes();
-      const tag = d => d.nick + (d.rd ? " · ★" + d.rd + " rider" : d.l && lifeById(d.l) ? " · " + lifeById(d.l).title : "") + (ui.party && d.pt === ui.party.pid ? " · team" : "");
+      const tag = d => (d.py && POL() ? ((POL().parties.find(p => p.id === d.py) || {}).icon || "") + " " : "") + d.nick + (d.rd ? " · ★" + d.rd + " rider" : d.l && lifeById(d.l) ? " · " + lifeById(d.l).title : "") + (ui.party && d.pt === ui.party.pid ? " · team" : "");
       NET.join(loc, char || g.player, WORLD.position(), {
         onJoin: (id, d) => { WORLD.upsertRemote(id, Object.assign({}, d, { outfit: d.o && fxItem(d.o) ? fxItem(d.o).look : null, outfitKey: d.o || "", nick: tag(d) })); WORLD.vehicleRemote(id, remoteSpec(d)); WORLD.remoteFamily(id, d.fam); },
         onUpdate: (id, d) => { WORLD.upsertRemote(id, Object.assign({}, d, { outfit: d.o && fxItem(d.o) ? fxItem(d.o).look : null, outfitKey: d.o || "", nick: tag(d) })); WORLD.vehicleRemote(id, remoteSpec(d)); WORLD.remoteFamily(id, d.fam); },
@@ -1302,7 +1371,7 @@
       case "board": openSheet("board"); break;
       case "retire": openSheet("retire"); break;
       case "retireyes": { ui.sheet = null; AE.finish(game); save(); render(); window.scrollTo(0, 0); break; }
-      case "sleep": { const r = LF.sleep(game); SND.sfx("sleep"); ui.sheet = null; WORLD.note("😴 " + r.text); WORLD.react("sleep"); (r.grew || []).forEach(n => WORLD.note("🎂 " + n + " is growing up!")); if (game.outfit && !r.nap) { game.outfit = null; WORLD.setLook(char || game.player, null); if (NET.setOutfit) NET.setOutfit(""); } afterAction(true); render(); break; }
+      case "sleep": { const r = LF.sleep(game); polElection(game); SND.sfx("sleep"); ui.sheet = null; WORLD.note("😴 " + r.text); WORLD.react("sleep"); (r.grew || []).forEach(n => WORLD.note("🎂 " + n + " is growing up!")); if (game.outfit && !r.nap) { game.outfit = null; WORLD.setLook(char || game.player, null); if (NET.setOutfit) NET.setOutfit(""); } afterAction(true); render(); break; }
       case "eat": ui.sheet = null; render(); doEat(arg); break;
       case "newlife": if (game && !game.done && ui.view === "home") { ui.confirmNew = true; render(); break; } if (!char) { ui.after = "life"; go("creator", { draft: defaultDraft() }); } else { go("life", { stateId: "KL", daily: null }); if (NET.lobby) NET.lobby("", () => { if (ui.view === "life") render(); }); } break;
       case "editchar": ui.after = "profile"; go("creator", { draft: Object.assign({}, char) }); break;
@@ -1409,6 +1478,15 @@
       case "metrocard": { const g = game, c = CS.money(g, MET().card); if (g.cash < c) break; g.cash -= c; mstate(g).card = true; save(); updateHud(); render(); break; }
       case "mtask": { const M = mstate(game); if (M.task) break; M.task = arg; M.step = 0; save(); ui.sheet = null; render(); refreshGuide(); WORLD.note("🚇 " + MET().tasks.find(t => t.id === arg).t + ": " + MET().tasks.find(t => t.id === arg).steps[0].txt); break; }
       case "mtaskquit": { const M = mstate(game); M.task = null; M.step = 0; save(); render(); refreshGuide(); break; }
+      case "politics": ui.polProj = false; openSheet("politics"); break;
+      case "poljoin": { const g = game, P = polState(g); if (P.party) break; P.party = arg; P.pts = 5; syncParty(); save(); render(); WORLD.note(polParty(g).icon + " You joined the " + polParty(g).name + ". " + polParty(g).slogan); WORLD.react("fun"); break; }
+      case "polleave": { const g = game, P = polState(g); if (!P.party || P.cand) break; P.party = null; P.pts = 0; P.seat = false; P.canv = null; g.r = Math.max(0, g.r - 10); WORLD.setExtraSpot("canvass", null); syncParty(); save(); render(); refreshGuide(); break; }
+      case "polcanv": { const g = game, P = polState(g); if (P.canv && P.canv.day === g.day) break; P.canv = { day: g.day, n: 0, target: WORLD.randomDoor(Math.random()) }; WORLD.setExtraSpot("canvass", P.canv.target); ui.sheet = null; save(); render(); refreshGuide(); break; }
+      case "polposter": { const g = game, P = polState(g), c = CS.money(g, POL().posterCost); if (P.poster === g.day || g.cash < c) break; g.cash -= c; P.poster = g.day; P.pts += 8; SND.sfx("spend"); save(); updateHud(); render(); WORLD.note("🪧 Posters up across the ward. +8 points"); break; }
+      case "polrally": { const g = game, P = polState(g); if (P.rally === g.day) break; P.rally = g.day; P.pts += 12; g.h = Math.min(100, g.h + 4); g.energy = Math.max(0, g.energy - 8); g.min = Math.min(g.min + 60, 23 * 60 + 50); ui.msg = POL().rallyLines[Math.floor(Math.random() * POL().rallyLines.length)]; WORLD.react("fun"); save(); updateHud(); render(); break; }
+      case "polstand": { const g = game, P = polState(g), c = CS.money(g, POL().fee); if (P.cand || P.pts < POL().standPoints || g.r < POL().standRep || g.cash < c) break; g.cash -= c; P.cand = true; save(); updateHud(); render(); WORLD.note("📝 Nomination filed! Voting on Day " + nextElection(g) + "."); break; }
+      case "polproj": ui.polProj = true; render(); break;
+      case "polpick": { const g = game, P = polState(g), x = POL().projects.find(q => q.id === arg); if (!x || !P.seat) break; P.proj = nextElection(g); g.r = Math.min(100, g.r + x.r); g.h = Math.min(100, g.h + x.h); ui.polProj = false; SND.sfx("goal"); save(); updateHud(); render(); WORLD.note("🏗️ Ward project approved: " + x.t); break; }
       case "wmride": {
         const g = game, from = ui.station, f = waterFare(g, from, arg); if (g.cash < f || !f) break;
         if (!WORLD.startWater(from, arg)) break;

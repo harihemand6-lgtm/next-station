@@ -209,12 +209,12 @@ window.AE_NET = (function () {
     shown.forEach(k => {
       const s = (st[k] && st[k][0]) || {};
       const data = { nick: nickOf(s.nk), av: unpackAv(s.av), x: int(s.x, 0, COLS - 1), y: int(s.y, 0, ROWS - 1), o: /^[a-z_]{1,24}$/.test(s.o || "") ? s.o : "", hs: /^[A-Z]{2}$/.test(s.hs || "") ? s.hs : "",
-        l: /^[a-z]{2,10}$/.test(s.l || "") ? s.l : "", rd: typeof s.rd === "number" && s.rd >= 0 && s.rd <= 5 ? Math.round(s.rd * 10) / 10 : 0, pt: /^[a-z0-9]{1,16}$/.test(s.pt || "") ? s.pt : "", vh: /^[a-z]{2,10}$/.test(s.vh || "") ? s.vh : "", vc: int(s.vc, 0, 7), fam: famOf(s.fam) };
+        l: /^[a-z]{2,10}$/.test(s.l || "") ? s.l : "", rd: typeof s.rd === "number" && s.rd >= 0 && s.rd <= 5 ? Math.round(s.rd * 10) / 10 : 0, pt: /^[a-z0-9]{1,16}$/.test(s.pt || "") ? s.pt : "", vh: /^[a-z]{2,10}$/.test(s.vh || "") ? s.vh : "", vc: int(s.vc, 0, 7), fam: famOf(s.fam), py: /^[a-z]{2,8}$/.test(s.py || "") ? s.py : "" };
       const prev = peers[k];
       if (prev && prev.x !== undefined) { data.x = prev.x; data.y = prev.y; }
       peers[k] = data;
       if (!prev) handlers.onJoin && handlers.onJoin(k, data);
-      else if (prev.o !== data.o || prev.rd !== data.rd || prev.l !== data.l || prev.pt !== data.pt || prev.vh !== data.vh || prev.vc !== data.vc || JSON.stringify(prev.fam) !== JSON.stringify(data.fam)) handlers.onUpdate && handlers.onUpdate(k, data);
+      else if (prev.o !== data.o || prev.rd !== data.rd || prev.l !== data.l || prev.pt !== data.pt || prev.vh !== data.vh || prev.vc !== data.vc || prev.py !== data.py || JSON.stringify(prev.fam) !== JSON.stringify(data.fam)) handlers.onUpdate && handlers.onUpdate(k, data);
     });
     handlers.onCount && handlers.onCount(ids.length + 1, roomN);
   }

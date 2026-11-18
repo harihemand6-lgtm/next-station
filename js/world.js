@@ -1745,7 +1745,9 @@ window.AE_WORLD = (function () {
   }
   function setMarker(k) { if (k && k !== sceneMarker) delete inside[k]; sceneMarker = k || null; }
   function setExtraSpot(k, pos) { if (pos) extraSpots[k] = pos; else delete extraSpots[k]; }
-  function randomDoor(r) { const d = doors[Math.floor(r * doors.length) % Math.max(1, doors.length)]; const t = d ? nearestWalk({ x: d.x, y: d.y }) : null; return t || { x: 20, y: 18 }; }
+  function randomDoor(r) {
+    let i0 = Math.floor(r * doors.length) % Math.max(1, doors.length), d = doors[i0];
+    for (let k = 0; k < doors.length && d; k++) { const c = doors[(i0 + k) % doors.length]; if (!Object.values(spots).some(s2 => Math.abs(s2.x - c.x) <= 2 && Math.abs(s2.y - c.y) <= 2)) { d = c; break; } } const t = d ? nearestWalk({ x: d.x, y: d.y }) : null; return t || { x: 20, y: 18 }; }
   function bubble(f, t, s, typed) {
     if (!f) return;
     const b = f.lab.querySelector(".bub");

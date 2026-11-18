@@ -623,3 +623,19 @@ body:has(.play2) { overflow: hidden; }
 .btoast.arc-toast { background: linear-gradient(120deg, #17122a, #4a1238); border: 1px solid rgba(233,196,106,.45); }
 .arc-hero h2, .arc-hero p { position: relative; max-width: 60%; }
 .arc-hero { min-height: 140px; }
+
+/* v10: ward politics */
+.pol-parties { display: flex; flex-direction: column; gap: 10px; }
+.pol-card { border-radius: 16px; padding: 12px; border: 1px solid color-mix(in srgb, var(--pc) 55%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--pc) 22%, transparent), transparent); }
+.pol-top { display: flex; gap: 10px; align-items: center; }
+.pol-ic { font-size: 1.8rem; }
+.pol-top b { display: block; font-size: 1.05rem; } .pol-top small { opacity: .8; }
+.pol-card ul { margin: 8px 0; padding-left: 20px; font-size: .85rem; opacity: .9; }
+.pol-me { border-radius: 14px; padding: 10px 12px; background: linear-gradient(120deg, color-mix(in srgb, var(--pc) 35%, transparent), transparent); border: 1px solid color-mix(in srgb, var(--pc) 60%, transparent); display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
+.pol-me span { font-size: .8rem; opacity: .85; }
+.pol-bars { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
+.pol-bar { display: grid; grid-template-columns: 110px 1fr 46px; align-items: center; gap: 8px; font-size: .82rem; }
+.pol-bar i { display: block; height: 10px; border-radius: 5px; min-width: 4px; }
+.pol-bar b { text-align: right; font-variant-numeric: tabular-nums; }
+.pol-bar.me span { font-weight: 800; }
+.pol-disc { font-size: .72rem; opacity: .6; }
